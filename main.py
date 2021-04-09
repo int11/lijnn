@@ -6,7 +6,7 @@ def numerical_diff(dxindex, f, w):
     x1, x2 = list(w), list(w)
     x1[dxindex] += h
     x2[dxindex] -= h
-    return (f(x1) - f(x2)) / 2 * h
+    return (f(x1) - f(x2)) / (2 * h)
 
 
 def linear(w):
@@ -25,16 +25,14 @@ datay = np.array([9., 16., 23., 30., 37., 44.])
 lenx = len(datax)
 
 w = [0.,0.]
-learning_rate = 10000
+learning_rate = 0.01
 
 MSE = MSEmaker(linear)
-gradient = [0, 0]
+
 
 for i in range(500000):
     cost = MSE(w)
-    gradient[0] = numerical_diff(0, MSE, w)
-    gradient[1] = numerical_diff(1, MSE, w)
-    w[0] -= learning_rate * gradient[0]
-    w[1] -= learning_rate * gradient[1]
+    w[0] -= learning_rate * numerical_diff(0, MSE, w)
+    w[1] -= learning_rate * numerical_diff(1, MSE, w)
     if i % 100 == 0:
         print('Epoch ({:10d}/{:10d}) cost: {:10f}, W: {:10f}, b:{:10f}'.format(i, 500, cost, w[0], w[1]))

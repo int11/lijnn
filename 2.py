@@ -11,15 +11,21 @@ class nn:
         if self.x.ndim == 1:
             self.x = self.x[np.newaxis]
         self.lensample = len(self.x[0])
-        self.w = np.zeros(( xlen,ylen))
-        self.b = np.zeros((1,ylen))
+        self.w = np.zeros((xlen, ylen))
+        self.b = np.zeros((1, ylen))
 
         if actifuns == "linear":
             def activation_fun():
-                return np.matmul(self.x,self.w) + self.b
+                return np.matmul(self.x, self.w) + self.b
         elif actifuns == "sigmoid":
             def activation_fun():
-                return 1 / (1 + np.exp(-(np.matmul(self.x,self.w) + self.b)))
+                return 1 / (1 + np.exp(-(np.matmul(self.x, self.w) + self.b)))
+        elif actifuns == "softmax":
+            def activation_fun():
+                x_data = np.matmul(self.x, self.w) + self.b
+                softmax = np.exp(x_data - (x_data.max(axis=1).reshape([-1, 1])))
+                softmax /= softmax.sum(axis=1).reshape([-1, 1])
+                return softmax
         else:
             raise
         self.activation_fun = activation_fun
@@ -46,17 +52,10 @@ class nn:
         for i in range(x.size):
             args = x.reshape(-1)[i]
             x.reshape(-1)[i] = args + self.h
-            print(x)
-            print(f())
-            print(self.activation_fun())
             f1 = f()
             x.reshape(-1)[i] = args - self.h
-            print(x)
-            print(f())
-            print(self.activation_fun())
             f2 = f()
             x.reshape(-1)[i] = args
-            print((f1 - f2) / (2 * self.h))
             x.reshape(-1)[i] -= self.learning_rate * (f1 - f2) / (2 * self.h)
 
 
@@ -67,19 +66,13 @@ def oneshotencoding(data):
 x = np.array(
     [[5.1, 3.5, 1.4, 0.2], [4.9, 3.0, 1.4, 0.2], [5.8, 2.6, 4.0, 1.2], [6.7, 3.0, 5.2, 2.3], [5.6, 2.8, 4.9, 2.0]])
 y = np.array([0, 0, 1, 2, 2])
-nn = nn(x, y, "sigmoid", "categorical_crossentropy", 4, 3)
+nn = nn(x, y, "softmax", "categorical_crossentropy", 4, 3)
 
-for i in range(1000):
+
+for i in range(10000):
     nn()
-    print(nn.cost_fun(), nn.w, nn.b)
+    if i%100==0:
+        print(nn.cost_fun(), nn.w, nn.b, sep='\n')
 
-def softmax(a):
-    c = np.max(a)
-    exp_a = np.exp(a-c)
-    sum_exp_a = np.sum(exp_a)
-    y = exp_a / sum_exp_a
-    return y
 
-for i in nn.activation_fun():
-    print(softmax(i))
-
+print(np.round(nn.activation_fun(),3))

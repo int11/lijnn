@@ -2,9 +2,6 @@ import numpy as np
 
 
 class activation:
-    linear = "linear"
-    sigmoid = "sigmoid"
-    softmax = "softmax"
 
     @staticmethod
     def linear(x, w, b):

@@ -36,57 +36,68 @@ class cost:
 
 
 class nn:
-    def __init__(self, x, y, actifun, costfuns, xlen, ylen):
+    def __init__(self, x, y, xlen, ylen, actifun, costfuns, batch_size, learning_rate=0.01):
         self.h = 1e-4  # 0.0001
         self.delta = 1e-7
-        self.learning_rate = 0.01
+        self.learning_rate = learning_rate
+        self.batch_size = batch_size
         self.x = x
         self.y = y
         if self.x.ndim == 1:
             self.x = self.x[np.newaxis]
-        self.lensample = self.y.shape[0]
+        self.train_size = self.y.shape[0]
         self.w = [np.ones((xlen, ylen))]
         self.b = [np.ones((1, ylen))]
         self.actifunlist = [actifun]
 
         if costfuns == "mse":
             def cost_fun():
-                return np.sum((self.activation_fun() - self.y) ** 2) / self.lensample
+                return np.sum((self.activation_fun() - self.y_batch) ** 2) / self.batch_size
         elif costfuns == "binary_crossentropy":
             def cost_fun():
-                return -np.sum(self.y * np.log(self.activation_fun() + self.delta) + (1 - self.y) * np.log(
-                    (1 - self.activation_fun()) + self.delta))
+                return -np.sum(self.y_batch * np.log(self.activation_fun() + self.delta) + (1 - self.y) * np.log(
+                    (1 - self.activation_fun()) + self.delta)) / self.batch_size
         elif costfuns == "categorical_crossentropy":
             def cost_fun():
-                return -np.sum(self.y * np.log(self.activation_fun() + self.delta)) / self.lensample
+                return -np.sum(self.y_batch * np.log(self.activation_fun() + self.delta)) / self.batch_size
         else:
             raise
         self.cost_fun = cost_fun
 
     def activation_fun(self):
+        result = self.x_batch
+        for w, b, actifun in zip(self.w, self.b, self.actifunlist):
+            result = actifun(result, w, b)
+
+        return result
+
+    def predict(self):
         result = self.x
         for w, b, actifun in zip(self.w, self.b, self.actifunlist):
             result = actifun(result, w, b)
 
         return result
 
-    def add(self, ylen, actifun, ):
+    def add(self, ylen, actifun):
         self.w.append(np.ones((self.w[-1].shape[1], ylen)))
         self.b.append(np.ones((1, ylen)))
         self.actifunlist.append(actifun)
 
     def __call__(self):
+        batch_mask = np.random.choice(self.train_size,self.batch_size)
+        self.x_batch = self.x[batch_mask]
+        self.y_batch = self.y[batch_mask]
         for w, b in zip(self.w, self.b):
-            self.numerical_diff(self.cost_fun, w)
-            self.numerical_diff(self.cost_fun, b)
+            self.numerical_diff(w)
+            self.numerical_diff(b)
 
-    def numerical_diff(self, f, x):
+    def numerical_diff(self, x):
         for i in range(x.size):
             args = x.flat[i]
             x.flat[i] = args + self.h
-            f1 = f()
+            f1 = self.cost_fun()
             x.flat[i] = args - self.h
-            f2 = f()
+            f2 = self.cost_fun()
             x.flat[i] = args
             x.flat[i] -= self.learning_rate * (f1 - f2) / (2 * self.h)
 
@@ -133,7 +144,7 @@ y = np.array(
      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
      2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
      2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2])
-nn = nn(x, oneshotencoding(y), activation.relu, cost.categorical_crossentropy, 4, 3)
+nn = nn(x, oneshotencoding(y), 4, 3, activation.relu, cost.categorical_crossentropy, len(x))
 nn.add(3, activation.relu)
 nn.add(3, activation.softmax)
 for i in range(10000):
@@ -141,7 +152,5 @@ for i in range(10000):
     if i % 100 == 0:
         cost = nn.cost_fun()
         print(cost, sep='\n')
-        if cost < 0.01:
-            break
 
-print(np.round(nn.activation_fun(), 3))
+print(np.round(nn.predict(), 3))

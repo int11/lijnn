@@ -1,4 +1,5 @@
 import numpy as np
+import time
 
 
 class activation:
@@ -35,12 +36,28 @@ class cost:
     categorical_crossentropy = "categorical_crossentropy"
 
 
+class optimizer:
+    GD = "GD"
+
+
 class nn:
-    def __init__(self, x, y, xlen, ylen, actifun, costfuns, batch_size, learning_rate=0.01):
-        self.h = 1e-4  # 0.0001
-        self.delta = 1e-7
+    h = 1e-4  # 0.0001
+    delta = 1e-7
+
+    def optimizer(self, optifun, batch_size, learning_rate):
+        if optifun == "momentum":
+            a = 0
+            for w, b in zip(self.w, self.b):
+                a += w.size + b.size
+            self.v = np.ones(a)
+
+            def momentum(x,diff):
+                pass
+        self.optimizer_fun = optifun
         self.learning_rate = learning_rate
         self.batch_size = batch_size
+
+    def __init__(self, x, y, xlen, ylen, actifun, costfuns):
         self.x = x
         self.y = y
         if self.x.ndim == 1:
@@ -55,7 +72,7 @@ class nn:
                 return np.sum((self.activation_fun() - self.y_batch) ** 2) / self.batch_size
         elif costfuns == "binary_crossentropy":
             def cost_fun():
-                return -np.sum(self.y_batch * np.log(self.activation_fun() + self.delta) + (1 - self.y) * np.log(
+                return -np.sum(self.y_batch * np.log(self.activation_fun() + self.delta) + (1 - self.y_batch) * np.log(
                     (1 - self.activation_fun()) + self.delta)) / self.batch_size
         elif costfuns == "categorical_crossentropy":
             def cost_fun():
@@ -84,7 +101,7 @@ class nn:
         self.actifunlist.append(actifun)
 
     def __call__(self):
-        batch_mask = np.random.choice(self.train_size,self.batch_size)
+        batch_mask = np.random.choice(self.train_size, self.batch_size)
         self.x_batch = self.x[batch_mask]
         self.y_batch = self.y[batch_mask]
         for w, b in zip(self.w, self.b):
@@ -92,14 +109,15 @@ class nn:
             self.numerical_diff(b)
 
     def numerical_diff(self, x):
+        x = x.ravel()
         for i in range(x.size):
-            args = x.flat[i]
-            x.flat[i] = args + self.h
+            args = x[i]
+            x[i] = args + self.h
             f1 = self.cost_fun()
-            x.flat[i] = args - self.h
+            x[i] = args - self.h
             f2 = self.cost_fun()
-            x.flat[i] = args
-            x.flat[i] -= self.learning_rate * (f1 - f2) / (2 * self.h)
+            x[i] = args
+            x[i] -= self.learning_rate * (f1 - f2) / (2 * self.h)
 
 
 def oneshotencoding(data):
@@ -144,13 +162,19 @@ y = np.array(
      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
      2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
      2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2])
-nn = nn(x, oneshotencoding(y), 4, 3, activation.relu, cost.categorical_crossentropy, len(x))
+
+nn = nn(x, oneshotencoding(y), 4, 3, activation.relu, cost.categorical_crossentropy)
 nn.add(3, activation.relu)
 nn.add(3, activation.softmax)
+nn.optimizer(optimizer.GD, batch_size=len(x), learning_rate=0.01)
+
+a = time.time()
+a1 = 0.
 for i in range(10000):
     nn()
     if i % 100 == 0:
+        a1 += 1
+        print("time  ", (time.time() - a) / a1)
         cost = nn.cost_fun()
         print(cost, sep='\n')
-
 print(np.round(nn.predict(), 3))

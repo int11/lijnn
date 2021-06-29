@@ -105,19 +105,22 @@ class nn:
         self.x_batch = self.x[batch_mask]
         self.y_batch = self.y[batch_mask]
         for w, b in zip(self.w, self.b):
-            self.numerical_diff(w)
-            self.numerical_diff(b)
+            w -= self.learning_rate * self.numerical_diff(w)
+            b -= self.learning_rate * self.numerical_diff(b)
 
     def numerical_diff(self, x):
-        x = x.ravel()
-        for i in range(x.size):
-            args = x[i]
-            x[i] = args + self.h
+        it = np.nditer(x, flags=['multi_index'], op_flags=['readwrite'])
+        tmp = np.zeros_like(x)
+        for i in it:
+            idx = it.multi_index
+            args = x[idx]
+            x[idx] = args + self.h
             f1 = self.cost_fun()
-            x[i] = args - self.h
+            x[idx] = args - self.h
             f2 = self.cost_fun()
-            x[i] = args
-            x[i] -= self.learning_rate * (f1 - f2) / (2 * self.h)
+            x[idx] = args
+            tmp[idx] = (f1 - f2) / (2 * self.h)
+        return tmp
 
 
 def oneshotencoding(data):
@@ -166,7 +169,7 @@ y = np.array(
 nn = nn(x, oneshotencoding(y), 4, 3, activation.relu, cost.categorical_crossentropy)
 nn.add(3, activation.relu)
 nn.add(3, activation.softmax)
-nn.optimizer(optimizer.GD, batch_size=len(x), learning_rate=0.01)
+nn.optimizer(optimizer.GD, batch_size=50, learning_rate=0.01)
 
 a = time.time()
 a1 = 0.
@@ -177,4 +180,5 @@ for i in range(10000):
         print("time  ", (time.time() - a) / a1)
         cost = nn.cost_fun()
         print(cost, sep='\n')
+
 print(np.round(nn.predict(), 3))

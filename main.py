@@ -163,6 +163,6 @@ y = np.array(
 
 nn = nn(x, oneshotencoding(y), 4, 3, activation.relu, cost.categorical_crossentropy)
 nn.add(3,activation.softmax)
-nn.fit(batch_size=len(x), epochs=10000, opti=optimizer.NAG(nn))
+nn.fit(batch_size=len(x), epochs=10000, opti=optimizer.RMSProp(nn))
 
-
+print(nn.predict())

@@ -163,6 +163,6 @@ y = np.array(
 
 nn = nn(x, oneshotencoding(y), 4, 5, activation.relu, cost.categorical_crossentropy)
 nn.add(3,activation.softmax)
-nn.fit(batch_size=len(x), epochs=10000, opti=optimizer.AdaDelta(nn))
+nn.fit(batch_size=len(x), epochs=10000, opti=optimizer.Adam(nn))
 
 print(nn.predict())

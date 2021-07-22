@@ -1,4 +1,5 @@
 import numpy as np
+import copy
 
 
 class GD:
@@ -39,7 +40,8 @@ class NAG(momentum):
 class Adagrad(idpaste):
     def __call__(self, x):
         self.v[id(x)] += np.square(self.model.numerical_diff(x))
-        x -= np.multiply(self.learning_rate / (np.sqrt(self.v[id(x)] + self.model.delta)), self.model.numerical_diff(x))
+        x -= np.multiply(self.learning_rate / (np.sqrt(self.v[id(x)] + self.model.epsilon)),
+                         self.model.numerical_diff(x))
 
 
 class RMSProp(idpaste):
@@ -48,5 +50,28 @@ class RMSProp(idpaste):
         self.RMSProp = RMSProp
 
     def __call__(self, x):
-        self.v[id(x)] = self.RMSProp * self.v[id(x)] + (1-self.RMSProp) * np.square(self.model.numerical_diff(x))
-        x -= np.multiply(self.learning_rate / (np.sqrt(self.v[id(x)] + self.model.delta)), self.model.numerical_diff(x))
+        self.v[id(x)] = self.RMSProp * self.v[id(x)] + (1 - self.RMSProp) * np.square(self.model.numerical_diff(x))
+        x -= np.multiply(self.learning_rate / (np.sqrt(self.v[id(x)] + self.model.epsilon)),
+                         self.model.numerical_diff(x))
+
+
+class AdaDelta:
+    def __init__(self, model, AdaDelta=0.9):
+        self.model = model
+        self.AdaDelta = AdaDelta
+        self.v = {}
+        self.s = {}
+        for w, b in zip(model.w, model.b):
+            self.v[id(w)] = np.zeros_like(w)
+            self.v[id(b)] = np.zeros_like(b)
+            self.s[id(w)] = np.zeros_like(w)
+            self.s[id(b)] = np.zeros_like(b)
+        print(self.v)
+
+    def __call__(self, x):
+        self.v[id(x)] = self.AdaDelta * self.v[id(x)] + (1 - self.AdaDelta) * np.square(self.model.numerical_diff(x))
+        d_t = np.multiply(np.sqrt(self.s[id(x)] + self.model.epsilon) / np.sqrt(self.v[id(x)] + self.model.epsilon),
+                          self.model.numerical_diff(x))
+
+        x -= d_t
+        self.s[id(x)] = self.AdaDelta * self.s[id(x)] + (1 - self.AdaDelta) * np.square(d_t)

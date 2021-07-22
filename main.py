@@ -39,7 +39,7 @@ class cost:
 
 class nn:
     h = 1e-4  # 0.0001
-    delta = 1e-7
+    epsilon = 1e-7
 
     def __init__(self, x, y, xlen, ylen, actifun, costfun):
         self.x = x
@@ -56,11 +56,11 @@ class nn:
                 return np.sum((self.activation_fun() - self.y_batch) ** 2) / self.batch_size
         elif costfun == "binary_crossentropy":
             def cost_fun():
-                return -np.sum(self.y_batch * np.log(self.activation_fun() + self.delta) + (1 - self.y_batch) * np.log(
-                    (1 - self.activation_fun()) + self.delta)) / self.batch_size
+                return -np.sum(self.y_batch * np.log(self.activation_fun() + self.epsilon) + (1 - self.y_batch) * np.log(
+                    (1 - self.activation_fun()) + self.epsilon)) / self.batch_size
         elif costfun == "categorical_crossentropy":
             def cost_fun():
-                return -np.sum(self.y_batch * np.log(self.activation_fun() + self.delta)) / self.batch_size
+                return -np.sum(self.y_batch * np.log(self.activation_fun() + self.epsilon)) / self.batch_size
         else:
             raise
         self.cost_fun = cost_fun
@@ -161,8 +161,8 @@ y = np.array(
      2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
      2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2])
 
-nn = nn(x, oneshotencoding(y), 4, 3, activation.relu, cost.categorical_crossentropy)
+nn = nn(x, oneshotencoding(y), 4, 5, activation.relu, cost.categorical_crossentropy)
 nn.add(3,activation.softmax)
-nn.fit(batch_size=len(x), epochs=10000, opti=optimizer.RMSProp(nn))
+nn.fit(batch_size=len(x), epochs=10000, opti=optimizer.AdaDelta(nn))
 
 print(nn.predict())

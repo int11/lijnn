@@ -37,27 +37,33 @@ class cost:
     categorical_crossentropy = "categorical_crossentropy"
 
 
+class initialization:
+    Xavier = "Xavier"
+    He = "He"
+
+
 class nn:
     h = 1e-4  # 0.0001
     epsilon = 1e-7
 
-    def __init__(self, x, y, xlen, ylen, actifun, costfun):
+    def __init__(self, x, y, costfun):
         self.x = x
+        if self.x.ndim == 1: self.x = self.x[np.newaxis].T
         self.y = y
-        if self.x.ndim == 1:
-            self.x = self.x[np.newaxis]
+        if self.y.ndim == 1: self.y = self.y[np.newaxis].T
         self.train_size = self.y.shape[0]
-        self.w = [np.ones((xlen, ylen))]
-        self.b = [np.ones((1, ylen))]
-        self.actifuns = [actifun]
+        self.w = []
+        self.b = []
+        self.actifuns = []
 
         if costfun == "mse":
             def cost_fun():
                 return np.sum((self.activation_fun() - self.y_batch) ** 2) / self.batch_size
         elif costfun == "binary_crossentropy":
             def cost_fun():
-                return -np.sum(self.y_batch * np.log(self.activation_fun() + self.epsilon) + (1 - self.y_batch) * np.log(
-                    (1 - self.activation_fun()) + self.epsilon)) / self.batch_size
+                return -np.sum(
+                    self.y_batch * np.log(self.activation_fun() + self.epsilon) + (1 - self.y_batch) * np.log(
+                        (1 - self.activation_fun()) + self.epsilon)) / self.batch_size
         elif costfun == "categorical_crossentropy":
             def cost_fun():
                 return -np.sum(self.y_batch * np.log(self.activation_fun() + self.epsilon)) / self.batch_size
@@ -72,16 +78,28 @@ class nn:
 
         return result
 
-    def predict(self):
-        result = self.x
+    def predict(self, x):
+        result = x
         for w, b, actifun in zip(self.w, self.b, self.actifuns):
             result = actifun(result, w, b)
 
         return np.round(result, 3)
 
-    def add(self, ylen, actifun):
-        self.w.append(np.ones((self.w[-1].shape[1], ylen)))
-        self.b.append(np.ones((1, ylen)))
+    def add(self, ylen, actifun, initialization=None):
+        if self.w: input = self.w[-1].shape[1]
+        else: input = self.x.shape[-1]
+
+        if initialization == 'Xavier':
+            m = np.sqrt(6 / (input + ylen))
+            self.w.append(np.random.uniform(-m, m, (input, ylen)))
+            self.b.append(np.random.uniform(-m, m, (1, ylen)))
+        elif initialization == 'He':
+            m = np.sqrt(6 / input)
+            self.w.append(np.random.uniform(-m, m, (input, ylen)))
+            self.b.append(np.random.uniform(-m, m, (1, ylen)))
+        elif initialization is None:
+            self.w.append(np.random.uniform(-1, 1, (input, ylen)))
+            self.b.append(np.random.uniform(-1, 1, (1, ylen)))
         self.actifuns.append(actifun)
 
     def fit(self, batch_size, epochs, opti):
@@ -90,7 +108,7 @@ class nn:
         self.batch_size = batch_size
 
         for i in range(epochs):
-            batch_mask = np.random.choice(self.train_size, self.batch_size)
+            batch_mask = np.random.choice(self.train_size, self.batch_size, replace=False)
             self.x_batch = self.x[batch_mask]
             self.y_batch = self.y[batch_mask]
             for w, b in zip(self.w, self.b):
@@ -161,8 +179,12 @@ y = np.array(
      2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
      2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2])
 
-nn = nn(x, oneshotencoding(y), 4, 5, activation.relu, cost.categorical_crossentropy)
-nn.add(3,activation.softmax)
-nn.fit(batch_size=len(x), epochs=10000, opti=optimizer.Adam(nn))
+y = oneshotencoding(y)
 
-print(nn.predict())
+nn = nn(x, y, cost.categorical_crossentropy)
+nn.add(5, activation.relu, initialization=initialization.Xavier)
+nn.add(5, activation.relu, initialization=initialization.Xavier)
+nn.add(3, activation.softmax, initialization=initialization.He)
+nn.fit(batch_size=len(x), epochs=10000, opti=optimizer.Adam(nn, lr=0.01))
+
+print(nn.predict(x))

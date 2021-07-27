@@ -3,7 +3,7 @@ import copy
 
 
 class GD:
-    def __init__(self, model, lr=0.01):
+    def __init__(self, model, lr):
         self.model = model
         self.lr = lr
 
@@ -38,7 +38,7 @@ class NAG(momentum):
 
 
 class Adagrad(_idpaste):
-    def __init__(self, model, lr=0.01, epsilon=1e-7):
+    def __init__(self, model, lr, epsilon=1e-7):
         super().__init__(model)
         self.lr = lr
         self.epsilon = epsilon
@@ -50,7 +50,7 @@ class Adagrad(_idpaste):
 
 
 class RMSProp(_idpaste):
-    def __init__(self, model, lr=0.01, RMSProp=0.9, epsilon=1e-7):
+    def __init__(self, model, lr, RMSProp=0.9, epsilon=1e-7):
         super().__init__(model)
         self.lr = lr
         self.epsilon = epsilon
@@ -79,7 +79,7 @@ class AdaDelta(_idpaste):
 
 
 class Adam(_idpaste):
-    def __init__(self, model, lr=0.01, beta_1=0.9, beta_2=0.999, epsilon=1e-7):
+    def __init__(self, model, lr, beta_1=0.9, beta_2=0.999, epsilon=1e-7):
         super().__init__(model)
         self.lr = lr
         self.beta_1 = beta_1

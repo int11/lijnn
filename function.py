@@ -1,4 +1,6 @@
 import numpy as np
+
+
 class activation:
 
     @staticmethod
@@ -36,9 +38,6 @@ class cost:
 class initialization:
     Xavier = "Xavier"
     He = "He"
-
-
-
 
 
 def oneshotencoding(data):

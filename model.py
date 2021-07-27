@@ -1,6 +1,7 @@
 import numpy as np
 import time
 
+
 class nn:
     h = 1e-4  # 0.0001
     epsilon = 1e-7
@@ -45,8 +46,10 @@ class nn:
         return np.round(result, 3)
 
     def add(self, ylen, actifun, initialization=None):
-        if self.w: input = self.w[-1].shape[1]
-        else: input = self.x.shape[-1]
+        if self.w:
+            input = self.w[-1].shape[1]
+        else:
+            input = self.x.shape[-1]
 
         if initialization == 'Xavier':
             m = np.sqrt(6 / (input + ylen))

@@ -12,9 +12,7 @@ class nn:
         self.y = y
         if self.y.ndim == 1: self.y = self.y[np.newaxis].T
         self.train_size = self.y.shape[0]
-        self.w = []
-        self.b = []
-        self.actifuns = []
+        self.layers = []
 
         if costfun == "mse":
             def cost_fun():
@@ -33,36 +31,20 @@ class nn:
 
     def activation_fun(self):
         result = self.x_batch
-        for w, b, actifun in zip(self.w, self.b, self.actifuns):
-            result = actifun(result, w, b)
+        for layer in self.layers:
+            result = layer(result)
 
         return result
 
     def predict(self, x):
         result = x
-        for w, b, actifun in zip(self.w, self.b, self.actifuns):
-            result = actifun(result, w, b)
+        for layer in self.layers:
+            result = layer(result)
 
         return np.round(result, 3)
 
-    def add(self, ylen, actifun, initialization=None):
-        if self.w:
-            input = self.w[-1].shape[1]
-        else:
-            input = self.x.shape[-1]
-
-        if initialization == 'Xavier':
-            m = np.sqrt(6 / (input + ylen))
-            self.w.append(np.random.uniform(-m, m, (input, ylen)))
-            self.b.append(np.random.uniform(-m, m, (1, ylen)))
-        elif initialization == 'He':
-            m = np.sqrt(6 / input)
-            self.w.append(np.random.uniform(-m, m, (input, ylen)))
-            self.b.append(np.random.uniform(-m, m, (1, ylen)))
-        elif initialization is None:
-            self.w.append(np.random.uniform(-1, 1, (input, ylen)))
-            self.b.append(np.random.uniform(-1, 1, (1, ylen)))
-        self.actifuns.append(actifun)
+    def add(self, layer):
+        self.layers.append(layer)
 
     def fit(self, batch_size, epochs, opti):
         a = time.time()
@@ -73,9 +55,9 @@ class nn:
             batch_mask = np.random.choice(self.train_size, self.batch_size, replace=False)
             self.x_batch = self.x[batch_mask]
             self.y_batch = self.y[batch_mask]
-            for w, b in zip(self.w, self.b):
-                opti(w)
-                opti(b)
+            for layer in self.layers:
+                opti(layer.w)
+                opti(layer.b)
 
             if i % 100 == 0:
                 a1 += 1
@@ -96,3 +78,4 @@ class nn:
             x[idx] = args
             tmp[idx] = (f1 - f2) / (2 * self.h)
         return tmp
+

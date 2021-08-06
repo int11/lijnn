@@ -15,9 +15,9 @@ class _idpaste:
     def __init__(self, model):
         self.model = model
         self.v = {}
-        for w, b in zip(model.w, model.b):
-            self.v[id(w)] = np.zeros_like(w)
-            self.v[id(b)] = np.zeros_like(b)
+        for layer in model.layers:
+            self.v[id(layer.w)] = np.zeros_like(layer.w)
+            self.v[id(layer.b)] = np.zeros_like(layer.b)
 
 
 class momentum(_idpaste):

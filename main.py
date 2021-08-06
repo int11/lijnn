@@ -1,7 +1,7 @@
 import optimizer
 from model import *
 from function import *
-
+from layer import *
 
 x = np.array(
     [[5.1, 3.5, 1.4, 0.2], [4.9, 3.0, 1.4, 0.2], [4.7, 3.2, 1.3, 0.2], [4.6, 3.1, 1.5, 0.2], [5.0, 3.6, 1.4, 0.2],
@@ -45,9 +45,9 @@ y = np.array(
 y = oneshotencoding(y)
 
 nn = nn(x, y, cost.categorical_crossentropy)
-nn.add(5, activation.relu, initialization=initialization.Xavier)
-nn.add(5, activation.relu, initialization=initialization.Xavier)
-nn.add(3, activation.softmax, initialization=initialization.He)
+nn.add(Dense(4, 5, activation.relu, initialization=initialization.Xavier))
+nn.add(Dense(5, 5, activation.relu, initialization=initialization.Xavier))
+nn.add(Dense(5, 3, activation.softmax, initialization=initialization.He))
 nn.fit(batch_size=len(x), epochs=10000, opti=optimizer.Adam(nn, lr=0.01))
 
 print(nn.predict(x))

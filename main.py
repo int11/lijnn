@@ -44,10 +44,10 @@ y = np.array(
 
 y = oneshotencoding(y)
 
-nn = nn(x, y, cost.categorical_crossentropy)
+nn = nn(cost.categorical_crossentropy)
 nn.add(Dense(4, 5, activation.relu, initialization=initialization.Xavier))
 nn.add(Dense(5, 5, activation.relu, initialization=initialization.Xavier))
 nn.add(Dense(5, 3, activation.softmax, initialization=initialization.He))
-nn.fit(batch_size=len(x), epochs=10000, opti=optimizer.Adam(nn, lr=0.01))
+nn.fit(x, y,batch_size=len(x), epochs=10000, opti=optimizer.Adam(nn, lr=0.01))
 
 print(nn.predict(x))

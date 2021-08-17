@@ -6,13 +6,10 @@ class nn:
     h = 1e-4  # 0.0001
     epsilon = 1e-7
 
-    def __init__(self, x, y, costfun):
-        self.x = x
-        if self.x.ndim == 1: self.x = self.x[np.newaxis].T
-        self.y = y
-        if self.y.ndim == 1: self.y = self.y[np.newaxis].T
-        self.train_size = self.y.shape[0]
+    def __init__(self, costfun):
         self.layers = []
+        self.w = []
+        self.b = []
 
         if costfun == "mse":
             def cost_fun():
@@ -45,19 +42,23 @@ class nn:
 
     def add(self, layer):
         self.layers.append(layer)
+        self.w.append(layer.w)
+        self.b.append(layer.b)
 
-    def fit(self, batch_size, epochs, opti):
+    def fit(self, x, y, batch_size, epochs, opti):
         a = time.time()
         a1 = 0.
+        if x.ndim == 1: x = x[np.newaxis].T
+        if y.ndim == 1: y = y[np.newaxis].T
         self.batch_size = batch_size
 
         for i in range(epochs):
-            batch_mask = np.random.choice(self.train_size, self.batch_size, replace=False)
-            self.x_batch = self.x[batch_mask]
-            self.y_batch = self.y[batch_mask]
-            for layer in self.layers:
-                opti(layer.w)
-                opti(layer.b)
+            batch_mask = np.random.choice(y.shape[0], self.batch_size, replace=False)
+            self.x_batch = x[batch_mask]
+            self.y_batch = y[batch_mask]
+            for w, b in zip(self.w, self.b):
+                opti(w)
+                opti(b)
 
             if i % 100 == 0:
                 a1 += 1
@@ -78,4 +79,3 @@ class nn:
             x[idx] = args
             tmp[idx] = (f1 - f2) / (2 * self.h)
         return tmp
-

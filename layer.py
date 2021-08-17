@@ -2,7 +2,7 @@ import numpy as np
 
 
 class Dense:
-    def __init__(self,xlen, ylen, actifun, initialization=None):
+    def __init__(self, xlen, ylen, actifun, initialization=None):
 
         if initialization == 'Xavier':
             m = np.sqrt(6 / (xlen + ylen))
@@ -24,3 +24,6 @@ class Dense:
 class Dropout:
     def __init__(self, probability):
         self.probability = probability
+
+    def __call__(self, x):
+        pass

@@ -26,4 +26,5 @@ class Dropout:
         self.probability = probability
 
     def __call__(self, x):
-        pass
+        self.mask = np.random.rand(*x.shape) > self.probability
+        return x * self.mask

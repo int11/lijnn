@@ -46,7 +46,7 @@ class nn:
             y_batch = y[batch_mask]
             for w, b in zip(self.w, self.b):
                 a = time.time()
-                grad = self.numerical_diff(x)
+                grad = self.numerical_diff(w)
                 print('grad', time.time() - a)
                 opti(w, grad)
                 opti(b, grad)

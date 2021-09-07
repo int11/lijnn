@@ -1,4 +1,3 @@
-import numpy as np
 import time
 from function import *
 
@@ -33,7 +32,6 @@ class nn:
             costfun = lambda: self.costfun(self.predict(x_batch), y_batch, batch_size)
             for w, b in zip(self.w, self.b):
                 grad = numerical_diff(w, costfun)
-                print(1)
                 opti(w, grad)
                 grad = numerical_diff(b, costfun)
                 opti(b, grad)

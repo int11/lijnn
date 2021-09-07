@@ -9,8 +9,8 @@ class GD:
         self.model = model
         self.lr = lr
 
-    def __call__(self, x):
-        x -= self.lr * self.model.numerical_diff(x)
+    def __call__(self, x,grad):
+        x -= self.lr * grad
 
 
 class _idpaste:
@@ -87,9 +87,7 @@ class Adam(_idpaste):
         self.mhat = copy.deepcopy(self.v)
         self.vhat = copy.deepcopy(self.v)
 
-    def __call__(self, x,grad):
-
-
+    def __call__(self, x, grad):
         self.m[id(x)] = self.beta_1 * self.m[id(x)] + (1 - self.beta_1) * grad
         self.mhat[id(x)] = self.m[id(x)] / (1 - self.beta_1 * self.beta_1)
         self.v[id(x)] = self.beta_2 * self.v[id(x)] + (1 - self.beta_2) * grad * grad

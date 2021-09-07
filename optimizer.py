@@ -9,7 +9,7 @@ class GD:
         self.model = model
         self.lr = lr
 
-    def __call__(self, x,grad):
+    def __call__(self, x, grad):
         x -= self.lr * grad
 
 
@@ -28,15 +28,15 @@ class momentum(_idpaste):
         self.lr = lr
         self.momentum = momentum
 
-    def __call__(self, x):
-        self.v[id(x)] = self.momentum * self.v[id(x)] - self.lr * self.model.numerical_diff(x)
+    def __call__(self, x, grad):
+        self.v[id(x)] = self.momentum * self.v[id(x)] - self.lr * grad
         x += self.v[id(x)]
 
 
 class NAG(momentum):
-    def __call__(self, x):
-        self.v[id(x)] = self.momentum * self.v[id(x)] - self.lr * self.model.numerical_diff(x)
-        x += self.momentum * self.v[id(x)] - self.lr * self.model.numerical_diff(x)
+    def __call__(self, x, grad):
+        self.v[id(x)] = self.momentum * self.v[id(x)] - self.lr * grad
+        x += self.momentum * self.v[id(x)] - self.lr * grad
 
 
 class Adagrad(_idpaste):
@@ -44,10 +44,10 @@ class Adagrad(_idpaste):
         super().__init__(model)
         self.lr = lr
 
-    def __call__(self, x):
-        self.v[id(x)] += np.square(self.model.numerical_diff(x))
+    def __call__(self, x, grad):
+        self.v[id(x)] += np.square(grad)
         x -= np.multiply(self.lr / (np.sqrt(self.v[id(x)] + 1e-7)),
-                         self.model.numerical_diff(x))
+                         grad)
 
 
 class RMSProp(_idpaste):
@@ -56,10 +56,10 @@ class RMSProp(_idpaste):
         self.lr = lr
         self.RMSProp = RMSProp
 
-    def __call__(self, x):
-        self.v[id(x)] = self.RMSProp * self.v[id(x)] + (1 - self.RMSProp) * np.square(self.model.numerical_diff(x))
+    def __call__(self, x, grad):
+        self.v[id(x)] = self.RMSProp * self.v[id(x)] + (1 - self.RMSProp) * np.square(grad)
         x -= np.multiply(self.lr / (np.sqrt(self.v[id(x)] + 1e-7)),
-                         self.model.numerical_diff(x))
+                         grad)
 
 
 class AdaDelta(_idpaste):
@@ -68,10 +68,10 @@ class AdaDelta(_idpaste):
         self.AdaDelta = AdaDelta
         self.s = copy.deepcopy(self.v)
 
-    def __call__(self, x):
-        self.v[id(x)] = self.AdaDelta * self.v[id(x)] + (1 - self.AdaDelta) * np.square(self.model.numerical_diff(x))
+    def __call__(self, x, grad):
+        self.v[id(x)] = self.AdaDelta * self.v[id(x)] + (1 - self.AdaDelta) * np.square(grad)
         d_t = np.multiply(np.sqrt(self.s[id(x)] + 1e-7) / np.sqrt(self.v[id(x)] + 1e-7),
-                          self.model.numerical_diff(x))
+                          grad)
 
         x -= d_t
         self.s[id(x)] = self.AdaDelta * self.s[id(x)] + (1 - self.AdaDelta) * np.square(d_t)

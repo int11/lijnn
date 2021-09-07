@@ -1,11 +1,13 @@
 import time
 from function import *
 
+
 class nn:
     def __init__(self, costfun):
         self.layers = []
         self.w = []
         self.b = []
+        self.params = []
         self.costfun = costfun
 
     def predict(self, x):
@@ -19,6 +21,8 @@ class nn:
         self.layers.append(layer)
         self.w.append(layer.w)
         self.b.append(layer.b)
+        self.params.append(layer.w)
+        self.params.append(layer.b)
 
     def fit(self, x, y, batch_size, epochs, opti):
         a = time.time()
@@ -30,16 +34,12 @@ class nn:
             x_batch = x[batch_mask]
             y_batch = y[batch_mask]
             costfun = lambda: self.costfun(self.predict(x_batch), y_batch, batch_size)
-            for w, b in zip(self.w, self.b):
-                grad = numerical_diff(w, costfun)
-                opti(w, grad)
-                grad = numerical_diff(b, costfun)
-                opti(b, grad)
+
+            for param in self.params:
+                opti(param, numerical_diff(param, costfun))
 
             a1 += 1
             print("time  ", (time.time() - a) / a1)
             print(costfun(), sep='\n')
             print(y_batch[:5])
-            print(np.round(self.predict(x_batch)[:5],3))
-
-
+            print(np.round(self.predict(x_batch)[:5], 3))

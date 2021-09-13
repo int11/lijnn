@@ -10,6 +10,6 @@ y = oneshotencoding(y)
 
 nn = nn(cost.categorical_crossentropy)
 nn.add(Dense(784, 50, layer.Relu(), initialization=initialization.He))
-nn.add(Dense(50, 10, activation.softmax, initialization=initialization.Xavier))
+nn.add(Dense(50, 10, layer.softmax(), initialization=initialization.Xavier))
 nn.fit(x, y, batch_size=100, epochs=50, opti=optimizer.Adam(nn, lr=0.01))
 

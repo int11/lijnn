@@ -1,5 +1,7 @@
 import numpy as np
 
+import function
+
 
 class Relu:
     def __init__(self):
@@ -30,10 +32,17 @@ class Sigmoid:
 
         return dx
 
+class softmax:
+    def forward(self,x):
+        softmax = np.exp(x - (x.max(axis=1).reshape([-1, 1])))
+        softmax /= softmax.sum(axis=1).reshape([-1, 1])
+        return softmax
+
+    def backward(self, dout):
+        return (1-dout) *
 
 class Dense:
     def __init__(self, xlen, ylen, actifun, initialization=None):
-
         if initialization == 'Xavier':
             m = np.sqrt(6 / (xlen + ylen))
             self.w = np.random.uniform(-m, m, (xlen, ylen))
@@ -48,23 +57,15 @@ class Dense:
         self.actifun = actifun
 
     def forward(self, x):
-        self.original_x_shape = x.shape
-        x = x.reshape(x.shape[0], -1)
         self.x = x
-
         out = np.dot(self.x, self.w) + self.b
-
+        out = self.actifun.forward(out)
         return out
 
     def backward(self, dout):
-        print(dout)
-        print(self.w.T)
-        print(self.x.T)
         dx = np.dot(dout, self.w.T)
         self.dW = np.dot(self.x.T, dout)
         self.db = np.sum(dout, axis=0)
-
-        dx = dx.reshape(*self.original_x_shape)  # 입력 데이터 모양 변경(텐서 대응)
 
         return dx
 

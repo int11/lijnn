@@ -8,13 +8,12 @@ class activation:
         return np.matmul(x, w) + b
 
     @staticmethod
-    def sigmoid(x, w, b):
-        return 1 / (1 + np.exp(-(np.matmul(x, w) + b)))
+    def sigmoid(x):
+        return 1 / (1 + np.exp(-x))
 
     @staticmethod
-    def softmax(x, w, b):
-        x1 = np.matmul(x, w) + b
-        softmax = np.exp(x1 - (x1.max(axis=1).reshape([-1, 1])))
+    def softmax(x):
+        softmax = np.exp(x - (x.max(axis=1).reshape([-1, 1])))
         softmax /= softmax.sum(axis=1).reshape([-1, 1])
         return softmax
 

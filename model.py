@@ -1,6 +1,6 @@
 import time
 from function import *
-
+import Layer
 
 class nn:
     def __init__(self, costfun):
@@ -13,7 +13,7 @@ class nn:
     def predict(self, x):
         result = x
         for layer in self.layers:
-            result = layer(result)
+            result = layer.forward(result)
 
         return result
 
@@ -43,3 +43,6 @@ class nn:
             print(costfun(), sep='\n')
             print(y_batch[:5])
             print(np.round(self.predict(x_batch)[:5], 3))
+
+    def gradient(self,x,y):
+

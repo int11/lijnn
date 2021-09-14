@@ -1,3 +1,5 @@
+import numpy as np
+
 from function import *
 
 
@@ -37,12 +39,15 @@ class Softmax:
         return (1 + dout) * self.out
 
 class categorical_crossentropy:
-    def forward(self, x, y, len):
+    def forward(self, predict, y):
+        self.predict = predict
         self.y = y
-        return -np.sum(y * np.log(predict + 1e-7)) / len
+        self.batch_size = y.shape[0]
+        self.out = -np.sum(y * np.log(predict + 1e-7)) / self.batch_size
+        return self.out
 
-    def backward(self, dout):
-
+    def backward(self, dout=1):
+        return (self.y/self.predict) * np.sqrt(self.out)
 
 
 class Dense:

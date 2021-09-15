@@ -35,9 +35,12 @@ class nn:
             x_batch = x[batch_mask]
             y_batch = y[batch_mask]
             costfun = lambda: self.costfun.forward(self.predict(x_batch), y_batch)
-            self.gradient(costfun())
-            for param in self.params:
-                opti(param, numerical_diff(param, costfun))
+            aa = self.gradient(costfun())
+            for i, param in enumerate(self.params):
+                abb = numerical_diff(param, costfun)
+                print("1", aa[i])
+                print("2", abb)
+                opti(param, abb)
 
             a1 += 1
             print("time  ", (time.time() - a) / a1)
@@ -46,8 +49,13 @@ class nn:
             print(np.round(self.predict(x_batch)[:5], 3))
 
     def gradient(self, cost):
+        grad = []
         dout = self.costfun.backward()
         layers = self.layers[::-1]
         for layer in layers:
             dout = layer.backward(dout)
-            print(dout)
+
+        for layer in self.layers:
+            grad.append(layer.dW)
+            grad.append(layer.db)
+        return grad

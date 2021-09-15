@@ -36,7 +36,8 @@ class Softmax:
         return self.out
 
     def backward(self, dout):
-        return (1 + dout) * self.out
+        return ((1 + dout) * self.out) / 100
+
 
 class categorical_crossentropy:
     def forward(self, predict, y):
@@ -47,7 +48,7 @@ class categorical_crossentropy:
         return self.out
 
     def backward(self, dout=1):
-        return (self.y/self.predict) * np.sqrt(self.out)
+        return -(self.y / self.predict)
 
 
 class Dense:

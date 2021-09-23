@@ -36,7 +36,7 @@ class Softmax:
         return self.out
 
     def backward(self, dout):
-        return ((1 + dout) * self.out) / 100
+        return ((1 + dout) * self.out) / dout.shape[0]
 
 
 class categorical_crossentropy:

@@ -1,33 +1,6 @@
 import numpy as np
 
 
-class activation:
-
-    @staticmethod
-    def linear(x, w, b):
-        return np.matmul(x, w) + b
-
-    @staticmethod
-    def sigmoid(x):
-        return 1 / (1 + np.exp(-x))
-
-    @staticmethod
-    def softmax(x):
-        softmax = np.exp(x - (x.max(axis=1).reshape([-1, 1])))
-        softmax /= softmax.sum(axis=1).reshape([-1, 1])
-        return softmax
-
-    @staticmethod
-    def relu(x, w, b):
-        x1 = np.matmul(x, w) + b
-        return np.maximum(0, x1)
-
-    @staticmethod
-    def leaky_relu(x, w, b):
-        x1 = np.matmul(x, w) + b
-        return np.maximum(0.1 * x1, x1)
-
-
 class cost:
     @staticmethod
     def mse(predict, y, len):
@@ -38,9 +11,6 @@ class cost:
         return -np.sum(y * np.log(predict + 1e-7) + (1 - y) * np.log(
             (1 - predict) + 1e-7)) / len
 
-    @staticmethod
-    def categorical_crossentropy(predict, y, len):
-        return -np.sum(y * np.log(predict + 1e-7)) / len
 
 
 class initialization:

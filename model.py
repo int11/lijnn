@@ -1,6 +1,5 @@
 import time
 from function import *
-import Layer
 
 
 class nn:
@@ -25,26 +24,25 @@ class nn:
         self.params.append(layer.w)
         self.params.append(layer.b)
 
-    def fit(self, x, y, batch_size, epochs, opti):
+    def fit(self, x, t, batch_size, epochs, opti):
         a = time.time()
-        a1 = 0.
         if x.ndim == 1: x = x[np.newaxis].T
-        if y.ndim == 1: y = y[np.newaxis].T
-        for i in range(epochs):
-            batch_mask = np.random.choice(y.shape[0], batch_size, replace=False)
+        if t.ndim == 1: t = t[np.newaxis].T
+        iteration = t.shape[0] / batch_size
+        for i in range(int(epochs*iteration)):
+            batch_mask = np.random.choice(t.shape[0], batch_size, replace=False)
             x_batch = x[batch_mask]
-            y_batch = y[batch_mask]
+            y_batch = t[batch_mask]
             costfun = lambda: self.costfun.forward(self.predict(x_batch), y_batch)
             grad = self.gradient(costfun)
-            for i, param in enumerate(self.params):
-                # grad = numerical_diff(param, costfun)
-                opti(param, grad[i])
 
-            a1 += 1
-            print("fps", (time.time() - a) / a1, 'Total time', time.time() - a)
-            print(costfun(), sep='\n')
-            print(y_batch[:5])
-            print(np.round(self.predict(x_batch)[:5], 3))
+            for e, param in enumerate(self.params):
+                # grad = numerical_diff(param,costfun)
+                opti(param, grad[e])
+
+            if i % iteration == 0:
+                print(f'\nepoch {int(i/iteration)} Total time {time.time() - a} fps {(time.time() - a) / (i + 1)}')
+                print(f'cost {costfun()} accuracy {self.accuracy(x, t)}')
 
     def gradient(self, costfun):
         costfun()
@@ -58,3 +56,10 @@ class nn:
             grad.append(layer.dW)
             grad.append(layer.db)
         return grad
+
+    def accuracy(self, x, t):
+        y = self.predict(x)
+        y = np.argmax(y, axis=1)
+        if t.ndim != 1: t = np.argmax(t, axis=1)
+        accuracy = np.sum(y == t) / float(x.shape[0])
+        return accuracy

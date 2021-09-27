@@ -21,7 +21,7 @@ class Relu:
 
 class Sigmoid:
     def forward(self, x):
-        self.out = activation.sigmoid(x)
+        self.out = 1 / (1 + np.exp(-x))
         return self.out
 
     def backward(self, dout):
@@ -32,7 +32,9 @@ class Sigmoid:
 
 class Softmax:
     def forward(self, x):
-        self.out = activation.softmax(x)
+        softmax = np.exp(x - (x.max(axis=1).reshape([-1, 1])))
+        softmax /= softmax.sum(axis=1).reshape([-1, 1])
+        self.out = softmax
         return self.out
 
     def backward(self, dout):
@@ -40,11 +42,11 @@ class Softmax:
 
 
 class categorical_crossentropy:
-    def forward(self, predict, y):
-        self.predict = predict
-        self.y = y
-        self.batch_size = y.shape[0]
-        self.out = -np.sum(y * np.log(predict + 1e-7)) / self.batch_size
+    def forward(self, y, t):
+        self.predict = y
+        self.y = t
+        self.batch_size = t.shape[0]
+        self.out = -np.sum(t * np.log(y + 1e-7)) / self.batch_size
         return self.out
 
     def backward(self, dout=1):
@@ -84,6 +86,9 @@ class Dropout:
     def __init__(self, probability):
         self.probability = probability
 
-    def __call__(self, x):
+    def forward(self, x):
         self.mask = np.random.rand(*x.shape) > self.probability
         return x * self.mask
+
+    def backward(self):
+        return

@@ -5,8 +5,7 @@ import copy
 
 
 class GD:
-    def __init__(self, model, lr):
-        self.model = model
+    def __init__(self, lr=0.01):
         self.lr = lr
 
     def __call__(self, x, grad):
@@ -17,9 +16,9 @@ class _idpaste:
     def __init__(self, model):
         self.model = model
         self.v = {}
-        for w, b in zip(model.w, model.b):
-            self.v[id(w)] = np.zeros_like(w)
-            self.v[id(b)] = np.zeros_like(b)
+        for param in model.params:
+            self.v[id(param)] = np.zeros_like(param)
+
 
 
 class momentum(_idpaste):

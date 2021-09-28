@@ -7,9 +7,9 @@ class cost:
         return np.sum((predict - y) ** 2) / len
 
     @staticmethod
-    def binary_crossentropy(predict, y, len):
-        return -np.sum(y * np.log(predict + 1e-7) + (1 - y) * np.log(
-            (1 - predict) + 1e-7)) / len
+    def binary_crossentropy(y, t, len):
+        return -np.sum(t * np.log(y + 1e-7) + (1 - t) * np.log(
+            (1 - y) + 1e-7)) / len
 
 
 
@@ -30,6 +30,7 @@ def numerical_diff(w, f):
         args = w[idx]
         w[idx] = args + 1e-4
         f1 = f()
+
         w[idx] = args - 1e-4
         f2 = f()
         w[idx] = args

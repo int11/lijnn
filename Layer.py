@@ -1,5 +1,3 @@
-import numpy as np
-
 from function import *
 
 
@@ -38,15 +36,17 @@ class Softmax:
         return self.out
 
     def backward(self, dout):
-        return ((1 + dout) * self.out) / dout.shape[0]
+        return (1 + dout) * self.out / dout.shape[0]
 
 
 class categorical_crossentropy:
+
     def forward(self, y, t):
         self.predict = y
         self.y = t
         self.batch_size = t.shape[0]
         self.out = -np.sum(t * np.log(y + 1e-7)) / self.batch_size
+
         return self.out
 
     def backward(self, dout=1):

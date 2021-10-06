@@ -1,5 +1,5 @@
 import time
-from function import *
+from Layer import *
 
 
 class nn:
@@ -29,19 +29,19 @@ class nn:
         if x.ndim == 1: x = x[np.newaxis].T
         if t.ndim == 1: t = t[np.newaxis].T
         iteration = t.shape[0] / batch_size
-        for i in range(int(epochs*iteration)):
+        for i in range(int(epochs * iteration)):
             batch_mask = np.random.choice(t.shape[0], batch_size, replace=False)
             x_batch = x[batch_mask]
             y_batch = t[batch_mask]
             costfun = lambda: self.costfun.forward(self.predict(x_batch), y_batch)
             grad = self.gradient(costfun)
-
             for e, param in enumerate(self.params):
                 # grad = numerical_diff(param,costfun)
+
                 opti(param, grad[e])
 
             if i % iteration == 0:
-                print(f'\nepoch {int(i/iteration)} Total time {time.time() - a} fps {(time.time() - a) / (i + 1)}')
+                print(f'\nepoch {int(i / iteration)} Total time {time.time() - a} fps {(time.time() - a) / (i + 1)}')
                 print(f'cost {costfun()} accuracy {self.accuracy(x, t)}')
 
     def gradient(self, costfun):

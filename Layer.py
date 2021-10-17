@@ -40,7 +40,6 @@ class Softmax:
 
 
 class categorical_crossentropy:
-
     def forward(self, y, t):
         self.predict = y
         self.y = t
@@ -66,18 +65,71 @@ class Dense:
         elif initialization is None:
             self.w = np.random.uniform(-1, 1, (xlen, ylen))
             self.b = np.random.uniform(-1, 1, (1, ylen))
+        if not isinstance(actilayer, list):
+            actilayer = [actilayer]
         self.actilayer = actilayer
 
     def forward(self, x):
         self.x = x
         out = np.dot(self.x, self.w) + self.b
-        return self.actilayer.forward(out)
+        for i in self.actilayer:
+            out = i.forward(out)
+        return out
 
     def backward(self, dout):
-        dout = self.actilayer.backward(dout)
+        # http://cs231n.stanford.edu/handouts/derivatives.pdf
+
+        for i in self.actilayer[::-1]:
+            dout = i.backward(dout)
         dx = np.dot(dout, self.w.T)
         self.dW = np.dot(self.x.T, dout)
         self.db = np.sum(dout, axis=0)
+
+        return dx
+
+
+class BatchNormalization:
+    # http://arxiv.org/abs/1502.03167
+
+    def __init__(self, gamma, beta):
+        self.gamma = gamma
+        self.beta = beta
+
+    def forward(self, x):
+        mu = x.mean(axis=0)
+        self.xc = x - mu
+        var = np.mean(self.xc ** 2, axis=0)
+        self.std = np.sqrt(var + 10e-7)
+        self.xn = self.xc / self.std
+
+        self.batch_size = x.shape[0]
+
+        return self.gamma * self.xn + self.beta
+
+    def backward(self, dout):
+        self.dbeta = dout.sum(axis=0)
+        self.dgamma = np.sum(self.xn * dout, axis=0)
+        dxn = self.gamma * dout
+        # f = x/y
+        # df/dx = 1/y
+        # dL/df * df/dx = dxn * 1/y
+        # dL/dx = dxn/y
+        dxc = dxn / self.std
+        # df/dy = -x/y^2
+        # dL/df * df/dx = dxn * -x/y^2
+        # dL/dx = -x * dxn / y^2
+        dstd = -np.sum((dxn * self.xc) / (self.std * self.std), axis=0)
+        # dvar = 0.5 * 1. / np.sqrt(self.std + 10e-7) * dstd
+        # np.sqrt(var + 10e-7) = self.std
+        # dvar = 0.5 * 1. / self.std * dstd
+        # dvar = 0.5 * dstd / self.std
+        dvar = 0.5 * dstd / self.std
+
+        dxc += 2.0 * self.xc * dvar / self.batch_size
+        # f = x - y
+        # df/dx = 1
+        # df/dy = -1
+        dx = dxc - np.sum(dxc, axis=0) / self.batch_size
 
         return dx
 

@@ -11,11 +11,10 @@ class nn:
         self.costfun = costfun
 
     def predict(self, x):
-        result = x
         for layer in self.layers:
-            result = layer.forward(result)
+            x = layer.forward(x)
 
-        return result
+        return x
 
     def add(self, layer):
         self.layers.append(layer)
@@ -48,8 +47,7 @@ class nn:
         costfun()
         grad = []
         dout = self.costfun.backward()
-        layers = self.layers[::-1]
-        for layer in layers:
+        for layer in self.layers[::-1]:
             dout = layer.backward(dout)
 
         for layer in self.layers:

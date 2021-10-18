@@ -20,7 +20,6 @@ class _idpaste:
             self.v[id(param)] = np.zeros_like(param)
 
 
-
 class momentum(_idpaste):
     def __init__(self, model, lr=0.01, momentum=0.9):
         super().__init__(model)

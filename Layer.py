@@ -1,7 +1,12 @@
 from function import *
 
 
-class Relu:
+class layer:
+    def init_weight(self, xlen):
+        self.param = []
+
+
+class Relu(layer):
     def __init__(self):
         self.mask = None
 
@@ -17,7 +22,7 @@ class Relu:
         return dx
 
 
-class Sigmoid:
+class Sigmoid(layer):
     def forward(self, x):
         self.out = 1 / (1 + np.exp(-x))
         return self.out
@@ -28,7 +33,7 @@ class Sigmoid:
         return dx
 
 
-class Softmax:
+class Softmax(layer):
     def forward(self, x):
         softmax = np.exp(x - (x.max(axis=1).reshape([-1, 1])))
         softmax /= softmax.sum(axis=1).reshape([-1, 1])
@@ -39,7 +44,7 @@ class Softmax:
         return (1 + dout) * self.out / dout.shape[0]
 
 
-class categorical_crossentropy:
+class categorical_crossentropy(layer):
     def forward(self, y, t):
         self.predict = y
         self.y = t
@@ -52,35 +57,31 @@ class categorical_crossentropy:
         return -(self.y / self.predict)
 
 
-class Dense:
-    def __init__(self, xlen, ylen, actilayer, initialization=None):
-        if initialization == 'Xavier':
-            m = np.sqrt(6 / (xlen + ylen))
-            self.w = np.random.uniform(-m, m, (xlen, ylen))
-            self.b = np.random.uniform(-m, m, (1, ylen))
-        elif initialization == 'He':
+class Dense(layer):
+    def __init__(self, ylen, initialization=None):
+        self.ylen = ylen
+        self.initialization = initialization
+
+    def init_weight(self, xlen):
+        if self.initialization == 'Xavier':
+            m = np.sqrt(6 / (xlen + self.ylen))
+            self.w = np.random.uniform(-m, m, (xlen, self.ylen))
+            self.b = np.random.uniform(-m, m, (1, self.ylen))
+        elif self.initialization == 'He':
             m = np.sqrt(6 / xlen)
-            self.w = np.random.uniform(-m, m, (xlen, ylen))
-            self.b = np.random.uniform(-m, m, (1, ylen))
-        elif initialization is None:
-            self.w = np.random.uniform(-1, 1, (xlen, ylen))
-            self.b = np.random.uniform(-1, 1, (1, ylen))
-        if not isinstance(actilayer, list):
-            actilayer = [actilayer]
-        self.actilayer = actilayer
+            self.w = np.random.uniform(-m, m, (xlen, self.ylen))
+            self.b = np.random.uniform(-m, m, (1, self.ylen))
+        elif self.initialization is None:
+            self.w = np.random.uniform(-1, 1, (xlen, self.ylen))
+            self.b = np.random.uniform(-1, 1, (1, self.ylen))
 
     def forward(self, x):
         self.x = x
-        out = np.dot(self.x, self.w) + self.b
-        for i in self.actilayer:
-            out = i.forward(out)
-        return out
+        return np.dot(self.x, self.w) + self.b
 
     def backward(self, dout):
         # http://cs231n.stanford.edu/handouts/derivatives.pdf
 
-        for i in self.actilayer[::-1]:
-            dout = i.backward(dout)
         dx = np.dot(dout, self.w.T)
         self.dW = np.dot(self.x.T, dout)
         self.db = np.sum(dout, axis=0)
@@ -88,7 +89,7 @@ class Dense:
         return dx
 
 
-class BatchNormalization:
+class BatchNormalization(layer):
     # http://arxiv.org/abs/1502.03167
 
     def __init__(self, gamma, beta):
@@ -134,7 +135,7 @@ class BatchNormalization:
         return dx
 
 
-class Dropout:
+class Dropout(layer):
     def __init__(self, probability):
         self.probability = probability
 

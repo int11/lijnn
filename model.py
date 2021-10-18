@@ -16,14 +16,15 @@ class nn:
 
         return x
 
-    def add(self, layer):
-        self.layers.append(layer)
-        self.w.append(layer.w)
-        self.b.append(layer.b)
-        self.params.append(layer.w)
-        self.params.append(layer.b)
+    def add(self, *layers):
+        self.layers.extend(layers)
 
     def fit(self, x, t, batch_size, epochs, opti):
+        xlen = x.shape[-1]
+        for i in self.layers:
+            i.init_weight(xlen)
+            xlen = i.ylen
+
         a = time.time()
         if x.ndim == 1: x = x[np.newaxis].T
         if t.ndim == 1: t = t[np.newaxis].T
@@ -36,7 +37,6 @@ class nn:
             grad = self.gradient(costfun)
             for e, param in enumerate(self.params):
                 # grad = numerical_diff(param,costfun)
-
                 opti(param, grad[e])
 
             if i % iteration == 0:

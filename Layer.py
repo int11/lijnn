@@ -2,7 +2,7 @@ from function import *
 
 
 class layer:
-    def init_weight(self, xlen):
+    def init_weight(self, xlen, ylen):
         self.param = []
 
 
@@ -58,11 +58,10 @@ class categorical_crossentropy(layer):
 
 
 class Dense(layer):
-    def __init__(self, ylen, initialization=None):
-        self.ylen = ylen
+    def __init__(self, initialization=None):
         self.initialization = initialization
 
-    def init_weight(self, xlen):
+    def init_weight(self, xlen, ylen):
         if self.initialization == 'Xavier':
             m = np.sqrt(6 / (xlen + self.ylen))
             self.w = np.random.uniform(-m, m, (xlen, self.ylen))

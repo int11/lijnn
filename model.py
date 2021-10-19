@@ -16,7 +16,9 @@ class nn:
 
         return x
 
-    def add(self, *layers):
+    def add(self, xlen, ylen, *layers):
+        for i in layers:
+            i.init_weight(xlen, ylen)
         self.layers.extend(layers)
 
     def fit(self, x, t, batch_size, epochs, opti):

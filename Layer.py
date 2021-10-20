@@ -1,12 +1,6 @@
 from function import *
 
-
-class layer:
-    def init_weight(self, xlen, ylen):
-        self.param = []
-
-
-class Relu(layer):
+class Relu:
     def __init__(self):
         self.mask = None
 
@@ -22,7 +16,7 @@ class Relu(layer):
         return dx
 
 
-class Sigmoid(layer):
+class Sigmoid:
     def forward(self, x):
         self.out = 1 / (1 + np.exp(-x))
         return self.out
@@ -33,7 +27,7 @@ class Sigmoid(layer):
         return dx
 
 
-class Softmax(layer):
+class Softmax:
     def forward(self, x):
         softmax = np.exp(x - (x.max(axis=1).reshape([-1, 1])))
         softmax /= softmax.sum(axis=1).reshape([-1, 1])
@@ -44,7 +38,7 @@ class Softmax(layer):
         return (1 + dout) * self.out / dout.shape[0]
 
 
-class categorical_crossentropy(layer):
+class categorical_crossentropy:
     def forward(self, y, t):
         self.predict = y
         self.y = t
@@ -57,22 +51,26 @@ class categorical_crossentropy(layer):
         return -(self.y / self.predict)
 
 
-class Dense(layer):
+class Dense:
     def __init__(self, initialization=None):
         self.initialization = initialization
 
     def init_weight(self, xlen, ylen):
         if self.initialization == 'Xavier':
-            m = np.sqrt(6 / (xlen + self.ylen))
-            self.w = np.random.uniform(-m, m, (xlen, self.ylen))
-            self.b = np.random.uniform(-m, m, (1, self.ylen))
+            m = np.sqrt(6 / (xlen + ylen))
+            self.w = np.random.uniform(-m, m, (xlen, ylen))
+            self.b = np.random.uniform(-m, m, (1, ylen))
         elif self.initialization == 'He':
             m = np.sqrt(6 / xlen)
-            self.w = np.random.uniform(-m, m, (xlen, self.ylen))
-            self.b = np.random.uniform(-m, m, (1, self.ylen))
+            self.w = np.random.uniform(-m, m, (xlen, ylen))
+            self.b = np.random.uniform(-m, m, (1, ylen))
         elif self.initialization is None:
-            self.w = np.random.uniform(-1, 1, (xlen, self.ylen))
-            self.b = np.random.uniform(-1, 1, (1, self.ylen))
+            self.w = np.random.uniform(-1, 1, (xlen, ylen))
+            self.b = np.random.uniform(-1, 1, (1, ylen))
+        return self.w, self.b
+
+    def weightgrad(self):
+        return self.dW, self.db
 
     def forward(self, x):
         self.x = x
@@ -88,12 +86,15 @@ class Dense(layer):
         return dx
 
 
-class BatchNormalization(layer):
+class BatchNormalization:
     # http://arxiv.org/abs/1502.03167
+    def init_weight(self, xlen, ylen):
+        self.gamma = np.ones(ylen)
+        self.beta = np.zeros(ylen)
+        return self.gamma,self.beta
 
-    def __init__(self, gamma, beta):
-        self.gamma = gamma
-        self.beta = beta
+    def weightgrad(self):
+        return self.dgamma, self.dbeta
 
     def forward(self, x):
         mu = x.mean(axis=0)
@@ -134,7 +135,7 @@ class BatchNormalization(layer):
         return dx
 
 
-class Dropout(layer):
+class Dropout:
     def __init__(self, probability):
         self.probability = probability
 

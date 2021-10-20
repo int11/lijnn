@@ -17,16 +17,12 @@ class nn:
         return x
 
     def add(self, xlen, ylen, *layers):
-        for i in layers:
-            i.init_weight(xlen, ylen)
+        for layer in layers:
+            if hasattr(layer, "init_weight"):
+                self.params.extend(layer.init_weight(xlen, ylen))
         self.layers.extend(layers)
 
     def fit(self, x, t, batch_size, epochs, opti):
-        xlen = x.shape[-1]
-        for i in self.layers:
-            i.init_weight(xlen)
-            xlen = i.ylen
-
         a = time.time()
         if x.ndim == 1: x = x[np.newaxis].T
         if t.ndim == 1: t = t[np.newaxis].T
@@ -53,8 +49,9 @@ class nn:
             dout = layer.backward(dout)
 
         for layer in self.layers:
-            grad.append(layer.dW)
-            grad.append(layer.db)
+            if hasattr(layer, "init_weight"):
+                grad.extend(layer.weightgrad())
+
         return grad
 
     def accuracy(self, x, t):

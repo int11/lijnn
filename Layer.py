@@ -1,4 +1,16 @@
 from function import *
+from abc import *
+
+
+class weightlayer(metaclass=ABCMeta):
+    @abstractmethod
+    def init_weight(self, xlen, ylen):
+        pass
+
+    @abstractmethod
+    def getgrad(self):
+        pass
+
 
 class Relu:
     def __init__(self):
@@ -51,9 +63,10 @@ class categorical_crossentropy:
         return -(self.y / self.predict)
 
 
-class Dense:
-    def __init__(self, initialization=None):
+class Dense(weightlayer):
+    def __init__(self, xlen, ylen, initialization=None):
         self.initialization = initialization
+        self.xlen, self.ylen = xlen, ylen
 
     def init_weight(self, xlen, ylen):
         if self.initialization == 'Xavier':
@@ -69,7 +82,7 @@ class Dense:
             self.b = np.random.uniform(-1, 1, (1, ylen))
         return self.w, self.b
 
-    def weightgrad(self):
+    def getgrad(self):
         return self.dW, self.db
 
     def forward(self, x):
@@ -86,12 +99,12 @@ class Dense:
         return dx
 
 
-class BatchNormalization:
+class BatchNormalization(weightlayer):
     # http://arxiv.org/abs/1502.03167
     def init_weight(self, xlen, ylen):
         self.gamma = np.ones(ylen)
         self.beta = np.zeros(ylen)
-        return self.gamma,self.beta
+        return self.gamma, self.beta
 
     def weightgrad(self):
         return self.dgamma, self.dbeta
@@ -120,7 +133,7 @@ class BatchNormalization:
         # dL/df * df/dx = dxn * -x/y^2
         # dL/dx = -x * dxn / y^2
         dstd = -np.sum((dxn * self.xc) / (self.std * self.std), axis=0)
-        # dvar = 0.5 * 1. / np.sqrt(self.std + 10e-7) * dstd
+        # dvar = 0.5 * 1. / np.sqrt(var + 10e-7) * dstd
         # np.sqrt(var + 10e-7) = self.std
         # dvar = 0.5 * 1. / self.std * dstd
         # dvar = 0.5 * dstd / self.std

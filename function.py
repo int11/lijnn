@@ -3,8 +3,8 @@ import numpy as np
 
 class cost:
     @staticmethod
-    def mse(predict, y, len):
-        return np.sum((predict - y) ** 2) / len
+    def mse(predict, t, len):
+        return np.sum((predict - t) ** 2) / len
 
     @staticmethod
     def binary_crossentropy(y, t, len):

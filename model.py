@@ -1,13 +1,13 @@
 import time
+
+import optimizer
 from Layer import *
 
 
 class nn:
     def __init__(self, costlayer, weight_decay_lambda=0):
         self.layers = []
-        self.w = []
-        self.b = []
-        self.params = []
+        self.params = {}
         self.costlayer = costlayer
         self.weight_decay_lambda = weight_decay_lambda
         if self.weight_decay_lambda:
@@ -17,7 +17,6 @@ class nn:
                     if isinstance(layer, Dense):
                         w = layer.w
                         weight_decay += 0.5 * self.weight_decay_lambda * np.sum(w ** 2)
-
                 return self.costlayer.forward(self.predict(x), t) + weight_decay
         else:
             cost = lambda x, t: self.costlayer.forward(self.predict(x), t)
@@ -31,12 +30,21 @@ class nn:
     def add(self, *layers):
         for layer in layers:
             if isinstance(layer, weightlayer):
-
-                self.params.extend(layer.init_weight(xlen, ylen))
-
+                inputsize, outputsize = layer.getsize()
+                if inputsize: self.inputsize = inputsize
+                if outputsize: self.outputsize = outputsize
+                print(layer.count, layer, self.inputsize, self.outputsize)
+                layer.setsize(self.inputsize, self.outputsize)
+                self.params.update(layer.init_weight())
+                self.inputsize = self.outputsize
         self.layers.extend(layers)
 
     def fit(self, x, t, batch_size, epochs, opti):
+        for layer in self.layers:
+            if isinstance(layer, weightlayer):
+                print(layer, layer.count)
+
+        if isinstance(opti, optimizer.weightopti): opti.init_weight(self)
         a = time.time()
         if x.ndim == 1: x = x[np.newaxis].T
         if t.ndim == 1: t = t[np.newaxis].T
@@ -49,11 +57,11 @@ class nn:
             grad = self.gradient(x_batch, t_batch)
             for e, param in enumerate(self.params):
                 # grad = numerical_diff(param,costfun)
-                opti(param, grad[e])
+                opti.update(param, grad[e])
 
             if i % iteration == 0:
-                print(f'\nepoch {int(i / iteration)} Total time {time.time() - a} fps {(time.time() - a) / (i + 1)}')
-                print(f'cost {self.cost(x, t)} accuracy {self.accuracy(x, t)}')
+                print(f'\nepoch {int(i / iteration)} Total time {time.time() - a} fps {(time.time() - a) / (i + 1)} '
+                      f'\ncost {self.cost(x, t)} accuracy {self.accuracy(x, t)}')
 
     def gradient(self, x, t):
         self.cost(x, t)
@@ -61,10 +69,10 @@ class nn:
         for layer in self.layers[::-1]:
             dout = layer.backward(dout)
 
-        grad = []
+        grad = {}
         for layer in self.layers:
             if isinstance(layer, weightlayer):
-                grad.extend(layer.getgrad())
+                grad.update(layer.getgrad())
 
         return grad
 

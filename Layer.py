@@ -3,12 +3,27 @@ from abc import *
 
 
 class weightlayer(metaclass=ABCMeta):
-    @abstractmethod
-    def init_weight(self, xlen, ylen):
-        pass
+    count = 0
+
+    def __init__(self, inputsize=None, outputsize=None):
+        self.params, self.grad = {}, {}
+        self.count = weightlayer.count
+        self.inputsize, self.outputsize = inputsize, outputsize
+        if not self.outputsize:
+            self.outputsize, self.inputsize = self.inputsize, self.outputsize
+        weightlayer.count += 1
+
+    def setsize(self, inputsize, outputsize):
+        self.inputsize, self.outputsize = inputsize, outputsize
+
+    def getsize(self):
+        return self.inputsize, self.outputsize
+
+    def getgrad(self):
+        return self.grad
 
     @abstractmethod
-    def getgrad(self):
+    def init_weight(self):
         pass
 
 
@@ -64,50 +79,47 @@ class categorical_crossentropy:
 
 
 class Dense(weightlayer):
-    def __init__(self, xlen, ylen, initialization=None):
+    def __init__(self, inputsize=None, outputsize=None, initialization=None):
+        super().__init__(inputsize, outputsize)
         self.initialization = initialization
-        self.xlen, self.ylen = xlen, ylen
 
-    def init_weight(self, xlen, ylen):
+    def init_weight(self):
         if self.initialization == 'Xavier':
-            m = np.sqrt(6 / (xlen + ylen))
-            self.w = np.random.uniform(-m, m, (xlen, ylen))
-            self.b = np.random.uniform(-m, m, (1, ylen))
+            m = np.sqrt(6 / (self.inputsize + self.outputsize))
+            self.params['w'] = np.random.uniform(-m, m, (self.inputsize, self.outputsize))
+            self.params['b'] = np.random.uniform(-m, m, (1, self.outputsize))
         elif self.initialization == 'He':
-            m = np.sqrt(6 / xlen)
-            self.w = np.random.uniform(-m, m, (xlen, ylen))
-            self.b = np.random.uniform(-m, m, (1, ylen))
+            m = np.sqrt(6 / self.inputsize)
+            self.params['w'] = np.random.uniform(-m, m, (self.inputsize, self.outputsize))
+            self.params['b'] = np.random.uniform(-m, m, (1, self.outputsize))
         elif self.initialization is None:
-            self.w = np.random.uniform(-1, 1, (xlen, ylen))
-            self.b = np.random.uniform(-1, 1, (1, ylen))
-        return self.w, self.b
-
-    def getgrad(self):
-        return self.dW, self.db
+            self.params['w'] = np.random.uniform(-1, 1, (self.inputsize, self.outputsize))
+            self.params['b'] = np.random.uniform(-1, 1, (1, self.outputsize))
+        return self.params
 
     def forward(self, x):
         self.x = x
-        return np.dot(self.x, self.w) + self.b
+        return np.dot(self.x, self.params['w']) + self.params['b']
 
     def backward(self, dout):
         # http://cs231n.stanford.edu/handouts/derivatives.pdf
 
-        dx = np.dot(dout, self.w.T)
-        self.dW = np.dot(self.x.T, dout)
-        self.db = np.sum(dout, axis=0)
+        dx = np.dot(dout, self.params['w'].T)
+        self.grad['w'] = np.dot(self.x.T, dout)
+        self.grad['b'] = np.sum(dout, axis=0)
 
         return dx
 
 
 class BatchNormalization(weightlayer):
     # http://arxiv.org/abs/1502.03167
-    def init_weight(self, xlen, ylen):
-        self.gamma = np.ones(ylen)
-        self.beta = np.zeros(ylen)
-        return self.gamma, self.beta
+    def __init__(self, inputsize=None, outputsize=None):
+        super().__init__(inputsize, outputsize)
 
-    def weightgrad(self):
-        return self.dgamma, self.dbeta
+    def init_weight(self, inputsize=None, outputsize=None):
+        self.params['gamma'] = np.ones(self.outputsize)
+        self.params['beta'] = np.zeros(self.outputsize)
+        return self.params
 
     def forward(self, x):
         mu = x.mean(axis=0)
@@ -118,12 +130,12 @@ class BatchNormalization(weightlayer):
 
         self.batch_size = x.shape[0]
 
-        return self.gamma * self.xn + self.beta
+        return self.params['gamma'] * self.xn + self.params['beta']
 
     def backward(self, dout):
-        self.dbeta = dout.sum(axis=0)
-        self.dgamma = np.sum(self.xn * dout, axis=0)
-        dxn = self.gamma * dout
+        self.grad['beta'] = dout.sum(axis=0)
+        self.grad['gamma'] = np.sum(self.xn * dout, axis=0)
+        dxn = self.params['gamma'] * dout
         # f = x/y
         # df/dx = 1/y
         # dL/df * df/dx = dxn * 1/y

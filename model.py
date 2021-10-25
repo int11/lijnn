@@ -35,14 +35,13 @@ class nn:
                 if outputsize: self.outputsize = outputsize
                 print(layer.count, layer, self.inputsize, self.outputsize)
                 layer.setsize(self.inputsize, self.outputsize)
-                self.params.update(layer.init_weight())
+                for key, value in layer.init_weight().items():
+                    self.params[f'{key}{layer.count}'] = value
+
                 self.inputsize = self.outputsize
         self.layers.extend(layers)
 
     def fit(self, x, t, batch_size, epochs, opti):
-        for layer in self.layers:
-            if isinstance(layer, weightlayer):
-                print(layer, layer.count)
 
         if isinstance(opti, optimizer.weightopti): opti.init_weight(self)
         a = time.time()
@@ -66,7 +65,7 @@ class nn:
     def gradient(self, x, t):
         self.cost(x, t)
         dout = self.costlayer.backward()
-        for layer in self.layers[::-1]:
+        for layer in reversed(self.layers):
             dout = layer.backward(dout)
 
         grad = {}

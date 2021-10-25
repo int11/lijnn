@@ -3,15 +3,17 @@ from abc import *
 
 
 class weightlayer(metaclass=ABCMeta):
-    count = 0
+    def __init_subclass__(cls):
+        cls.count = 0
 
     def __init__(self, inputsize=None, outputsize=None):
         self.params, self.grad = {}, {}
-        self.count = weightlayer.count
+        self.count = cls.count
+        cls.count += 1
+
         self.inputsize, self.outputsize = inputsize, outputsize
         if not self.outputsize:
             self.outputsize, self.inputsize = self.inputsize, self.outputsize
-        weightlayer.count += 1
 
     def setsize(self, inputsize, outputsize):
         self.inputsize, self.outputsize = inputsize, outputsize

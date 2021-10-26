@@ -41,8 +41,7 @@ class Relu:
 
     def backward(self, dout):
         dout[self.mask] = 0
-        dx = dout
-        return dx
+        return dout
 
 
 class Sigmoid:
@@ -163,12 +162,12 @@ class BatchNormalization(weightlayer):
 
 
 class Dropout:
-    def __init__(self, probability):
+    def __init__(self, probability=0.5):
         self.probability = probability
 
     def forward(self, x):
         self.mask = np.random.rand(*x.shape) > self.probability
         return x * self.mask
 
-    def backward(self):
-        return
+    def backward(self, dout):
+        return dout * self.mask

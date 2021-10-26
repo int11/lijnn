@@ -17,7 +17,8 @@ class nn:
                     if key.count('w'):
                         weight_decay += 0.5 * self.weight_decay_lambda * np.sum(value ** 2)
                 return self.costlayer.forward(self.predict(x), t) + weight_decay
-            #weight_decay_backpropagation
+
+            # weight_decay_backpropagation
             def deco(fun):
                 def decofun(*args, **kwargs):
                     grad = fun(*args, **kwargs)
@@ -25,6 +26,7 @@ class nn:
                         if key.count('w'):
                             grad[key] += self.weight_decay_lambda * self.params[key]
                     return grad
+
                 return decofun
 
             self.gradient = deco(self.gradient)

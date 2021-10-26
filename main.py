@@ -45,7 +45,7 @@ t1 = np.array(
 
 t = oneshotencoding(t)
 
-nn1 = nn(categorical_crossentropy())
+nn1 = nn(categorical_crossentropy(),0.1)
 nn1.add(Dense(784, 100, initialization=initialization.He), BatchNormalization(), Relu())
 nn1.add(Dense(100, initialization=initialization.He), BatchNormalization(), Relu())
 nn1.add(Dense(100, initialization=initialization.He), BatchNormalization(), Relu())
@@ -54,4 +54,4 @@ nn1.add(Dense(100, initialization=initialization.He), BatchNormalization(), Relu
 nn1.add(Dense(100, initialization=initialization.He), BatchNormalization(), Relu())
 nn1.add(Dense(10, initialization=initialization.Xavier), Softmax())
 
-nn1.fit(x[:300], t[:300], batch_size=100, epochs=200, opti=optimizer.GD(lr=0.01))
+nn1.fit(x, t, batch_size=100, epochs=10, opti=optimizer.Adam(lr=0.01))

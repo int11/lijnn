@@ -8,8 +8,8 @@ class weightlayer(metaclass=ABCMeta):
 
     def __init__(self, inputsize=None, outputsize=None):
         self.params, self.grad = {}, {}
-        self.count = cls.count
-        cls.count += 1
+        self.count = self.__class__.count
+        self.__class__.count += 1
 
         self.inputsize, self.outputsize = inputsize, outputsize
         if not self.outputsize:

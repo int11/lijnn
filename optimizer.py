@@ -13,10 +13,9 @@ class GD:
 
 
 class weightopti:
-    def init_weight(self, model):
-        self.model = model
+    def init_weight(self, params):
         self.v = {}
-        for param in model.params:
+        for param in params.values():
             self.v[id(param)] = np.zeros_like(param)
 
 

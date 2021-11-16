@@ -86,13 +86,13 @@ class Dense(weightlayer):
 
     def init_weight(self):
         if self.initialization == 'Xavier':
-            m = np.sqrt(6 / (self.inputsize + self.outputsize))
+            m = np.sqrt(2 / (self.inputsize + self.outputsize))
         elif self.initialization == 'He':
-            m = np.sqrt(6 / self.inputsize)
+            m = np.sqrt(2 / self.inputsize)
         else:
-            m
-        self.params['w'] = np.random.uniform(-m, m, (self.inputsize, self.outputsize))
-        self.params['b'] = np.random.uniform(-m, m, (1, self.outputsize))
+            m = self.initialization
+        self.params['w'] = m * np.random.randn(self.inputsize, self.outputsize)
+        self.params['b'] = m * np.random.randn(1, self.outputsize)
         return self.params
 
     def forward(self, x):

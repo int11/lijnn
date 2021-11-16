@@ -26,7 +26,7 @@ class weightlayer(metaclass=ABCMeta):
 
     @abstractmethod
     def init_weight(self):
-        pass
+        return self.params
 
 
 class Relu:
@@ -87,15 +87,12 @@ class Dense(weightlayer):
     def init_weight(self):
         if self.initialization == 'Xavier':
             m = np.sqrt(6 / (self.inputsize + self.outputsize))
-            self.params['w'] = np.random.uniform(-m, m, (self.inputsize, self.outputsize))
-            self.params['b'] = np.random.uniform(-m, m, (1, self.outputsize))
         elif self.initialization == 'He':
             m = np.sqrt(6 / self.inputsize)
-            self.params['w'] = np.random.uniform(-m, m, (self.inputsize, self.outputsize))
-            self.params['b'] = np.random.uniform(-m, m, (1, self.outputsize))
-        elif self.initialization is None:
-            self.params['w'] = np.random.uniform(-1, 1, (self.inputsize, self.outputsize))
-            self.params['b'] = np.random.uniform(-1, 1, (1, self.outputsize))
+        else:
+            m
+        self.params['w'] = np.random.uniform(-m, m, (self.inputsize, self.outputsize))
+        self.params['b'] = np.random.uniform(-m, m, (1, self.outputsize))
         return self.params
 
     def forward(self, x):
@@ -171,3 +168,80 @@ class Dropout:
 
     def backward(self, dout):
         return dout * self.mask
+
+
+class Convolution(weightlayer):
+    def __init__(self, inputsize=None, outputsize=None, stride=1, pad=0):
+        super().__init__(inputsize, outputsize)
+        self.stride = stride
+        self.pad = pad
+
+    def init_weight(self):
+        return self.params
+
+    def forward(self, x):
+        FN, C, FH, FW = self.params['w'].shape
+        N, C, H, W = x.shape
+        out_h = 1 + int((H + 2 * self.pad - FH) / self.stride)
+        out_w = 1 + int((W + 2 * self.pad - FW) / self.stride)
+
+        col = im2col(x, FH, FW, self.stride, self.pad)  # 1
+        col_W = self.params['w'].reshape(FN, -1).T  # 2
+
+        out = np.dot(col, col_W) + self.params['b']  # 3
+        out = out.reshape(N, out_h, out_w, -1).transpose(0, 3, 1, 2)  # 4
+
+        self.x = x
+        self.col = col
+        self.col_W = col_W
+
+        return out
+
+    def backward(self, dout):
+        FN, C, FH, FW = self.params['w'].shape
+        dout = dout.transpose(0, 2, 3, 1).reshape(-1, FN)  # 4
+
+        dW = np.dot(self.col.T, dout)  # 3
+        self.grad['w'] = dW.transpose(1, 0).reshape(FN, C, FH, FW)  # 2
+        self.grad['b'] = np.sum(dout, axis=0)  # 3
+
+        dcol = np.dot(dout, self.col_W.T)  # 3
+        dx = col2im(dcol, self.x.shape, FH, FW, self.stride, self.pad)  # 1
+
+        return dx
+
+
+class Pooling:
+    def __init__(self, pool_h, pool_w, stride=1, pad=0):
+        self.pool_h = pool_h
+        self.pool_w = pool_w
+        self.stride = stride
+        self.pad = pad
+
+    def forward(self, x):
+        N, C, H, W = x.shape
+        out_h = int(1 + (H - self.pool_h) / self.stride)
+        out_w = int(1 + (W - self.pool_w) / self.stride)
+
+        col = im2col(x, self.pool_h, self.pool_w, self.stride, self.pad)
+        col = col.reshape(-1, self.pool_h * self.pool_w)
+
+        arg_max = np.argmax(col, axis=1)
+        out = np.max(col, axis=1)
+        out = out.reshape(N, out_h, out_w, C).transpose(0, 3, 1, 2)
+
+        self.x = x
+        self.arg_max = arg_max
+
+        return out
+
+    def backward(self, dout):
+        dout = dout.transpose(0, 2, 3, 1)
+
+        pool_size = self.pool_h * self.pool_w
+        dmax = np.zeros((dout.size, pool_size))
+        dmax[np.arange(self.arg_max.size), self.arg_max.flatten()] = dout.flatten()
+        dcol = dmax.reshape(dout.shape[0] * dout.shape[1] * dout.shape[2], -1)
+        dx = col2im(dcol, self.x.shape, self.pool_h, self.pool_w, self.stride, self.pad)
+
+        return dx

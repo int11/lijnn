@@ -96,6 +96,8 @@ class Dense(weightlayer):
         return self.params
 
     def forward(self, x):
+        self.original_x_shape = x.shape
+        x.resize(x.shape[0], -1)
         self.x = x
         return np.dot(self.x, self.params['w']) + self.params['b']
 
@@ -106,7 +108,7 @@ class Dense(weightlayer):
         self.grad['w'] = np.dot(self.x.T, dout)
         self.grad['b'] = np.sum(dout, axis=0)
 
-        return dx
+        return dx.reshape(*self.original_x_shape)
 
 
 class BatchNormalization(weightlayer):
@@ -120,6 +122,10 @@ class BatchNormalization(weightlayer):
         return self.params
 
     def forward(self, x):
+        self.input_shape = x.shape
+        if x.ndim != 2:
+            x.resize(x.shape[0], -1)
+
         mu = x.mean(axis=0)
         self.xc = x - mu
         var = np.mean(self.xc ** 2, axis=0)
@@ -127,10 +133,14 @@ class BatchNormalization(weightlayer):
         self.xn = self.xc / self.std
 
         self.batch_size = x.shape[0]
+        out = self.params['gamma'] * self.xn + self.params['beta']
 
-        return self.params['gamma'] * self.xn + self.params['beta']
+        return out.reshape(*self.input_shape)
 
     def backward(self, dout):
+        if dout.ndim != 2:
+            dout.resize(dout.shape[0], -1)
+
         self.grad['beta'] = dout.sum(axis=0)
         self.grad['gamma'] = np.sum(self.xn * dout, axis=0)
         dxn = self.params['gamma'] * dout
@@ -155,7 +165,7 @@ class BatchNormalization(weightlayer):
         # df/dy = -1
         dx = dxc - np.sum(dxc, axis=0) / self.batch_size
 
-        return dx
+        return dx.reshape(*self.input_shape)
 
 
 class Dropout:

@@ -181,7 +181,9 @@ class Dropout:
 
 
 class Convolution(weightlayer):
-    def __init__(self, inputsize=None, outputsize=None, stride=1, pad=0):
+    def __init__(self, filter_size, stride=1, pad=0):
+        self.filter_size = filter_size
+        inputsize, outputsize = None, self.filter_size[1] * self.filter_size[2]
         super().__init__(inputsize, outputsize)
         self.stride = stride
         self.pad = pad

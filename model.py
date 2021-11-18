@@ -37,14 +37,13 @@ class nn:
     def predict(self, x):
         for layer in self.layers:
             x = layer.forward(x)
+
         return x
 
     def add(self, *layers):
         self.layers.extend(layers)
 
     def fit(self, x, t, batch_size, epochs, opti):
-        if isinstance(opti, optimizer.weightopti): opti.init_weight(self.params)
-        a = time.time()
         if x.ndim == 1: x = x[np.newaxis].T
         if t.ndim == 1: t = t[np.newaxis].T
 
@@ -58,6 +57,11 @@ class nn:
             elif hasattr(layer, 'getxshape'):
                 xshape = layer.getxshape(xshape)
 
+        if isinstance(opti, optimizer.weightopti):
+            opti.init_weight(self.params)
+
+        a = time.time()
+
         iteration = t.shape[0] / batch_size
         for i in range(int(epochs * iteration)):
             batch_mask = np.random.choice(t.shape[0], batch_size, replace=False)
@@ -66,12 +70,13 @@ class nn:
 
             grads = self.gradient(x_batch, t_batch)
             # grads = self.grads_numerical(x_batch, t_batch)
+
             for param, grad in zip(self.params.values(), grads.values()):
                 opti.update(param, grad)
 
             if i % iteration == 0:
                 print(f'\nepoch {int(i / iteration)} Total time {time.time() - a} fps {(time.time() - a) / (i + 1)} '
-                      f'\ncost {self.cost(x, t)} accuracy {self.accuracy(x, t)}')
+                          f'\ncost {self.cost(x_batch, t_batch)} accuracy {self.accuracy(x_batch, t_batch)}')
 
     def gradient_numerical(self, x, t):
         cost = lambda: self.cost(x, t)

@@ -79,7 +79,6 @@ class Dense(weightlayer):
         self.init_sd = init_sd
 
     def init_weight(self, xshape):
-        print(xshape)
         if not self.inputsize:
             tmp = 1
             for i in xshape[1:]:
@@ -204,12 +203,11 @@ class Convolution(weightlayer):
         out_h = 1 + int((H + 2 * self.pad - FH) / self.stride)
         out_w = 1 + int((W + 2 * self.pad - FW) / self.stride)
 
-        self.params['w'] = self.init_sd * \
+        self.params['cw'] = self.init_sd * \
                             np.random.randn(*self.filter_size)
-        self.params['b'] = np.zeros(FN)
+        self.params['cb'] = np.zeros(FN)
 
-        xshape = (N, FC, out_h, out_w)
-
+        xshape = (N, FN, out_h, out_w)
         return self.params, xshape
 
     def forward(self, x):
@@ -219,9 +217,9 @@ class Convolution(weightlayer):
         out_w = 1 + int((W + 2 * self.pad - FW) / self.stride)
 
         col = im2col(x, FH, FW, self.stride, self.pad)  # 1
-        col_W = self.params['w'].reshape(FN, -1).T  # 2
+        col_W = self.params['cw'].reshape(FN, -1).T  # 2
 
-        out = np.dot(col, col_W) + self.params['b']  # 3
+        out = np.dot(col, col_W) + self.params['cb']  # 3
         out = out.reshape(N, out_h, out_w, -1).transpose(0, 3, 1, 2)  # 4
 
         self.x = x
@@ -234,8 +232,8 @@ class Convolution(weightlayer):
         dout = dout.transpose(0, 2, 3, 1).reshape(-1, FN)  # 4
 
         dW = np.dot(self.col.T, dout)  # 3
-        self.grad['w'] = dW.transpose(1, 0).reshape(FN, C, FH, FW)  # 2
-        self.grad['b'] = np.sum(dout, axis=0)  # 3
+        self.grad['cw'] = dW.transpose(1, 0).reshape(FN, C, FH, FW)  # 2
+        self.grad['cb'] = np.sum(dout, axis=0)  # 3
 
         dcol = np.dot(dout, self.col_W.T)  # 3
         dx = col2im(dcol, self.x.shape, FH, FW, self.stride, self.pad)  # 1
@@ -255,7 +253,6 @@ class Pooling:
         out_h = int(1 + (H - self.pool_h) / self.stride)
         out_w = int(1 + (W - self.pool_w) / self.stride)
         xshape = (N, C, out_h, out_w)
-
         return xshape
 
     def forward(self, x):

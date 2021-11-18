@@ -15,18 +15,12 @@ class weightlayer(metaclass=ABCMeta):
         if not self.outputsize:
             self.outputsize, self.inputsize = self.inputsize, self.outputsize
 
-    def setsize(self, inputsize, outputsize):
-        self.inputsize, self.outputsize = inputsize, outputsize
-
-    def getsize(self):
-        return self.inputsize, self.outputsize
-
     def getgrad(self):
         return self.grad
 
     @abstractmethod
-    def init_weight(self):
-        return self.params
+    def init_weight(self, xshape):
+        return self.params, xshape
 
 
 class Relu:
@@ -80,24 +74,35 @@ class categorical_crossentropy:
 
 
 class Dense(weightlayer):
-    def __init__(self, inputsize=None, outputsize=None, initialization=None):
+    def __init__(self, inputsize=None, outputsize=None, init_sd=None):
         super().__init__(inputsize, outputsize)
-        self.initialization = initialization
+        self.init_sd = init_sd
 
-    def init_weight(self):
-        if self.initialization == 'Xavier':
+    def init_weight(self, xshape):
+        print(xshape)
+        if not self.inputsize:
+            tmp = 1
+            for i in xshape[1:]:
+                tmp *= i
+            self.inputsize = tmp
+
+        if not self.outputsize: self.outputsize = self.inputsize
+
+        if self.init_sd == 'Xavier':
             m = np.sqrt(2 / (self.inputsize + self.outputsize))
-        elif self.initialization == 'He':
+        elif self.init_sd == 'He':
             m = np.sqrt(2 / self.inputsize)
         else:
-            m = self.initialization
+            m = self.init_sd
         self.params['w'] = m * np.random.randn(self.inputsize, self.outputsize)
         self.params['b'] = m * np.random.randn(1, self.outputsize)
-        return self.params
+
+        xshape = (xshape[0], self.outputsize)
+        return self.params, xshape
 
     def forward(self, x):
         self.original_x_shape = x.shape
-        x.resize(x.shape[0], -1)
+        x = x.reshape(x.shape[0], -1)
         self.x = x
         return np.dot(self.x, self.params['w']) + self.params['b']
 
@@ -116,10 +121,15 @@ class BatchNormalization(weightlayer):
     def __init__(self, inputsize=None, outputsize=None):
         super().__init__(inputsize, outputsize)
 
-    def init_weight(self, inputsize=None, outputsize=None):
+    def init_weight(self, xshape):
+        if not self.inputsize:
+            self.inputsize = xshape[1]
+        if not self.outputsize:
+            self.outputsize = xshape[1]
         self.params['gamma'] = np.ones(self.outputsize)
         self.params['beta'] = np.zeros(self.outputsize)
-        return self.params
+        xshape = (xshape[0], self.outputsize)
+        return self.params, xshape
 
     def forward(self, x):
         self.input_shape = x.shape
@@ -181,18 +191,29 @@ class Dropout:
 
 
 class Convolution(weightlayer):
-    def __init__(self, filter_size, stride=1, pad=0):
+    def __init__(self, filter_size, stride=1, pad=0, init_sd=0.01):
         self.filter_size = filter_size
-        inputsize, outputsize = None, self.filter_size[1] * self.filter_size[2]
-        super().__init__(inputsize, outputsize)
+        self.init_sd = init_sd
+        super().__init__()
         self.stride = stride
         self.pad = pad
 
-    def init_weight(self):
-        return self.params
+    def init_weight(self, xshape):
+        FN, FC, FH, FW = self.filter_size
+        N, C, H, W = xshape
+        out_h = 1 + int((H + 2 * self.pad - FH) / self.stride)
+        out_w = 1 + int((W + 2 * self.pad - FW) / self.stride)
+
+        self.params['w'] = self.init_sd * \
+                            np.random.randn(*self.filter_size)
+        self.params['b'] = np.zeros(FN)
+
+        xshape = (N, FC, out_h, out_w)
+
+        return self.params, xshape
 
     def forward(self, x):
-        FN, C, FH, FW = self.params['w'].shape
+        FN, C, FH, FW = self.filter_size
         N, C, H, W = x.shape
         out_h = 1 + int((H + 2 * self.pad - FH) / self.stride)
         out_w = 1 + int((W + 2 * self.pad - FW) / self.stride)
@@ -206,11 +227,10 @@ class Convolution(weightlayer):
         self.x = x
         self.col = col
         self.col_W = col_W
-
         return out
 
     def backward(self, dout):
-        FN, C, FH, FW = self.params['w'].shape
+        FN, C, FH, FW = self.filter_size
         dout = dout.transpose(0, 2, 3, 1).reshape(-1, FN)  # 4
 
         dW = np.dot(self.col.T, dout)  # 3
@@ -229,6 +249,14 @@ class Pooling:
         self.pool_w = pool_w
         self.stride = stride
         self.pad = pad
+
+    def getxshape(self, xshape):
+        N, C, H, W = xshape
+        out_h = int(1 + (H - self.pool_h) / self.stride)
+        out_w = int(1 + (W - self.pool_w) / self.stride)
+        xshape = (N, C, out_h, out_w)
+
+        return xshape
 
     def forward(self, x):
         N, C, H, W = x.shape

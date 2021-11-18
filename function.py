@@ -13,7 +13,7 @@ class cost:
 
 
 
-class initialization:
+class init:
     Xavier = "Xavier"
     He = "He"
 

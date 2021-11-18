@@ -40,17 +40,6 @@ class nn:
         return x
 
     def add(self, *layers):
-        for layer in layers:
-            if isinstance(layer, weightlayer):
-                inputsize, outputsize = layer.getsize()
-                if inputsize: self.inputsize = inputsize
-                if outputsize: self.outputsize = outputsize
-                print(layer.count, layer, self.inputsize, self.outputsize)
-                layer.setsize(self.inputsize, self.outputsize)
-                for key, value in layer.init_weight().items():
-                    self.params[f'{key}{layer.count}'] = value
-
-                self.inputsize = self.outputsize
         self.layers.extend(layers)
 
     def fit(self, x, t, batch_size, epochs, opti):
@@ -58,6 +47,17 @@ class nn:
         a = time.time()
         if x.ndim == 1: x = x[np.newaxis].T
         if t.ndim == 1: t = t[np.newaxis].T
+
+        xshape = ((batch_size,) + x.shape[1:])
+        for layer in self.layers:
+            if isinstance(layer, weightlayer):
+                param, xshape = layer.init_weight(xshape)
+                print(layer.count, layer, layer.inputsize, layer.outputsize)
+                for key, value in param.items():
+                    self.params[f'{key}{layer.count}'] = value
+            elif hasattr(layer, 'getxshape'):
+                xshape = layer.getxshape(xshape)
+
         iteration = t.shape[0] / batch_size
         for i in range(int(epochs * iteration)):
             batch_mask = np.random.choice(t.shape[0], batch_size, replace=False)
@@ -73,7 +73,7 @@ class nn:
                 print(f'\nepoch {int(i / iteration)} Total time {time.time() - a} fps {(time.time() - a) / (i + 1)} '
                       f'\ncost {self.cost(x, t)} accuracy {self.accuracy(x, t)}')
 
-    def grads_numerical(self, x, t):
+    def gradient_numerical(self, x, t):
         cost = lambda: self.cost(x, t)
         grad = {}
         for key, value in self.params.items():

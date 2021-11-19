@@ -43,15 +43,16 @@ class nn:
     def add(self, *layers):
         self.layers.extend(layers)
 
-    def fit(self, x, t, batch_size, epochs, opti):
+    def fit(self, x, t, x_test, t_test, batch_size, epochs, opti):
         if x.ndim == 1: x = x[np.newaxis].T
         if t.ndim == 1: t = t[np.newaxis].T
 
         xshape = ((batch_size,) + x.shape[1:])
         for layer in self.layers:
             if isinstance(layer, weightlayer):
+                print(layer.count, layer, xshape, end=" ")
                 param, xshape = layer.init_weight(xshape)
-                print(layer.count, layer, layer.inputsize, layer.outputsize)
+                print(xshape)
                 for key, value in param.items():
                     self.params[f'{key}{layer.count}'] = value
             elif hasattr(layer, 'getxshape'):
@@ -76,7 +77,7 @@ class nn:
 
             if i % iteration == 0:
                 print(f'\nepoch {int(i / iteration)} Total time {time.time() - a} fps {(time.time() - a) / (i + 1)} '
-                          f'\ncost {self.cost(x_batch, t_batch)} accuracy {self.accuracy(x_batch, t_batch)}')
+                          f'\ncost {self.cost(x_batch, t_batch)} accuracy {self.accuracy(x_test, t_test)}')
 
     def gradient_numerical(self, x, t):
         cost = lambda: self.cost(x, t)

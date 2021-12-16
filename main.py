@@ -3,7 +3,7 @@ from model import *
 from dataset.mnist import load_mnist
 
 (x, t), (x_test, t_test) = load_mnist(flatten=False)
-
+print(x.shape,x_test.shape)
 x1 = np.array(
     [[5.1, 3.5, 1.4, 0.2], [4.9, 3.0, 1.4, 0.2], [4.7, 3.2, 1.3, 0.2], [4.6, 3.1, 1.5, 0.2], [5.0, 3.6, 1.4, 0.2],
      [5.4, 3.9, 1.7, 0.4], [4.6, 3.4, 1.4, 0.3], [5.0, 3.4, 1.5, 0.2], [4.4, 2.9, 1.4, 0.2], [4.9, 3.1, 1.5, 0.1],
@@ -49,4 +49,4 @@ nn1 = nn(categorical_crossentropy())
 nn1.add(Convolution(filter_size=(30, 1, 5, 5)), Relu(), Pooling(2, 2, 2))
 nn1.add(Dense(100, init_sd=init.He), Relu())
 nn1.add(Dense(10, init_sd=init.Xavier), Softmax())
-nn1.fit(x[:5000], t[:5000], x_test, t_test, batch_size=100, epochs=300, opti=optimizer.Adam(lr=0.001))
+nn1.fit(x[:5000], t[:5000], x_test[:1000], t_test[:1000], batch_size=100, epochs=300, opti=optimizer.Adam(lr=0.001))

@@ -50,7 +50,7 @@ class nn:
         xshape = ((batch_size,) + x.shape[1:])
         for layer in self.layers:
             if isinstance(layer, weightlayer):
-                print(layer.count, layer, xshape, end=" ")
+                print(layer, xshape, end=" ")
                 param, xshape = layer.init_weight(xshape)
                 print(xshape)
                 for key, value in param.items():

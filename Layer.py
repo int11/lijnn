@@ -15,8 +15,8 @@ class weightlayer(metaclass=ABCMeta):
         if not self.outputsize:
             self.outputsize, self.inputsize = self.inputsize, self.outputsize
 
-    def __str__(self):
-        return f'{self.count} {self.__repr__()}'
+    def __repr__(self):
+        return f'{self.count} {super().__repr__()}'
 
     def getgrad(self):
         return self.grad

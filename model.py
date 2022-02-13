@@ -43,7 +43,7 @@ class nn:
     def add(self, *layers):
         self.layers.extend(layers)
 
-    def fit(self, x, t, x_test, t_test, batch_size, epochs, opti):
+    def fit(self, x, t, batch_size, epochs, opti, x_test=None, t_test=None):
         if x.ndim == 1: x = x[np.newaxis].T
         if t.ndim == 1: t = t[np.newaxis].T
 
@@ -77,7 +77,7 @@ class nn:
 
             if i % iteration == 0:
                 print(f'\nepoch {int(i / iteration)} Total time {time.time() - a} fps {(time.time() - a) / (i + 1)} '
-                          f'\ncost {self.cost(x_batch, t_batch)} accuracy {self.accuracy(x_test, t_test)}')
+                      f'\ncost {self.cost(x_batch, t_batch)} accuracy {self.accuracy(x_test, t_test) if x_test is not None else self.accuracy(x_batch, t_batch)}')
 
     def gradient_numerical(self, x, t):
         cost = lambda: self.cost(x, t)

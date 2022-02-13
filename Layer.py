@@ -69,7 +69,6 @@ class categorical_crossentropy:
         self.y = t
         batch_size = t.shape[0]
         out = -np.sum(t * np.log(y + 1e-7)) / batch_size
-
         return out
 
     def backward(self, dout=1):

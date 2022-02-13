@@ -15,6 +15,9 @@ class weightlayer(metaclass=ABCMeta):
         if not self.outputsize:
             self.outputsize, self.inputsize = self.inputsize, self.outputsize
 
+    def __repr__(self):
+        return f'{self.count} {super().__repr__()}'
+
     def getgrad(self):
         return self.grad
 
@@ -66,7 +69,6 @@ class categorical_crossentropy:
         self.y = t
         batch_size = t.shape[0]
         out = -np.sum(t * np.log(y + 1e-7)) / batch_size
-
         return out
 
     def backward(self, dout=1):

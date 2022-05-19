@@ -60,7 +60,10 @@ class Softmax:
         return self.out
 
     def backward(self, dout):
-        return (1 + dout) * self.out / dout.shape[0]
+        y = self.out
+        gx = y * dout
+        sumdx = gx.sum(axis=1, keepdims=True)
+        return y * dout - (y * sumdx)
 
 
 class categorical_crossentropy:

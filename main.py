@@ -1,4 +1,3 @@
-import optimizer
 from model import *
 from dataset.mnist import load_mnist
 from dataset.example import *

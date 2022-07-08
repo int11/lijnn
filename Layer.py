@@ -63,7 +63,7 @@ class Softmax:
         y = self.out
         gx = y * dout
         sumdx = gx.sum(axis=1, keepdims=True)
-        return y * dout - (y * sumdx)
+        return gx - (y * sumdx)
 
 
 class categorical_crossentropy:

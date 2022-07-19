@@ -1,8 +1,3 @@
-# =============================================================================
-# step23.py부터 step32.py까지는 simple_core를 이용해야 합니다.
-
-# =============================================================================
-
 from INN.core import Variable
 from INN.core import Parameter
 from INN.core import Function

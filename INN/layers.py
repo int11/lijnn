@@ -87,12 +87,12 @@ class Layer:
 # Linear / Conv2d / Deconv2d
 # =============================================================================
 class Linear(Layer):
-    def __init__(self, out_size, nobias=False, dtype=np.float32, in_size=None):
+    def __init__(self, out_size, nobias=False, dtype=np.float32, in_size=None, weight_init='He'):
         super().__init__()
         self.in_size = in_size
         self.out_size = out_size
         self.dtype = dtype
-
+        self.weight_init = weight_init
         self.W = Parameter(None, name='W')
         if self.in_size is not None:
             self._init_W()
@@ -104,8 +104,16 @@ class Linear(Layer):
 
     def _init_W(self, xp=np):
         I, O = self.in_size, self.out_size
-        W_data = xp.random.randn(I, O).astype(self.dtype) * np.sqrt(1 / I)
-        self.W.data = W_data
+        if self.weight_init == 'Xavier':
+            m = np.sqrt(2 / (I + O))
+        elif self.weight_init == 'He':
+            m = np.sqrt(2 / I)
+        elif self.weight_init == 'LuCun':
+            m = np.sqrt(1 / I)
+        else:
+            m = self.weight_init
+
+        self.W.data = xp.random.randn(I, O).astype(self.dtype) * m
 
     def forward(self, x):
         if self.W.data is None:

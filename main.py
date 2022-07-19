@@ -1,27 +1,36 @@
-import optimizer
-from model import *
-from dataset.mnist import load_mnist
-from dataset.example import *
+import INN
 
-def mnist():
-    (x, t), (x_test, t_test) = load_mnist(flatten=False)
+batch_size = 100
+epoch = 10
+trainset = INN.datasets.MNIST(train=True)
+testset = INN.datasets.MNIST(train=False)
 
-    t = oneshotencoding(t)
+train = INN.dataloaders.DataLoader(trainset, batch_size, shuffle=True)
+test = INN.dataloaders.DataLoader(testset, batch_size, shuffle=False)
 
-    nn1 = nn(categorical_crossentropy())
-    nn1.add(Convolution(filter_size=(30, 1, 5, 5)), Relu(), Pooling(2, 2, 2))
-    nn1.add(Dense(100, init_sd=init.He), Relu())
-    nn1.add(Dense(10, init_sd=init.Xavier), Softmax())
-    nn1.fit(x[:5000], t[:5000], batch_size=100, epochs=300, opti=optimizer.Adam(lr=0.001), x_test=x_test[:1000], t_test=t_test[:1000])
+model = INN.models.MLP((1000, 1000, 10), activation=INN.functions.relu)
+optimizer = INN.optimizers.Adam().setup(model)
 
-def Irisflower():
-    x,t = Irisflower.get()
-    t = oneshotencoding(t)
+for i in range(epoch):
+    sum_loss, sum_acc = 0, 0
 
-    nn1 = nn(categorical_crossentropy())
-    nn1.add(Convolution(filter_size=(30, 1, 5, 5)), Relu(), Pooling(2, 2, 2))
-    nn1.add(Dense(100, init_sd=init.He), Relu())
-    nn1.add(Dense(10, init_sd=init.Xavier), Softmax())
-    nn1.fit(x[:5000], t[:5000], batch_size=100, epochs=300, opti=optimizer.Adam(lr=0.001))
+    for x, t in train:
+        y = model(x)
+        loss = INN.functions.softmax_cross_entropy(y, t)
+        acc = INN.functions.accuracy(y,t)
+        model.cleargrads()
+        loss.backward()
+        optimizer.update()
+        sum_loss += loss * batch_size
+        sum_acc += acc * batch_size
+    print(f'train loss {sum_loss / len(trainset)} accuracy {sum_acc / len(trainset)}')
+    sum_loss, sum_acc = 0, 0
 
-mnist()
+    with INN.no_grad():
+        for x, t in test:
+            y = model(x)
+            loss = INN.functions.softmax_cross_entropy(y, t)
+            acc = INN.functions.accuracy(y, t)
+            sum_loss += loss * batch_size
+            sum_acc += acc * batch_size
+    print(f'test loss {sum_loss / len(testset)} accuracy {sum_acc / len(testset)}')

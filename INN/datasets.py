@@ -231,7 +231,7 @@ class CIFAR100(CIFAR10):
     def labels(label_type='fine'):
         coarse_labels = dict(enumerate(['aquatic mammals','fish','flowers','food containers','fruit and vegetables','household electrical device','household furniture','insects','large carnivores','large man-made outdoor things','large natural outdoor scenes','large omnivores and herbivores','medium-sized mammals','non-insect invertebrates','people','reptiles','small mammals','trees','vehicles 1','vehicles 2']))
         fine_labels = []
-        return fine_labels if label_type is 'fine' else coarse_labels
+        return fine_labels if label_type == 'fine' else coarse_labels
 
 
 

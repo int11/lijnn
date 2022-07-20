@@ -5,7 +5,7 @@ import INN.functions as F
 from INN import cuda
 from INN.core import Parameter
 from INN.utils import pair
-import initializers
+from INN import initializers
 
 
 # =============================================================================

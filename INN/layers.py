@@ -5,6 +5,7 @@ import INN.functions as F
 from INN import cuda
 from INN.core import Parameter
 from INN.utils import pair
+import initializers
 
 
 # =============================================================================
@@ -87,7 +88,7 @@ class Layer:
 # Linear / Conv2d / Deconv2d
 # =============================================================================
 class Linear(Layer):
-    def __init__(self, out_size, nobias=False, dtype=np.float32, in_size=None, weight_init='He'):
+    def __init__(self, out_size, nobias=False, dtype=np.float32, in_size=None, weight_init=initializers.He):
         super().__init__()
         self.in_size = in_size
         self.out_size = out_size
@@ -104,16 +105,8 @@ class Linear(Layer):
 
     def _init_W(self, xp=np):
         I, O = self.in_size, self.out_size
-        if self.weight_init == 'Xavier':
-            m = np.sqrt(2 / (I + O))
-        elif self.weight_init == 'He':
-            m = np.sqrt(2 / I)
-        elif self.weight_init == 'LuCun':
-            m = np.sqrt(1 / I)
-        else:
-            m = self.weight_init
-
-        self.W.data = xp.random.randn(I, O).astype(self.dtype) * m
+        scale = self.weight_init(I, O)
+        self.W.data = xp.random.randn(I, O).astype(self.dtype) * scale
 
     def forward(self, x):
         if self.W.data is None:
@@ -127,7 +120,7 @@ class Linear(Layer):
 
 class Conv2d(Layer):
     def __init__(self, out_channels, kernel_size, stride=1,
-                 pad=0, nobias=False, dtype=np.float32, in_channels=None):
+                 pad=0, nobias=False, dtype=np.float32, in_channels=None, weight_init=initializers.LuCun):
         """Two-dimensional convolutional layer.
 
         Args:
@@ -147,7 +140,7 @@ class Conv2d(Layer):
         self.stride = stride
         self.pad = pad
         self.dtype = dtype
-
+        self.weight_init = weight_init
         self.W = Parameter(None, name='W')
         if in_channels is not None:
             self._init_W()
@@ -160,9 +153,9 @@ class Conv2d(Layer):
     def _init_W(self, xp=np):
         C, OC = self.in_channels, self.out_channels
         KH, KW = pair(self.kernel_size)
-        scale = np.sqrt(1 / (C * KH * KW))
-        W_data = xp.random.randn(OC, C, KH, KW).astype(self.dtype) * scale
-        self.W.data = W_data
+        I, O = C * KH * KW, OC * KH * KW
+        scale = self.weight_init(I, O)
+        self.W.data = xp.random.randn(OC, C, KH, KW).astype(self.dtype) * scale
 
     def forward(self, x):
         if self.W.data is None:
@@ -176,7 +169,7 @@ class Conv2d(Layer):
 
 class Deconv2d(Layer):
     def __init__(self, out_channels, kernel_size, stride=1,
-                 pad=0, nobias=False, dtype=np.float32, in_channels=None):
+                 pad=0, nobias=False, dtype=np.float32, in_channels=None, weight_init=initializers.LuCun):
         """Two-dimensional deconvolutional (transposed convolution)layer.
 
         Args:
@@ -196,7 +189,7 @@ class Deconv2d(Layer):
         self.stride = stride
         self.pad = pad
         self.dtype = dtype
-
+        self.weight_init = weight_init
         self.W = Parameter(None, name='W')
         if in_channels is not None:
             self._init_W()
@@ -209,7 +202,8 @@ class Deconv2d(Layer):
     def _init_W(self, xp=np):
         C, OC = self.in_channels, self.out_channels
         KH, KW = pair(self.kernel_size)
-        scale = np.sqrt(1 / (C * KH * KW))
+        I, O = C * KH * KW, OC * KH * KW
+        scale = self.weight_init(I, O)
         W_data = xp.random.randn(C, OC, KH, KW).astype(self.dtype) * scale
         self.W.data = W_data
 

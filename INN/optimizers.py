@@ -7,15 +7,15 @@ from INN import cuda, Parameter
 # =============================================================================
 class Optimizer:
     def __init__(self):
-        self.target = None
+        self.model = None
         self.hooks = []
 
-    def setup(self, target):
-        self.target = target
+    def setup(self, model):
+        self.model = model
         return self
 
     def update(self):
-        params = [p for p in self.target.params() if p.grad is not None]
+        params = [p for p in self.model.params() if p.grad is not None]
 
         for f in self.hooks:
             f(params)
@@ -71,7 +71,6 @@ class FreezeParam:
     def __call__(self, params):
         for p in self.freeze_params:
             p.grad = None
-
 
 
 # =============================================================================

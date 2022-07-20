@@ -23,6 +23,7 @@ import INN.layers
 import INN.utils
 import INN.cuda
 import INN.transforms
+import initializers
 
 setup_variable()
 __version__ = '0.0.1'

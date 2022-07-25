@@ -289,25 +289,9 @@ def linear(x, W, b=None):
     return Linear()(x, W, b)
 
 
-def linear_simple(x, W, b=None):
-    t = matmul(x, W)
-    if b is None:
-        return t
-
-    y = t + b
-    t.data = None  # Release t.data (ndarray) for memory efficiency
-    return y
-
-
 # =============================================================================
 # activation function: sigmoid / relu / softmax / log_softmax / leaky_relu
 # =============================================================================
-def sigmoid_simple(x):
-    x = as_variable(x)
-    y = 1 / (1 + exp(-x))
-    return y
-
-
 class Sigmoid(Function):
     def forward(self, x):
         xp = cuda.get_array_module(x)
@@ -340,13 +324,6 @@ class ReLU(Function):
 
 def relu(x):
     return ReLU()(x)
-
-
-def softmax_simple(x, axis=1):
-    x = as_variable(x)
-    y = exp(x)
-    sum_y = sum(y, axis=axis, keepdims=True)
-    return y / sum_y
 
 
 class Softmax(Function):
@@ -414,11 +391,6 @@ def leaky_relu(x, slope=0.2):
 # =============================================================================
 # loss function: mean_squared_error / softmax_cross_entropy / sigmoid_cross_entropy / binary_cross_entropy
 # =============================================================================
-def mean_squared_error_simple(x0, x1):
-    x0, x1 = as_variable(x0), as_variable(x1)
-    diff = x0 - x1
-    y = sum(diff ** 2) / len(diff)
-    return y
 
 
 class MeanSquaredError(Function):
@@ -439,24 +411,23 @@ def mean_squared_error(x0, x1):
     return MeanSquaredError()(x0, x1)
 
 
-def softmax_cross_entropy_simple(x, t):
-    x, t = as_variable(x), as_variable(t)
-    N = x.shape[0]
-    p = softmax(x)
-    p = clip(p, 1e-15, 1.0)  # To avoid log(0)
-    log_p = log(p)
-    tlog_p = log_p[np.arange(N), t.data]
-    y = -1 * sum(tlog_p) / N
-    return y
-
-
 class SoftmaxCrossEntropy(Function):
     def forward(self, x, t):
+        """simple code
+
+        N = x.shape[0]
+        p = softmax(x)
+        p = clip(p, 1e-15, 1.0)  # To avoid log(0)
+        log_p = log(p)
+        tlog_p = log_p[np.arange(N), t.data]
+        y = -1 * sum(tlog_p) / N
+        """
+
         N = x.shape[0]
         log_z = utils.logsumexp(x, axis=1)
         log_p = x - log_z
         log_p = log_p[np.arange(N), t.ravel()]
-        #log_p = x[np.arange(N), t.ravel()] - log_z.ravel()
+        # log_p = x[np.arange(N), t.ravel()] - log_z.ravel()
         y = -log_p.sum() / np.float32(N)
         return y
 
@@ -464,7 +435,7 @@ class SoftmaxCrossEntropy(Function):
         x, t = self.inputs
         N, CLS_NUM = x.shape
 
-        gy *= 1/N
+        gy *= 1 / N
         y = softmax(x)
         # convert to one-hot
         xp = cuda.get_array_module(t.data)
@@ -497,6 +468,21 @@ def binary_cross_entropy(p, t):
     tlog_p = t * log(p) + (1 - t) * log(1 - p)
     y = -1 * sum(tlog_p) / N
     return y
+
+
+class CategoricalCrossEntropy(Function):
+    def forward(self, x, t):
+        batch_size = t.shape[0]
+        out = -np.sum(t * np.log(x + 1e-7)) / batch_size
+        return out
+
+    def backward(self, dout=1):
+        x, t = self.inputs
+        return -(t / x)
+
+
+def categorical_cross_entropy(y, t):
+    return CategoricalCrossEntropy()(y, t)
 
 
 # =============================================================================
@@ -661,15 +647,14 @@ class Clip(Function):
 def clip(x, x_min, x_max):
     return Clip(x_min, x_max)(x)
 
+
 # =============================================================================
 # conv2d / col2im / im2col / basic_math
 # =============================================================================
 from INN.functions_conv import conv2d
 from INN.functions_conv import deconv2d
-from INN.functions_conv import conv2d_simple
 from INN.functions_conv import im2col
 from INN.functions_conv import col2im
-from INN.functions_conv import pooling_simple
 from INN.functions_conv import pooling
 from INN.functions_conv import average_pooling
 from INN.core import add

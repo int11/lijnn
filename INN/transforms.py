@@ -1,9 +1,11 @@
 import numpy as np
+
 try:
     import Image
 except ImportError:
     from PIL import Image
 from INN.utils import pair
+import cv2 as cv
 
 
 class Compose:
@@ -12,47 +14,40 @@ class Compose:
     Args:
         transforms (list): list of transforms
     """
-    def __init__(self, transforms=[]):
+
+    def __init__(self, transforms=None):
+        if transforms is None:
+            transforms = []
         self.transforms = transforms
 
-    def __call__(self, img):
+    def __call__(self, data):
         if not self.transforms:
-            return img
+            return data
         for t in self.transforms:
-            img = t(img)
-        return img
+            data = t(data)
+        return data
 
 
 # =============================================================================
 # Transforms for PIL Image
 # =============================================================================
-class Convert:
-    def __init__(self, mode='RGB'):
+class cvtColor:
+    def __init__(self, mode=cv.COLOR_BGR2RGB):
         self.mode = mode
 
     def __call__(self, img):
-        if self.mode == 'BGR':
-            img = img.convert('RGB')
-            r, g, b = img.split()
-            img = Image.merge('RGB', (b, g, r))
-            return img
-        else:
-            return img.convert(self.mode)
+        return cv.cvtColor(img, self.mode)
 
 
 class Resize:
-    """Resize the input PIL image to the given size.
-
-    Args:
-        size (int or (int, int)): Desired output size
-        mode (int): Desired interpolation.
-    """
-    def __init__(self, size, mode=Image.BILINEAR):
+    def __init__(self, size):
         self.size = pair(size)
-        self.mode = mode
 
     def __call__(self, img):
-        return img.resize(self.size, self.mode)
+        if img.shape[2] == 1:
+            img = cv.resize(img, self.size)
+            return img.reshape(self.size + (1,))
+        return cv.resize(img, self.size)
 
 
 class CenterCrop:
@@ -62,6 +57,7 @@ class CenterCrop:
         size (int or (int, int)): Desired output size.
         mode (int): Desired interpolation.
     """
+
     def __init__(self, size):
         self.size = pair(size)
 
@@ -76,27 +72,16 @@ class CenterCrop:
 
 
 class ToArray:
-    """Convert PIL Image to NumPy array."""
     def __init__(self, dtype=np.float32):
         self.dtype = dtype
 
-    def __call__(self, img):
-        if isinstance(img, np.ndarray):
-            return img
-        if isinstance(img, Image.Image):
-            img = np.asarray(img)
-            img = img.transpose(2, 0, 1)
-            img = img.astype(self.dtype)
-            return img
-        else:
-            raise TypeError
-
-
-class ToPIL:
-    """Convert NumPy array to PIL Image."""
     def __call__(self, array):
-        data = array.transpose(1, 2, 0)
-        return Image.fromarray(data)
+        return array.transpose(2, 0, 1)
+
+
+class ToOpencv:
+    def __call__(self, array):
+        return array.transpose(1, 2, 0)
 
 
 class RandomHorizontalFlip:
@@ -114,6 +99,7 @@ class Normalize:
          each channel.
         std (float or sequence):
     """
+
     def __init__(self, mean=0, std=1):
         self.mean = mean
         self.std = std
@@ -133,8 +119,6 @@ class Normalize:
 
 
 class Flatten:
-    """Flatten a NumPy array.
-    """
     def __call__(self, array):
         return array.flatten()
 
@@ -152,4 +136,4 @@ ToFloat = AsType
 
 class ToInt(AsType):
     def __init__(self, dtype=np.int):
-        self.dtype = dtype
+        super().__init__(dtype)

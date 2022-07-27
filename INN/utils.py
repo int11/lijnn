@@ -95,8 +95,8 @@ def plot_dot_graph(output, verbose=True, to_file='graph.png'):
     subprocess.run(cmd, shell=True)
 
     # =============================================================================
-# Utility functions for numpy (numpy magic)
-# =============================================================================
+    # Utility functions for numpy (numpy magic)
+    # =============================================================================
 def sum_to(x, shape):
     """Sum elements along axes to output an array of a given shape.
 
@@ -312,16 +312,6 @@ def array_allclose(a, b, rtol=1e-4, atol=1e-5):
 # =============================================================================
 # download function
 # =============================================================================
-def show_progress(block_num, block_size, total_size):
-    bar_template = "\r[{}] {:.2f}%"
-
-    downloaded = block_num * block_size
-    p = downloaded / total_size * 100
-    i = int(downloaded / total_size * 30)
-    if p >= 100.0: p = 100.0
-    if i >= 30: i = 30
-    bar = "#" * i + "." * (30 - i)
-    print(bar_template.format(bar, p), end='')
 
 
 cache_dir = os.path.join(os.path.expanduser('~'), '.INN')
@@ -351,6 +341,18 @@ def get_file(url, file_name=None):
         return file_path
 
     print("Downloading: " + file_name)
+
+    def show_progress(block_num, block_size, total_size):
+        bar_template = "\r[{}] {:.2f}%"
+
+        downloaded = block_num * block_size
+        p = downloaded / total_size * 100
+        i = int(downloaded / total_size * 30)
+        if p >= 100.0: p = 100.0
+        if i >= 30: i = 30
+        bar = "#" * i + "." * (30 - i)
+        print(bar_template.format(bar, p), end='')
+
     try:
         urllib.request.urlretrieve(url, file_path, show_progress)
     except (Exception, KeyboardInterrupt) as e:

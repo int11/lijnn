@@ -142,7 +142,7 @@ class Conv2DGradW(Function):
 # =============================================================================
 #  pooling(max-pooling) / average_pooling
 # =============================================================================
-class Pooling(Function):
+class MaxPooling(Function):
     def __init__(self, kernel_size, stride=1, pad=0):
         super().__init__()
         self.kernel_size = kernel_size
@@ -234,8 +234,8 @@ class Pooling2DWithIndexes(Function):
         return col.reshape(N, C, OH, OW)
 
 
-def pooling(x, kernel_size, stride=1, pad=0):
-    return Pooling(kernel_size, stride, pad)(x)
+def maxpooling(x, kernel_size, stride=1, pad=0):
+    return MaxPooling(kernel_size, stride, pad)(x)
 
 
 class AveragePooling(Function):

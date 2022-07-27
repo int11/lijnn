@@ -13,7 +13,7 @@ optimizer = INN.optimizers.Adam().setup(model)
 
 for i in range(epoch):
     sum_loss, sum_acc = 0, 0
-    sum_loss1, sum_acc1 = 0, 0
+
     for x, t in train_loader:
         y = model(x)
         loss = INN.functions.softmax_cross_entropy(y, t)
@@ -25,7 +25,7 @@ for i in range(epoch):
         sum_acc += acc
     print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
     sum_loss, sum_acc = 0, 0
-    sum_loss1, sum_acc1 = 0, 0
+
     with INN.no_grad():
         for x, t in test_loader:
             y = model(x)

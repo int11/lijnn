@@ -9,14 +9,14 @@ from INN.transforms import Compose, Flatten, ToFloat, Normalize
 
 
 class Dataset:
-    def __init__(self, train=True, transform=None, target_transform=None):
+    def __init__(self, train=True, x_transform=None, t_transform=None):
         self.train = train
-        self.transform = transform
-        self.target_transform = target_transform
-        if self.transform is None:
-            self.transform = lambda x: x
-        if self.target_transform is None:
-            self.target_transform = lambda x: x
+        self.x_transform = x_transform
+        self.t_transform = t_transform
+        if self.x_transform is None:
+            self.x_transform = lambda x: x
+        if self.t_transform is None:
+            self.t_transform = lambda x: x
 
         self.data = None
         self.label = None
@@ -25,10 +25,10 @@ class Dataset:
     def __getitem__(self, index):
         assert np.isscalar(index)
         if self.label is None:
-            return self.transform(self.data[index]), None
+            return self.x_transform(self.data[index]), None
         else:
-            return self.transform(self.data[index]),\
-                   self.target_transform(self.label[index])
+            return self.x_transform(self.data[index]), \
+                   self.t_transform(self.label[index])
 
     def __len__(self):
         return len(self.data)
@@ -76,10 +76,10 @@ class Spiral(Dataset):
 class MNIST(Dataset):
 
     def __init__(self, train=True,
-                 transform=Compose([Flatten(), ToFloat(),
-                                     Normalize(0., 255.)]),
-                 target_transform=None):
-        super().__init__(train, transform, target_transform)
+                 x_transform=Compose([Flatten(), ToFloat(),
+                                      Normalize(0., 255.)]),
+                 t_transform=None):
+        super().__init__(train, x_transform, t_transform)
 
     def prepare(self):
         url = 'http://yann.lecun.com/exdb/mnist/'
@@ -95,16 +95,16 @@ class MNIST(Dataset):
         self.data = self._load_data(data_path)
         self.label = self._load_label(label_path)
 
-    def _load_label(self, filepath):
-        with gzip.open(filepath, 'rb') as f:
-            labels = np.frombuffer(f.read(), np.uint8, offset=8)
-        return labels
-
     def _load_data(self, filepath):
         with gzip.open(filepath, 'rb') as f:
             data = np.frombuffer(f.read(), np.uint8, offset=16)
         data = data.reshape(-1, 1, 28, 28)
         return data
+
+    def _load_label(self, filepath):
+        with gzip.open(filepath, 'rb') as f:
+            labels = np.frombuffer(f.read(), np.uint8, offset=8)
+        return labels
 
     def show(self, row=10, col=10):
         H, W = 28, 28
@@ -125,12 +125,12 @@ class MNIST(Dataset):
 class CIFAR10(Dataset):
 
     def __init__(self, train=True,
-                 transform=Compose([ToFloat(), Normalize(mean=0.5, std=0.5)]),
-                 target_transform=None):
-        super().__init__(train, transform, target_transform)
+                 x_transform=Compose([ToFloat(), Normalize(mean=0.5, std=0.5)]),
+                 t_transform=None):
+        super().__init__(train, x_transform, t_transform)
 
     def prepare(self):
-        url='https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
+        url = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
         self.data, self.label = load_cache_npz(url, self.train)
         if self.data is not None:
             return
@@ -149,12 +149,12 @@ class CIFAR10(Dataset):
         self.data = self.data.reshape(-1, 3, 32, 32)
         save_cache_npz(self.data, self.label, url, self.train)
 
-
     def _load_data(self, filename, idx, data_type='train'):
         assert data_type in ['train', 'test']
         with tarfile.open(filename, 'r:gz') as file:
             for item in file.getmembers():
-                if ('data_batch_{}'.format(idx) in item.name and data_type == 'train') or ('test_batch' in item.name and data_type == 'test'):
+                if ('data_batch_{}'.format(idx) in item.name and data_type == 'train') or (
+                        'test_batch' in item.name and data_type == 'test'):
                     data_dict = pickle.load(file.extractfile(item), encoding='bytes')
                     data = data_dict[b'data']
                     return data
@@ -163,34 +163,37 @@ class CIFAR10(Dataset):
         assert data_type in ['train', 'test']
         with tarfile.open(filename, 'r:gz') as file:
             for item in file.getmembers():
-                if ('data_batch_{}'.format(idx) in item.name and data_type == 'train') or ('test_batch' in item.name and data_type == 'test'):
+                if ('data_batch_{}'.format(idx) in item.name and data_type == 'train') or (
+                        'test_batch' in item.name and data_type == 'test'):
                     data_dict = pickle.load(file.extractfile(item), encoding='bytes')
                     return np.array(data_dict[b'labels'])
 
     def show(self, row=10, col=10):
         H, W = 32, 32
-        img = np.zeros((H*row, W*col, 3))
+        img = np.zeros((H * row, W * col, 3))
         for r in range(row):
             for c in range(col):
-                img[r*H:(r+1)*H, c*W:(c+1)*W] = self.data[np.random.randint(0, len(self.data)-1)].reshape(3,H,W).transpose(1,2,0)/255
+                img[r * H:(r + 1) * H, c * W:(c + 1) * W] = self.data[np.random.randint(0, len(self.data) - 1)].reshape(
+                    3, H, W).transpose(1, 2, 0) / 255
         plt.imshow(img, interpolation='nearest')
         plt.axis('off')
         plt.show()
 
     @staticmethod
     def labels():
-        return {0: 'ariplane', 1: 'automobile', 2: 'bird', 3: 'cat', 4: 'deer', 5: 'dog', 6: 'frog', 7: 'horse', 8: 'ship', 9: 'truck'}
+        return {0: 'ariplane', 1: 'automobile', 2: 'bird', 3: 'cat', 4: 'deer', 5: 'dog', 6: 'frog', 7: 'horse',
+                8: 'ship', 9: 'truck'}
 
 
 class CIFAR100(CIFAR10):
 
     def __init__(self, train=True,
-                 transform=Compose([ToFloat(), Normalize(mean=0.5, std=0.5)]),
-                 target_transform=None,
+                 x_transform=Compose([ToFloat(), Normalize(mean=0.5, std=0.5)]),
+                 t_transform=None,
                  label_type='fine'):
         assert label_type in ['fine', 'coarse']
         self.label_type = label_type
-        super().__init__(train, transform, target_transform)
+        super().__init__(train, x_transform, t_transform)
 
     def prepare(self):
         url = 'https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz'
@@ -229,12 +232,14 @@ class CIFAR100(CIFAR10):
 
     @staticmethod
     def labels(label_type='fine'):
-        coarse_labels = dict(enumerate(['aquatic mammals','fish','flowers','food containers','fruit and vegetables','household electrical device','household furniture','insects','large carnivores','large man-made outdoor things','large natural outdoor scenes','large omnivores and herbivores','medium-sized mammals','non-insect invertebrates','people','reptiles','small mammals','trees','vehicles 1','vehicles 2']))
+        coarse_labels = dict(enumerate(['aquatic mammals', 'fish', 'flowers', 'food containers', 'fruit and vegetables',
+                                        'household electrical device', 'household furniture', 'insects',
+                                        'large carnivores', 'large man-made outdoor things',
+                                        'large natural outdoor scenes', 'large omnivores and herbivores',
+                                        'medium-sized mammals', 'non-insect invertebrates', 'people', 'reptiles',
+                                        'small mammals', 'trees', 'vehicles 1', 'vehicles 2']))
         fine_labels = []
         return fine_labels if label_type == 'fine' else coarse_labels
-
-
-
 
 
 # =============================================================================
@@ -312,6 +317,7 @@ def load_cache_npz(filename, train=False):
 
     loaded = np.load(filepath)
     return loaded['data'], loaded['label']
+
 
 def save_cache_npz(data, label, filename, train=False):
     filename = filename[filename.rfind('/') + 1:]

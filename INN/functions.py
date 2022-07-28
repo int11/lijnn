@@ -655,8 +655,9 @@ from INN.functions_conv import conv2d
 from INN.functions_conv import deconv2d
 from INN.functions_conv import im2col
 from INN.functions_conv import col2im
-from INN.functions_conv import maxpooling
+from INN.functions_conv import max_pooling
 from INN.functions_conv import average_pooling
+from INN.functions_conv import local_response_normalization
 from INN.core import add
 from INN.core import sub
 from INN.core import rsub

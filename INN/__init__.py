@@ -11,11 +11,11 @@ from INN.core import Config
 from INN.layers import Layer
 from INN.models import Model
 from INN.datasets import Dataset
-from INN.dataloaders import DataLoader
-from INN.dataloaders import SeqDataLoader
+from INN.iterators import iterator
+from INN.iterators import SeqIterator
 
 import INN.datasets
-import INN.dataloaders
+import INN.iterators
 import INN.optimizers
 import INN.functions
 import INN.functions_conv

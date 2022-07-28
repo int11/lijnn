@@ -29,11 +29,10 @@ def no_grad():
 def test_mode():
     return using_config('train', False)
 
-# =============================================================================
-# Variable / Function
-# =============================================================================
+
 try:
     import cupy
+
     array_types = (np.ndarray, cupy.ndarray)
 except ImportError:
     array_types = (np.ndarray)

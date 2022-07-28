@@ -5,8 +5,8 @@ epoch = 10
 trainset = INN.datasets.MNIST(train=True)
 testset = INN.datasets.MNIST(train=False)
 
-train_loader = INN.dataloaders.DataLoader(trainset, batch_size, shuffle=True)
-test_loader = INN.dataloaders.DataLoader(testset, batch_size, shuffle=False)
+train_loader = INN.iterators.iterator(trainset, batch_size, shuffle=True)
+test_loader = INN.iterators.iterator(testset, batch_size, shuffle=False)
 
 model = INN.models.MLP((1000, 1000, 10), activation=INN.functions.relu)
 optimizer = INN.optimizers.Adam().setup(model)

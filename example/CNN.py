@@ -13,6 +13,8 @@ def main_LeNet_5():
         input (32,32)
         real predict shape (28,28)
         it same current 4 padding algorithm
+        use Tanh activation function
+        use average Pooling
         """
 
         def __init__(self):
@@ -75,13 +77,17 @@ def main_LeNet_5():
 
 class AlaxNet(Model):
     """
-    first use Relu function
+    use Relu activation function - Shoter Training Time
+    use Max Pooling
+    GPU use
     """
 
     def __init__(self):
         super().__init__()
         self.conv1 = L.Conv2d(96, kernel_size=11, stride=4, pad=0)
+        self.batchnorm1 = L.BatchNorm()
         self.conv2 = L.Conv2d(256, kernel_size=5, stride=1, pad=2)
+        self.batchnorm2 = L.BatchNorm()
         self.conv3 = L.Conv2d(384, kernel_size=3, stride=1, pad=1)
         self.conv4 = L.Conv2d(384, kernel_size=3, stride=1, pad=1)
         self.conv5 = L.Conv2d(256, kernel_size=3, stride=1, pad=1)
@@ -91,14 +97,20 @@ class AlaxNet(Model):
 
     def forward(self, x):
         x = F.relu(self.conv1(x))
+        x = self.batchnorm1(x)
         x = F.maxpooling(x, kernel_size=3, stride=2)
-        x = F.batch_nrom(x)
         x = F.relu(self.conv2(x))
+        x = self.batchnorm2(x)
         x = F.maxpooling(x, kernel_size=3, stride=2)
-        x = F.batch_nrom(x)
+
         x = self.conv5(self.conv4(self.conv3(x)))
         x = F.maxpooling(x, kernel_size=3, stride=2)
 
         x = F.reshape(x, (x.shape[0], -1))
-        x = self.fc8(self.fc7(self.fc6(x)))
+
+        x = F.relu(self.fc6(x))
+        x = F.dropout(0.5)
+        x = F.relu(self.fc7(x))
+        x = F.dropout(0.5)
+        x = F.relu(self.fc8(x))
         return x

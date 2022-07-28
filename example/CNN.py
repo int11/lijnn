@@ -8,6 +8,7 @@ import numpy as np
 
 class LeNet_5(Model):
     """
+    1998, LeCun
     frist typical CNN model
     input (32,32)
     real predict shape (28,28)
@@ -39,6 +40,7 @@ class LeNet_5(Model):
 
 class AlexNet(Model):
     """
+    2012, Alex Krizhevsky
     use Relu activation function - Shoter Training Time
     use Max Pooling
     GPU use
@@ -59,12 +61,13 @@ class AlexNet(Model):
 
     def forward(self, x):
         x = F.relu(self.conv1(x))
-        # x = F.local_response_normalization(x,3,stride=2)
-        x = self.batchnorm1(x)
+        x = F.local_response_normalization(x)
+        # x = self.batchnorm1(x)
         x = F.max_pooling(x, kernel_size=3, stride=2)
+
         x = F.relu(self.conv2(x))
-        # x = F.local_response_normalization(x,3,stride=2)
-        x = self.batchnorm2(x)
+        x = F.local_response_normalization(x)
+        # x = self.batchnorm2(x)
         x = F.max_pooling(x, kernel_size=3, stride=2)
 
         x = F.relu(self.conv3(x))
@@ -85,9 +88,8 @@ def main():
     epoch = 10
     transfrom = transforms.Compose(
         [transforms.ToOpencv(), transforms.Resize((227, 227)), transforms.ToArray(), transforms.ToFloat()])
-    trainset = INN.datasets.MNIST(train=True, x_transform=transfrom)
-    testset = INN.datasets.MNIST(train=False, x_transform=transfrom)
-
+    trainset = INN.datasets.CIFAR10(train=True, x_transform=transfrom)
+    testset = INN.datasets.CIFAR10(train=False, x_transform=transfrom)
     train_loader = INN.iterators.iterator(trainset, batch_size, shuffle=True)
     test_loader = INN.iterators.iterator(testset, batch_size, shuffle=False)
 
@@ -106,7 +108,7 @@ def main():
             optimizer.update()
             sum_loss += loss.data
             sum_acc += acc.data
-            print(loss,acc)
+            print(loss, acc)
         print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
         sum_loss, sum_acc = 0, 0
 
@@ -121,4 +123,5 @@ def main():
         print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')
 
 
-main()
+if __name__ == '__main__':
+    main()

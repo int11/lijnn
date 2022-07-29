@@ -172,5 +172,4 @@ def main_AlexNet():
                 acc = INN.functions.accuracy(y, t)
                 sum_loss += loss.data
                 sum_acc += acc.data
-                print(loss, acc)
         print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')

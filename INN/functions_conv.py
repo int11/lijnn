@@ -531,13 +531,9 @@ class LocalResponseNormalization(Function):
             half_n = self.n // 2
             x2 = np.square(x)
             sum_part = x2.copy()
-            print(1,sum_part)
             for i in range(1, half_n + 1):
                 sum_part[:, i:] += x2[:, :-i]
-                print(2,sum_part)
                 sum_part[:, :-i] += x2[:, i:]
-                print(3,sum_part)
-            print(4,sum_part)
             self.unit_scale = self.k + self.alpha * sum_part
             self.scale = self.unit_scale ** -self.beta
             y = x * self.scale

@@ -81,7 +81,7 @@ def get_dot_graph(output, verbose=True):
 def plot_dot_graph(output, verbose=True, to_file='graph.png'):
     dot_graph = get_dot_graph(output, verbose)
 
-    tmp_dir = '.INN'
+    tmp_dir = 'INN'
 
     if not os.path.exists(tmp_dir):
         os.mkdir(tmp_dir)
@@ -314,13 +314,13 @@ def array_allclose(a, b, rtol=1e-4, atol=1e-5):
 # =============================================================================
 
 
-cache_dir = os.path.join(os.path.expanduser('~'), '.INN')
+cache_dir = os.path.join(os.path.expanduser('~'), 'INN')
 
 
 def get_file(url, file_name=None):
     """Download a file from the `url` if it is not in the cache.
 
-    The file at the `url` is downloaded to the `~/.INN`.
+    The file at the `url` is downloaded to the `~/INN`.
 
     Args:
         url (str): URL of the file.

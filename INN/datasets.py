@@ -5,7 +5,7 @@ import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 from INN.utils import get_file, cache_dir
-from INN.transforms import Compose, Flatten, ToFloat, Normalize
+from INN.transforms import *
 
 
 class Dataset:
@@ -32,6 +32,10 @@ class Dataset:
 
     def __len__(self):
         return len(self.data)
+
+    @property
+    def shape(self):
+        return self.data.shape, self.label.shape
 
     def prepare(self):
         pass
@@ -76,8 +80,8 @@ class Spiral(Dataset):
 class MNIST(Dataset):
 
     def __init__(self, train=True,
-                 x_transform=Compose([Flatten(), ToFloat(),
-                                      Normalize(0., 255.)]),
+                 x_transform=compose([flatten(), toFloat(),
+                                      z_Score_Normalize(0., 255.)]),
                  t_transform=None):
         super().__init__(train, x_transform, t_transform)
 
@@ -125,7 +129,7 @@ class MNIST(Dataset):
 class CIFAR10(Dataset):
 
     def __init__(self, train=True,
-                 x_transform=Compose([ToFloat(), Normalize(mean=0.5, std=0.5)]),
+                 x_transform=compose([toFloat(), z_Score_Normalize(mean=0.5, std=0.5)]),
                  t_transform=None):
         super().__init__(train, x_transform, t_transform)
 
@@ -188,7 +192,7 @@ class CIFAR10(Dataset):
 class CIFAR100(CIFAR10):
 
     def __init__(self, train=True,
-                 x_transform=Compose([ToFloat(), Normalize(mean=0.5, std=0.5)]),
+                 x_transform=compose([toFloat(), z_Score_Normalize(mean=0.5, std=0.5)]),
                  t_transform=None,
                  label_type='fine'):
         assert label_type in ['fine', 'coarse']

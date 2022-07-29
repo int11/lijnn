@@ -83,18 +83,23 @@ class AlexNet(Model):
         return x
 
 
-def main():
+def main_LeNet():
     batch_size = 100
     epoch = 10
-    transfrom = transforms.Compose(
-        [transforms.ToOpencv(), transforms.Resize((227, 227)), transforms.ToArray(), transforms.ToFloat()])
-    trainset = INN.datasets.CIFAR10(train=True, x_transform=transfrom)
-    testset = INN.datasets.CIFAR10(train=False, x_transform=transfrom)
+    transfrom = transforms.compose(
+        [transforms.toOpencv(), transforms.resize((32, 32)), transforms.toArray(), transforms.toFloat()])
+    trainset = INN.datasets.MNIST(train=True, x_transform=transfrom)
+    testset = INN.datasets.MNIST(train=False, x_transform=transfrom)
+
     train_loader = INN.iterators.iterator(trainset, batch_size, shuffle=True)
     test_loader = INN.iterators.iterator(testset, batch_size, shuffle=False)
 
-    model = AlexNet()
+    model = LeNet_5()
     optimizer = INN.optimizers.Adam().setup(model)
+
+    if INN.cuda.gpu_enable:
+        train_loader.to_gpu()
+        model.to_gpu()
 
     for i in range(epoch):
         sum_loss, sum_acc = 0, 0
@@ -108,7 +113,52 @@ def main():
             optimizer.update()
             sum_loss += loss.data
             sum_acc += acc.data
-            print(loss, acc)
+        print(f"epoch {epoch + 1}")
+        print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
+        sum_loss, sum_acc = 0, 0
+
+        with INN.no_grad():
+            for x, t in test_loader:
+                y = model(x)
+                loss = INN.functions.softmax_cross_entropy(y, t)
+                acc = INN.functions.accuracy(y, t)
+                sum_loss += loss.data
+                sum_acc += acc.data
+        print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')
+
+
+def main_AlexNet():
+    batch_size = 100
+    epoch = 10
+    transfrom = transforms.compose(
+        [transforms.toOpencv(), transforms.resize(227), transforms.toArray(), transforms.toFloat(),
+         transforms.z_Score_Normalize(0.5, 0.5)])
+    trainset = INN.datasets.CIFAR10(train=True, x_transform=transfrom)
+    testset = INN.datasets.CIFAR10(train=False, x_transform=transfrom)
+    train_loader = INN.iterators.iterator(trainset, batch_size, shuffle=True)
+    test_loader = INN.iterators.iterator(testset, batch_size, shuffle=False)
+
+    model = AlexNet()
+    optimizer = INN.optimizers.Adam().setup(model)
+
+    if INN.cuda.gpu_enable:
+        train_loader.to_gpu()
+        model.to_gpu()
+
+    for i in range(epoch):
+        sum_loss, sum_acc = 0, 0
+
+        for x, t in train_loader:
+            y = model(x)
+            loss = INN.functions.softmax_cross_entropy(y, t)
+            acc = INN.functions.accuracy(y, t)
+            model.cleargrads()
+            loss.backward()
+            optimizer.update()
+            sum_loss += loss.data
+            sum_acc += acc.data
+            print(f"loss : {loss.data} accuracy {acc.data}")
+        print(f"epoch {epoch + 1}")
         print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
         sum_loss, sum_acc = 0, 0
 
@@ -121,7 +171,3 @@ def main():
                 sum_acc += acc.data
                 print(loss, acc)
         print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')
-
-
-if __name__ == '__main__':
-    main()

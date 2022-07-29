@@ -8,7 +8,7 @@ from INN.utils import pair
 import cv2 as cv
 
 
-class Compose:
+class compose:
     """Compose several transforms.
 
     Args:
@@ -39,7 +39,7 @@ class cvtColor:
         return cv.cvtColor(img, self.mode)
 
 
-class Resize:
+class resize:
     def __init__(self, size):
         self.size = pair(size)
 
@@ -50,7 +50,7 @@ class Resize:
         return cv.resize(img, self.size)
 
 
-class CenterCrop:
+class centerCrop:
     """Resize the input PIL image to the given size.
 
     Args:
@@ -71,7 +71,7 @@ class CenterCrop:
         return img.crop((left, up, right, bottom))
 
 
-class ToArray:
+class toArray:
     def __init__(self, dtype=np.float32):
         self.dtype = dtype
 
@@ -79,19 +79,19 @@ class ToArray:
         return array.transpose(2, 0, 1)
 
 
-class ToOpencv:
+class toOpencv:
     def __call__(self, array):
         return array.transpose(1, 2, 0)
 
 
-class RandomHorizontalFlip:
+class randomHorizontalFlip:
     pass
 
 
 # =============================================================================
 # Transforms for NumPy ndarray
 # =============================================================================
-class Normalize:
+class z_Score_Normalize:
     """Normalize a NumPy array with mean and standard deviation.
 
     Args:
@@ -118,12 +118,12 @@ class Normalize:
         return (array - mean) / std
 
 
-class Flatten:
+class flatten:
     def __call__(self, array):
         return array.flatten()
 
 
-class AsType:
+class asType:
     def __init__(self, dtype=np.float32):
         self.dtype = dtype
 
@@ -131,9 +131,9 @@ class AsType:
         return array.astype(self.dtype)
 
 
-ToFloat = AsType
+toFloat = asType
 
 
-class ToInt(AsType):
+class toInt(asType):
     def __init__(self, dtype=np.int):
         super().__init__(dtype)

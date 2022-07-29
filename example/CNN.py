@@ -82,6 +82,49 @@ class AlexNet(Model):
         x = self.fc8(x)
         return x
 
+class ZFNet(Model):
+    """
+    2013, Zeiler and Fergus
+    AlexNet -> ZFNet
+    CONV1 : (11, 11) Kernel size, 4 strid -> (7, 7) Kernel size, 2 strid
+    CONV3,4,5 : 384, 384, 256  out channels -> 512, 1024, 512 out channels
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.conv1 = L.Conv2d(96, kernel_size=7, stride=2, pad=0)
+        self.batchnorm1 = L.BatchNorm()
+        self.conv2 = L.Conv2d(256, kernel_size=5, stride=1, pad=2)
+        self.batchnorm2 = L.BatchNorm()
+        self.conv3 = L.Conv2d(512, kernel_size=3, stride=1, pad=1)
+        self.conv4 = L.Conv2d(1024, kernel_size=3, stride=1, pad=1)
+        self.conv5 = L.Conv2d(512, kernel_size=3, stride=1, pad=1)
+        self.fc6 = L.Linear(4096)
+        self.fc7 = L.Linear(4096)
+        self.fc8 = L.Linear(10)
+
+    def forward(self, x):
+        x = F.relu(self.conv1(x))
+        x = F.local_response_normalization(x)
+        # x = self.batchnorm1(x)
+        x = F.max_pooling(x, kernel_size=3, stride=2)
+
+        x = F.relu(self.conv2(x))
+        x = F.local_response_normalization(x)
+        # x = self.batchnorm2(x)
+        x = F.max_pooling(x, kernel_size=3, stride=2)
+
+        x = F.relu(self.conv3(x))
+        x = F.relu(self.conv4(x))
+        x = F.relu(self.conv5(x))
+
+        x = F.max_pooling(x, kernel_size=3, stride=2)
+
+        x = F.reshape(x, (x.shape[0], -1))
+        x = F.dropout(F.relu(self.fc6(x)))
+        x = F.dropout(F.relu(self.fc7(x)))
+        x = self.fc8(x)
+        return x
 
 def main_LeNet():
     batch_size = 100

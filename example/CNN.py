@@ -141,7 +141,7 @@ def main_AlexNet():
     test_loader = INN.iterators.iterator(testset, batch_size, shuffle=False)
 
     model = AlexNet()
-    optimizer = INN.optimizers.Adam().setup(model)
+    optimizer = INN.optimizers.Adam(alpha=0.0001).setup(model)
 
     if INN.cuda.gpu_enable:
         model.to_gpu()

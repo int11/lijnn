@@ -524,29 +524,33 @@ class LocalResponseNormalization(Function):
         self.unit_scale = None
 
     def forward(self, x):
-        half_n = self.n // 2
-        x2 = np.square(x)
-        sum_part = x2.copy()
-        for i in range(1, half_n + 1):
-            sum_part[:, i:] += x2[:, :-i]
-            sum_part[:, :-i] += x2[:, i:]
-        self.unit_scale = self.k + self.alpha * sum_part
-        self.scale = self.unit_scale ** -self.beta
-        y = x * self.scale
+        xp = cuda.get_array_module(x)
+        if xp != np:
+            y = self.forward_gpu(x)
+        else:
+            half_n = self.n // 2
+            x2 = np.square(x)
+            sum_part = x2.copy()
+            for i in range(1, half_n + 1):
+                sum_part[:, i:] += x2[:, :-i]
+                sum_part[:, :-i] += x2[:, i:]
+            self.unit_scale = self.k + self.alpha * sum_part
+            self.scale = self.unit_scale ** -self.beta
+            y = x * self.scale
         return y
 
     def forward_gpu(self, x):
-        self.y = cuda.cupy.square(x)  # temporary
-        self.scale = cuda.cupy.empty_like(self.y)
-        _cu_conv_sum(self.scale, self.y, self.n)
+        y = cuda.cupy.square(x)  # temporary
+        self.scale = cuda.cupy.empty_like(y)
+        _cu_conv_sum(self.scale, y, self.n)
         cuda.cupy.elementwise(
             'T x, T k, T alpha, T beta',
             'T y, T scale',
             '''scale = k + alpha * scale;
                y = x * pow(scale, -beta);''',
             'lrn_fwd')(x, self.k, self.alpha, self.beta,
-                       self.y, self.scale)
-        return self.y
+                       y, self.scale)
+        return y
 
     def backward(self, gy):
         x = self.inputs[0]
@@ -569,18 +573,22 @@ class LocalResponseNormalizationGrad(Function):
         self.unit_scale = unit_scale
 
     def forward(self, x, y, gy):
-        half_n = self.n // 2
-        summand = y * gy / self.unit_scale
-        sum_part = summand.copy()
-        for i in range(1, half_n + 1):
-            sum_part[:, i:] += summand[:, :-i]
-            sum_part[:, :-i] += summand[:, i:]
+        xp = cuda.get_array_module(x)
+        if xp != np:
+            gx = self.forward_gpu(x, y, gy)
+        else:
 
-        gx = gy * self.scale - 2 * self.alpha * self.beta * x * sum_part
+            half_n = self.n // 2
+            summand = y * gy / self.unit_scale
+            sum_part = summand.copy()
+            for i in range(1, half_n + 1):
+                sum_part[:, i:] += summand[:, :-i]
+                sum_part[:, :-i] += summand[:, i:]
+
+            gx = gy * self.scale - 2 * self.alpha * self.beta * x * sum_part
         return gx
 
-    def forward_gpu(self, inputs):
-        x, y, gy = inputs
+    def forward_gpu(self, x, y, gy):
         summand = cuda.cupy.elementwise(
             'T scale, T y, T gy', 'T summand',
             'summand = y * gy / scale',

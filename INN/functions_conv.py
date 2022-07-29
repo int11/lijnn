@@ -599,7 +599,7 @@ class LocalResponseNormalizationGrad(Function):
             'lrn_bwd_summand')(self.scale, y, gy)
         gx = cuda.cupy.empty_like(x)
         _cu_conv_sum(gx, summand, self.n)
-        cuda.cupy.cuda.cupy.ElementwiseKernel(
+        cuda.cupy.ElementwiseKernel(
             ' T x, T gy, T scale, T beta, T coeff', 'T gx',
             'gx = pow(scale, -beta) * gy - coeff * x * gx',
             'lrn_bwd')(x, gy, self.scale,

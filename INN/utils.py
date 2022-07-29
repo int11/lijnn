@@ -360,6 +360,7 @@ def get_file(url, file_name=None):
             os.remove(file_path)
         raise
     print(" Done")
+    print(f"{file_path}")
 
     return file_path
 

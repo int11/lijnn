@@ -169,7 +169,7 @@ class Conv2d(Layer):
 
 class Deconv2d(Layer):
     def __init__(self, out_channels, kernel_size, stride=1,
-                 pad=0, nobias=False, dtype=np.float32, in_channels=None, weight_init=initializers.LuCun):
+                 pad=0, nobias=False, dtype=np.float32, in_channels=None, weight_init=initializers.He):
         """Two-dimensional deconvolutional (transposed convolution)layer.
 
         Args:

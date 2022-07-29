@@ -98,8 +98,9 @@ def main_LeNet():
     optimizer = INN.optimizers.Adam().setup(model)
 
     if INN.cuda.gpu_enable:
-        train_loader.to_gpu()
         model.to_gpu()
+        train_loader.to_gpu()
+        test_loader.to_gpu()
 
     for i in range(epoch):
         sum_loss, sum_acc = 0, 0
@@ -113,7 +114,8 @@ def main_LeNet():
             optimizer.update()
             sum_loss += loss.data
             sum_acc += acc.data
-        print(f"epoch {epoch + 1}")
+            print(loss.data)
+        print(f"epoch {i + 1}")
         print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
         sum_loss, sum_acc = 0, 0
 
@@ -142,8 +144,10 @@ def main_AlexNet():
     optimizer = INN.optimizers.Adam().setup(model)
 
     if INN.cuda.gpu_enable:
-        train_loader.to_gpu()
         model.to_gpu()
+        train_loader.to_gpu()
+        test_loader.to_gpu()
+
 
     for i in range(epoch):
         sum_loss, sum_acc = 0, 0
@@ -158,7 +162,7 @@ def main_AlexNet():
             sum_loss += loss.data
             sum_acc += acc.data
             print(f"loss : {loss.data} accuracy {acc.data}")
-        print(f"epoch {epoch + 1}")
+        print(f"epoch {i + 1}")
         print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
         sum_loss, sum_acc = 0, 0
 

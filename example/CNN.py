@@ -148,7 +148,6 @@ def main_AlexNet():
         train_loader.to_gpu()
         test_loader.to_gpu()
 
-
     for i in range(epoch):
         sum_loss, sum_acc = 0, 0
 

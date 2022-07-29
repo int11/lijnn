@@ -488,7 +488,7 @@ def _cu_conv_sum(y, x, n):
     # Convolutional sum
     # TODO(beam2d): Use scan computation
     rdim = x.size // (x.shape[0] * x.shape[1])
-    cuda.cupy.elementwise(
+    cuda.cupy.ElementwiseKernel(
         'raw T x, int32 rdim, int32 N, int32 n_', 'raw T y',
         '''
           int half_n = n_ / 2;
@@ -531,9 +531,13 @@ class LocalResponseNormalization(Function):
             half_n = self.n // 2
             x2 = np.square(x)
             sum_part = x2.copy()
+            print(1,sum_part)
             for i in range(1, half_n + 1):
                 sum_part[:, i:] += x2[:, :-i]
+                print(2,sum_part)
                 sum_part[:, :-i] += x2[:, i:]
+                print(3,sum_part)
+            print(4,sum_part)
             self.unit_scale = self.k + self.alpha * sum_part
             self.scale = self.unit_scale ** -self.beta
             y = x * self.scale
@@ -543,7 +547,7 @@ class LocalResponseNormalization(Function):
         y = cuda.cupy.square(x)  # temporary
         self.scale = cuda.cupy.empty_like(y)
         _cu_conv_sum(self.scale, y, self.n)
-        cuda.cupy.elementwise(
+        cuda.cupy.ElementwiseKernel(
             'T x, T k, T alpha, T beta',
             'T y, T scale',
             '''scale = k + alpha * scale;
@@ -589,13 +593,13 @@ class LocalResponseNormalizationGrad(Function):
         return gx
 
     def forward_gpu(self, x, y, gy):
-        summand = cuda.cupy.elementwise(
+        summand = cuda.cupy.ElementwiseKernel(
             'T scale, T y, T gy', 'T summand',
             'summand = y * gy / scale',
             'lrn_bwd_summand')(self.scale, y, gy)
         gx = cuda.cupy.empty_like(x)
         _cu_conv_sum(gx, summand, self.n)
-        cuda.cupy.elementwise(
+        cuda.cupy.cuda.cupy.ElementwiseKernel(
             ' T x, T gy, T scale, T beta, T coeff', 'T gx',
             'gx = pow(scale, -beta) * gy - coeff * x * gx',
             'lrn_bwd')(x, gy, self.scale,

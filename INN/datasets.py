@@ -81,7 +81,7 @@ class MNIST(Dataset):
 
     def __init__(self, train=True,
                  x_transform=compose([flatten(), toFloat(),
-                                      z_Score_Normalize(0., 255.)]),
+                                      z_score_Normalize(0., 255.)]),
                  t_transform=None):
         super().__init__(train, x_transform, t_transform)
 
@@ -117,9 +117,8 @@ class MNIST(Dataset):
             for c in range(col):
                 img[r * H:(r + 1) * H, c * W:(c + 1) * W] = self.data[
                     np.random.randint(0, len(self.data) - 1)].reshape(H, W)
-        plt.imshow(img, cmap='gray', interpolation='nearest')
-        plt.axis('off')
-        plt.show()
+        cv.imshow('asd',img)
+        cv.waitKey(0)
 
     @staticmethod
     def labels():
@@ -129,7 +128,7 @@ class MNIST(Dataset):
 class CIFAR10(Dataset):
 
     def __init__(self, train=True,
-                 x_transform=compose([toFloat(), z_Score_Normalize(mean=0.5, std=0.5)]),
+                 x_transform=compose([toFloat(), z_score_Normalize(mean=0.5, std=0.5)]),
                  t_transform=None):
         super().__init__(train, x_transform, t_transform)
 
@@ -177,11 +176,11 @@ class CIFAR10(Dataset):
         img = np.zeros((H * row, W * col, 3))
         for r in range(row):
             for c in range(col):
-                img[r * H:(r + 1) * H, c * W:(c + 1) * W] = self.data[np.random.randint(0, len(self.data) - 1)].reshape(
-                    3, H, W).transpose(1, 2, 0) / 255
-        plt.imshow(img, interpolation='nearest')
-        plt.axis('off')
-        plt.show()
+                img[r * H:(r + 1) * H, c * W:(c + 1) * W] = self.data[
+                    np.random.randint(0, len(self.data) - 1)].transpose(1, 2, 0)
+        img = img[:, :, ::-1].astype(np.uint8)
+        cv.imshow('asd', img)
+        cv.waitKey(0)
 
     @staticmethod
     def labels():
@@ -192,7 +191,7 @@ class CIFAR10(Dataset):
 class CIFAR100(CIFAR10):
 
     def __init__(self, train=True,
-                 x_transform=compose([toFloat(), z_Score_Normalize(mean=0.5, std=0.5)]),
+                 x_transform=compose([toFloat(), z_score_Normalize(mean=0.5, std=0.5)]),
                  t_transform=None,
                  label_type='fine'):
         assert label_type in ['fine', 'coarse']

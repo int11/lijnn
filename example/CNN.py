@@ -1,4 +1,4 @@
-from INN import Model, transforms
+from INN import *
 import INN
 from INN import layers as L
 from INN import functions as F
@@ -8,7 +8,11 @@ import numpy as np
 
 class LeNet_5(Model):
     """
-    1998, LeCun
+    http://yann.lecun.com/exdb/publis/pdf/lecun-01a.pdf
+    https://ieeexplore.ieee.org/abstract/document/726791
+    "Gradient-based learning applied to document recognition"
+    1998, Yann LeCun Léon Bottou Yoshua Bengio Patrick Haffner
+
     frist typical CNN model
     input (32,32)
     real predict shape (28,28)
@@ -40,13 +44,16 @@ class LeNet_5(Model):
 
 class AlexNet(Model):
     """
-    2012, Alex Krizhevsky
+    https://papers.nips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf
+    ImageNet Classification with Deep Convolutional Neural Networks
+    2012, Alex Krizhevsky, Ilya Sutskever, Geoffrey E. Hinton
+
     use Relu activation function - Shoter Training Time
-    use Max Pooling
+    use Max Pooling, Dropout, Local Response Normalization
     GPU use
     """
 
-    def __init__(self):
+    def __init__(self, output_channel=1000):
         super().__init__()
         self.conv1 = L.Conv2d(96, kernel_size=11, stride=4, pad=0)
         self.batchnorm1 = L.BatchNorm()
@@ -57,7 +64,7 @@ class AlexNet(Model):
         self.conv5 = L.Conv2d(256, kernel_size=3, stride=1, pad=1)
         self.fc6 = L.Linear(4096)
         self.fc7 = L.Linear(4096)
-        self.fc8 = L.Linear(10)
+        self.fc8 = L.Linear(output_channel)
 
     def forward(self, x):
         x = F.relu(self.conv1(x))
@@ -82,15 +89,19 @@ class AlexNet(Model):
         x = self.fc8(x)
         return x
 
+
 class ZFNet(Model):
     """
-    2013, Zeiler and Fergus
+    https://arxiv.org/abs/1311.2901
+    Visualizing and Understanding Convolutional Networks
+    2013, Matthew D Zeiler, Rob Fergus
+
     AlexNet -> ZFNet
     CONV1 : (11, 11) Kernel size, 4 strid -> (7, 7) Kernel size, 2 strid
     CONV3,4,5 : 384, 384, 256  out channels -> 512, 1024, 512 out channels
     """
 
-    def __init__(self):
+    def __init__(self, output_channel=1000):
         super().__init__()
         self.conv1 = L.Conv2d(96, kernel_size=7, stride=2, pad=0)
         self.batchnorm1 = L.BatchNorm()
@@ -101,7 +112,7 @@ class ZFNet(Model):
         self.conv5 = L.Conv2d(512, kernel_size=3, stride=1, pad=1)
         self.fc6 = L.Linear(4096)
         self.fc7 = L.Linear(4096)
-        self.fc8 = L.Linear(10)
+        self.fc8 = L.Linear(output_channel)
 
     def forward(self, x):
         x = F.relu(self.conv1(x))
@@ -126,11 +137,79 @@ class ZFNet(Model):
         x = self.fc8(x)
         return x
 
+
+class VGG16(Model):
+    """
+    https://arxiv.org/abs/1409.1556
+    Very Deep Convolutional Networks for Large-Scale Image Recognition
+    2014, Karen Simonyan, Andrew Zisserman
+    """
+    WEIGHTS_PATH = 'https://github.com/koki0702/dezero-models/releases/download/v0.1/vgg16.npz'
+
+    def __init__(self, pretrained=False, output_channel=1000):
+        super().__init__()
+        self.conv1_1 = L.Conv2d(64, kernel_size=3, stride=1, pad=1)
+        self.conv1_2 = L.Conv2d(64, kernel_size=3, stride=1, pad=1)
+        self.conv2_1 = L.Conv2d(128, kernel_size=3, stride=1, pad=1)
+        self.conv2_2 = L.Conv2d(128, kernel_size=3, stride=1, pad=1)
+        self.conv3_1 = L.Conv2d(256, kernel_size=3, stride=1, pad=1)
+        self.conv3_2 = L.Conv2d(256, kernel_size=3, stride=1, pad=1)
+        self.conv3_3 = L.Conv2d(256, kernel_size=3, stride=1, pad=1)
+        self.conv4_1 = L.Conv2d(512, kernel_size=3, stride=1, pad=1)
+        self.conv4_2 = L.Conv2d(512, kernel_size=3, stride=1, pad=1)
+        self.conv4_3 = L.Conv2d(512, kernel_size=3, stride=1, pad=1)
+        self.conv5_1 = L.Conv2d(512, kernel_size=3, stride=1, pad=1)
+        self.conv5_2 = L.Conv2d(512, kernel_size=3, stride=1, pad=1)
+        self.conv5_3 = L.Conv2d(512, kernel_size=3, stride=1, pad=1)
+        self.fc6 = L.Linear(4096)
+        self.fc7 = L.Linear(4096)
+        self.fc8 = L.Linear(output_channel)
+
+        if pretrained:
+            weights_path = utils.get_file(VGG16.WEIGHTS_PATH)
+            self.load_weights(weights_path)
+
+    def forward(self, x):
+        x = F.relu(self.conv1_1(x))
+        x = F.relu(self.conv1_2(x))
+        x = F.max_pooling(x, 2, 2)
+        x = F.relu(self.conv2_1(x))
+        x = F.relu(self.conv2_2(x))
+        x = F.max_pooling(x, 2, 2)
+        x = F.relu(self.conv3_1(x))
+        x = F.relu(self.conv3_2(x))
+        x = F.relu(self.conv3_3(x))
+        x = F.max_pooling(x, 2, 2)
+        x = F.relu(self.conv4_1(x))
+        x = F.relu(self.conv4_2(x))
+        x = F.relu(self.conv4_3(x))
+        x = F.max_pooling(x, 2, 2)
+        x = F.relu(self.conv5_1(x))
+        x = F.relu(self.conv5_2(x))
+        x = F.relu(self.conv5_3(x))
+        x = F.max_pooling(x, 2, 2)
+        x = F.reshape(x, (x.shape[0], -1))
+        x = F.dropout(F.relu(self.fc6(x)))
+        x = F.dropout(F.relu(self.fc7(x)))
+        x = self.fc8(x)
+        return x
+
+    @staticmethod
+    def preprocess(image, size=(224, 224), dtype=np.float32):
+        if size:
+            image = cv.resize(image, size)
+        image = image.astype(dtype)
+        image -= np.array([103.939, 116.779, 123.68])
+        image = image.transpose((2, 0, 1))
+        return image
+
+
 def main_LeNet():
     batch_size = 100
     epoch = 10
     transfrom = transforms.compose(
-        [transforms.toOpencv(), transforms.resize((32, 32)), transforms.toArray(), transforms.toFloat()])
+        [transforms.toOpencv(), transforms.resize((32, 32)), transforms.toArray(), transforms.toFloat(),
+         transforms.z_score_Normalize(0., 255.)])
     trainset = INN.datasets.MNIST(train=True, x_transform=transfrom)
     testset = INN.datasets.MNIST(train=False, x_transform=transfrom)
 
@@ -177,13 +256,59 @@ def main_AlexNet():
     epoch = 10
     transfrom = transforms.compose(
         [transforms.toOpencv(), transforms.resize(227), transforms.toArray(), transforms.toFloat(),
-         transforms.z_Score_Normalize(0.5, 0.5)])
+         transforms.z_score_Normalize(0.5, 0.5)])
     trainset = INN.datasets.CIFAR10(train=True, x_transform=transfrom)
     testset = INN.datasets.CIFAR10(train=False, x_transform=transfrom)
     train_loader = INN.iterators.iterator(trainset, batch_size, shuffle=True)
     test_loader = INN.iterators.iterator(testset, batch_size, shuffle=False)
 
     model = AlexNet()
+    optimizer = INN.optimizers.Adam(alpha=0.0001).setup(model)
+
+    if INN.cuda.gpu_enable:
+        model.to_gpu()
+        train_loader.to_gpu()
+        test_loader.to_gpu()
+
+    for i in range(epoch):
+        sum_loss, sum_acc = 0, 0
+
+        for x, t in train_loader:
+            y = model(x)
+            loss = INN.functions.softmax_cross_entropy(y, t)
+            acc = INN.functions.accuracy(y, t)
+            model.cleargrads()
+            loss.backward()
+            optimizer.update()
+            sum_loss += loss.data
+            sum_acc += acc.data
+            print(f"loss : {loss.data} accuracy {acc.data}")
+        print(f"epoch {i + 1}")
+        print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
+        sum_loss, sum_acc = 0, 0
+
+        with INN.no_grad():
+            for x, t in test_loader:
+                y = model(x)
+                loss = INN.functions.softmax_cross_entropy(y, t)
+                acc = INN.functions.accuracy(y, t)
+                sum_loss += loss.data
+                sum_acc += acc.data
+        print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')
+
+
+def main_VGG16():
+    batch_size = 100
+    epoch = 10
+    transfrom = transforms.compose(
+        [transforms.toOpencv(), transforms.resize(224), transforms.toArray(), transforms.toFloat(),
+         transforms.z_score_Normalize(0.5, 0.5)])
+    trainset = INN.datasets.CIFAR100(train=True, x_transform=transfrom)
+    testset = INN.datasets.CIFAR100(train=False, x_transform=transfrom)
+    train_loader = INN.iterators.iterator(trainset, batch_size, shuffle=True)
+    test_loader = INN.iterators.iterator(testset, batch_size, shuffle=False)
+
+    model = VGG16(output_channel=100)
     optimizer = INN.optimizers.Adam(alpha=0.0001).setup(model)
 
     if INN.cuda.gpu_enable:

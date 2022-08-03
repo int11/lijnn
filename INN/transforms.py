@@ -91,7 +91,7 @@ class randomHorizontalFlip:
 # =============================================================================
 # Transforms for NumPy ndarray
 # =============================================================================
-class z_Score_Normalize:
+class z_score_Normalize:
     """Normalize a NumPy array with mean and standard deviation.
 
     Args:

@@ -78,7 +78,10 @@ class Spiral(Dataset):
 # MNIST-like dataset: MNIST / CIFAR /
 # =============================================================================
 class MNIST(Dataset):
-
+    """
+    mean = 33.31842145
+    std = 78.56748998
+    """
     def __init__(self, train=True,
                  x_transform=compose([flatten(), toFloat(),
                                       z_score_Normalize(0., 255.)]),
@@ -117,7 +120,7 @@ class MNIST(Dataset):
             for c in range(col):
                 img[r * H:(r + 1) * H, c * W:(c + 1) * W] = self.data[
                     np.random.randint(0, len(self.data) - 1)].reshape(H, W)
-        cv.imshow('asd',img)
+        cv.imshow('asd', img)
         cv.waitKey(0)
 
     @staticmethod
@@ -126,7 +129,10 @@ class MNIST(Dataset):
 
 
 class CIFAR10(Dataset):
-
+    """
+    mean = 125.30691805 122.95039414 113.86538318
+    std = 62.99321928 62.08870764 66.70489964
+    """
     def __init__(self, train=True,
                  x_transform=compose([toFloat(), z_score_Normalize(mean=0.5, std=0.5)]),
                  t_transform=None):
@@ -189,7 +195,10 @@ class CIFAR10(Dataset):
 
 
 class CIFAR100(CIFAR10):
-
+    """
+    mean = 129.30416561 124.0699627  112.43405006
+    std = 68.1702429  65.39180804 70.41837019
+    """
     def __init__(self, train=True,
                  x_transform=compose([toFloat(), z_score_Normalize(mean=0.5, std=0.5)]),
                  t_transform=None,

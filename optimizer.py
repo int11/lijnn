@@ -75,7 +75,6 @@ class AdaDelta(weightopti):
 
 class Adam(weightopti):
     def __init__(self, lr, beta_1=0.9, beta_2=0.999):
-
         self.lr = lr
         self.beta_1 = beta_1
         self.beta_2 = beta_2
@@ -88,7 +87,7 @@ class Adam(weightopti):
 
     def update(self, x, grad):
         self.m[id(x)] = self.beta_1 * self.m[id(x)] + (1 - self.beta_1) * grad
-        self.mhat[id(x)] = self.m[id(x)] / (1 - self.beta_1 * self.beta_1)
+        self.mhat[id(x)] = self.m[id(x)] / (1. - self.beta_1 * self.beta_1)
         self.v[id(x)] = self.beta_2 * self.v[id(x)] + (1 - self.beta_2) * grad * grad
-        self.vhat[id(x)] = self.v[id(x)] / (1 - self.beta_2 * self.beta_2)
-        x -= self.lr * self.mhat[id(x)] / np.sqrt(self.vhat[id(x)] + 1e-7)
+        self.vhat[id(x)] = self.v[id(x)] / (1. - self.beta_2 * self.beta_2)
+        x -= self.lr * self.mhat[id(x)] / (np.sqrt(self.vhat[id(x)]) + 1e-7)

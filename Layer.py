@@ -138,7 +138,7 @@ class BatchNormalization(weightlayer):
     def forward(self, x):
         self.input_shape = x.shape
         if x.ndim != 2:
-            x.resize(x.shape[0], -1)
+            x.opencv_resize(x.shape[0], -1)
 
         mu = x.mean(axis=0)
         self.xc = x - mu
@@ -153,7 +153,7 @@ class BatchNormalization(weightlayer):
 
     def backward(self, dout):
         if dout.ndim != 2:
-            dout.resize(dout.shape[0], -1)
+            dout.opencv_resize(dout.shape[0], -1)
 
         self.grad['beta'] = dout.sum(axis=0)
         self.grad['gamma'] = np.sum(self.xn * dout, axis=0)

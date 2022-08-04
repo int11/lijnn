@@ -39,7 +39,7 @@ class cvtColor:
         return cv.cvtColor(img, self.mode)
 
 
-class resize:
+class opencv_resize:
     def __init__(self, size):
         self.size = pair(size)
 

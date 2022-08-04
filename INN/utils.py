@@ -6,6 +6,8 @@ from INN import as_variable
 from INN import Variable
 from INN import cuda
 
+cache_dir = os.path.join(os.path.expanduser('~'), '.INN')
+
 
 # =============================================================================
 # Visualize for computational graph
@@ -81,11 +83,9 @@ def get_dot_graph(output, verbose=True):
 def plot_dot_graph(output, verbose=True, to_file='graph.png'):
     dot_graph = get_dot_graph(output, verbose)
 
-    tmp_dir = 'INN'
-
-    if not os.path.exists(tmp_dir):
-        os.mkdir(tmp_dir)
-    graph_path = os.path.join(tmp_dir, 'tmp_graph.dot')
+    if not os.path.exists(cache_dir):
+        os.mkdir(cache_dir)
+    graph_path = os.path.join(cache_dir, 'tmp_graph.dot')
 
     with open(graph_path, 'w') as f:
         f.write(dot_graph)
@@ -97,6 +97,8 @@ def plot_dot_graph(output, verbose=True, to_file='graph.png'):
     # =============================================================================
     # Utility functions for numpy (numpy magic)
     # =============================================================================
+
+
 def sum_to(x, shape):
     """Sum elements along axes to output an array of a given shape.
 
@@ -314,7 +316,7 @@ def array_allclose(a, b, rtol=1e-4, atol=1e-5):
 # =============================================================================
 
 
-cache_dir = os.path.join(os.path.expanduser('~'), 'INN')
+cache_dir = os.path.join(os.path.expanduser('~'), '.INN')
 
 
 def get_file(url, file_name=None):

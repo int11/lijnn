@@ -39,6 +39,12 @@ class Layer:
                 yield from obj.params()
             else:
                 yield obj
+    @property
+    def params_size(self):
+        size = 0
+        for param in self.params():
+            size += param.size
+        return size
 
     def cleargrads(self):
         for param in self.params():

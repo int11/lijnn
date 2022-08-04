@@ -93,12 +93,12 @@ class MomentumSGD(Optimizer):
         self.vs = {}
 
     def update_one(self, param):
-        v_key = id(param)
-        if v_key not in self.vs:
+        pointer = id(param)
+        if pointer not in self.vs:
             xp = cuda.get_array_module(param.data)
-            self.vs[v_key] = xp.zeros_like(param.data)
+            self.vs[pointer] = xp.zeros_like(param.data)
 
-        v = self.vs[v_key]
+        v = self.vs[pointer]
         v *= self.momentum
         v -= self.lr * param.grad.data
         param.data += v
@@ -114,16 +114,39 @@ class AdaGrad(Optimizer):
     def update_one(self, param):
         xp = cuda.get_array_module(param.data)
 
-        h_key = id(param)
-        if h_key not in self.hs:
-            self.hs[h_key] = xp.zeros_like(param.data)
+        pointer = id(param)
+        if pointer not in self.hs:
+            self.hs[pointer] = xp.zeros_like(param.data)
 
-        lr = self.lr
-        eps = self.eps
+        h = self.hs[pointer]
+        lr, eps = self.lr, self.eps
         grad = param.grad.data
-        h = self.hs[h_key]
 
         h += grad * grad
+        param.data -= lr * grad / (xp.sqrt(h) + eps)
+
+
+class RMSProp(Optimizer):
+    def __init__(self, lr=0.001, RMSProp=0.9, eps=1e-8):
+        super().__init__()
+        self.lr = lr
+        self.RMSProp = RMSProp
+        self.eps = eps
+        self.hs = {}
+
+    def update_one(self, param):
+        xp = cuda.get_array_module(param.data)
+
+        pointer = id(param)
+        if pointer not in self.hs:
+            self.hs[pointer] = xp.zeros_like(param.data)
+
+        h = self.hs[pointer]
+        lr, rmsprop, eps = self.lr, self.RMSProp, self.eps
+        grad = param.grad.data
+
+        h *= rmsprop
+        h += (1 - rmsprop) * grad * grad
         param.data -= lr * grad / (xp.sqrt(h) + eps)
 
 
@@ -138,14 +161,13 @@ class AdaDelta(Optimizer):
     def update_one(self, param):
         xp = cuda.get_array_module(param.data)
 
-        key = id(param)
-        if key not in self.msg:
-            self.msg[key] = xp.zeros_like(param.data)
-            self.msdx[key] = xp.zeros_like(param.data)
+        pointer = id(param)
+        if pointer not in self.msg:
+            self.msg[pointer] = xp.zeros_like(param.data)
+            self.msdx[pointer] = xp.zeros_like(param.data)
 
-        msg, msdx = self.msg[key], self.msdx[key]
-        rho = self.rho
-        eps = self.eps
+        msg, msdx = self.msg[pointer], self.msdx[pointer]
+        rho, eps = self.rho, self.eps
         grad = param.grad.data
 
         msg *= rho
@@ -180,12 +202,12 @@ class Adam(Optimizer):
     def update_one(self, param):
         xp = cuda.get_array_module(param.data)
 
-        key = id(param)
-        if key not in self.ms:
-            self.ms[key] = xp.zeros_like(param.data)
-            self.vs[key] = xp.zeros_like(param.data)
+        pointer = id(param)
+        if pointer not in self.ms:
+            self.ms[pointer] = xp.zeros_like(param.data)
+            self.vs[pointer] = xp.zeros_like(param.data)
 
-        m, v = self.ms[key], self.vs[key]
+        m, v = self.ms[pointer], self.vs[pointer]
         beta1, beta2, eps = self.beta1, self.beta2, self.eps
         grad = param.grad.data
 

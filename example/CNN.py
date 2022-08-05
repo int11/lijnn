@@ -207,6 +207,80 @@ class VGG16(Model):
         return image
 
 
+class GoogLeNet(Layer):
+
+    def __init__(self):
+        class Inception(Layer):
+            def __init__(self, out1, proj3, out3, proj5, out5, proj_pool):
+                super().__init__()
+                self.conv1 = L.Conv2d(out1, kernel_size=1)
+                self.proj3 = L.Conv2d(proj3, kernel_size=1)
+                self.conv3 = L.Conv2d(out3, kernel_size=3, pad=1)
+                self.proj5 = L.Conv2d(proj5, kernel_size=1)
+                self.conv5 = L.Conv2d(out5, kernel_size=5, pad=2)
+                self.projp = L.Conv2d(proj_pool, kernel_size=1)
+
+            def forward(self, x):
+                out1 = self.conv1(x)
+                out3 = self.conv3(F.relu(self.proj3(x)))
+                out5 = self.conv5(F.relu(self.proj5(x)))
+                pool = self.projp(F.max_pooling(x, 3, stride=1, pad=1))
+                y = F.relu(F.concatenate((out1, out3, out5, pool), axis=1))
+                return y
+
+        super().__init__()
+        self.conv1 = L.Conv2d(64, 7, stride=2, pad=3)
+        self.conv2_reduce = L.Conv2d(64, 1)
+        self.conv2 = L.Conv2d(192, 3, stride=1, pad=1)
+        self.inc3a = Inception(64, 96, 128, 16, 32, 32)
+        self.inc3b = Inception(128, 128, 192, 32, 96, 64)
+        self.inc4a = Inception(192, 96, 208, 16, 48, 64)
+        self.inc4b = Inception(160, 112, 224, 24, 64, 64)
+        self.inc4c = Inception(128, 128, 256, 24, 64, 64)
+        self.inc4d = Inception(112, 144, 288, 32, 64, 64)
+        self.inc4e = Inception(256, 160, 320, 32, 128, 128)
+        self.inc5a = Inception(256, 160, 320, 32, 128, 128)
+        self.inc5b = Inception(384, 192, 384, 48, 128, 128)
+
+        self.loss3_fc = L.Linear(1000)
+
+        self.loss1_conv = L.Conv2d(512, 128, 1)
+        self.loss1_fc1 = L.Linear(1024)
+        self.loss1_fc2 = L.Linear(1000)
+
+        self.loss2_conv = L.Conv2d(128, 1)
+        self.loss2_fc1 = L.Linear(1024)
+        self.loss2_fc2 = L.Linear(1000)
+
+    def forward(self, x):
+        h = x
+        activations = {}
+        inception_4a_cache = None
+        inception_4d_cache = None
+        target_layers = set(layers)
+        for key, funcs in self.params().items():
+            if not target_layers:
+                break
+
+            if key == 'loss1_fc2':
+                h = inception_4a_cache
+            elif key == 'loss2_fc2':
+                h = inception_4d_cache
+
+            for func in funcs:
+                h = func(h)
+            if key in target_layers:
+                activations[key] = h
+                target_layers.remove(key)
+
+            if key == 'inception_4a':
+                inception_4a_cache = h
+            elif key == 'inception_4d':
+                inception_4d_cache = h
+
+        return activations
+
+
 def main_LeNet():
     batch_size = 100
     epoch = 10

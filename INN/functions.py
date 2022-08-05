@@ -652,108 +652,35 @@ class Concatenate(Function):
     def __init__(self, axis=1):
         self.axis = axis
 
-    def forward(self, x):
-        xp = cuda.get_array_module(x)
+    def forward(self, *x):
+        xp = cuda.get_array_module(x[0])
         return xp.concatenate(x, self.axis)
 
     def backward(self, gx):
         if len(self.inputs) == 1:
             return gx
-
         sizes = np.array([v.shape[self.axis] for v in self.inputs[:-1]]).cumsum()
-        return split_axis(gx, sizes, self.axis)
+        print(sizes,self.axis)
+        return tuple(split_axis(gx, sizes, self.axis))
 
 
 def concatenate(x, axis=1):
-    y = Concatenate(axis)(x)
+    y = Concatenate(axis)(*x)
     return y
-
-
-_numpy_split_ok = np.lib.NumpyVersion(np.__version__) >= '1.11.0'
-
-
-def _fix_numpy_split(ys, x, indices_or_sections, axis):
-    """Make the output of np.split compatible with numpy >= 1.11"""
-    if all(y.ndim == x.ndim for y in ys):
-        return ys
-    tmp = [len(t) for t in np.split(
-        np.empty(x.shape[axis], dtype=np.int8), indices_or_sections, 0)]
-    shape = list(x.shape)
-    for i, t in enumerate(tmp):
-        y = ys[i]
-        if y.ndim != x.ndim:
-            assert y.size == 0
-            shape[axis] = t
-            ys[i] = y.reshape(shape)
-    return ys
-
-
-def _get_indices_or_sections(indices_or_sections):
-    """Checks and convert ``indices_or_sections`` argument
-
-    Converted value is one of: 1-D numpy.ndarray, list, int, and
-    NumPy int scalar.
-
-    Returns:
-        A binary tuple in which the 1st element is indices (sequence) and
-        the 2nd element is sections (scalar).
-        Only one of the two is not ``None`` and the other is ``None``.
-
-    """
-    ios = indices_or_sections
-    is_seq = False
-    if isinstance(ios, np.ndarray):
-        # numpy.ndarray
-        if ios.dtype.kind != 'i' and ios.size > 0:
-            # Note: numpy.array([]) (dtype is float64) should be accepted.
-            raise TypeError('indices_or_sections must be integers')
-        if ios.ndim >= 2:
-            raise TypeError('indices_or_sections must be 1-D sequence')
-        is_seq = ios.ndim != 0
-    elif isinstance(ios, collections_abc.Sequence):
-        # Any sequence except numpy.ndarray
-        ios = list(ios)
-        is_seq = True
-    elif isinstance(indices_or_sections, six.integer_types):
-        # int
-        pass
-    else:
-        raise TypeError(
-            'indices_or_sections must be integer or 1-D array.\n'
-            'Actual: {}'.format(type(indices_or_sections)))
-
-    if is_seq and chainer.is_debug():
-        for p, n in six.moves.zip(ios, ios[1:]):
-            if p > n:
-                raise ValueError('indices_or_sections must be sorted')
-
-    if is_seq:
-        return ios, None
-    else:
-        return None, ios
 
 
 class SplitAxis(Function):
     def __init__(self, indices_or_sections, axis):
-        indices, sections = _get_indices_or_sections(indices_or_sections)
-        assert (indices is None) != (sections is None)
-        self.indices = indices
-        self.sections = sections
+        self.indices_or_sections = indices_or_sections
         self.axis = axis
-
-    @property
-    def indices_or_sections(self):
-        return self.indices if self.indices is not None else self.sections
 
     def forward(self, x):
         xp = cuda.get_array_module(x)
 
-        indices_or_sections = self.indices_or_sections
-        ret = xp.split(x, indices_or_sections, self.axis)
-        if xp == numpy and not _numpy_split_ok:
-            ret = _fix_numpy_split(ret, x, indices_or_sections, self.axis)
-        self._shapes = [r.shape for r in ret]
-        return ret
+        x = xp.split(x, self.indices_or_sections, self.axis)
+
+        self._shapes = [r.shape for r in x]
+        return tuple(x)
 
     def backward(self, gx):
         xp = cuda.get_array_module(gx)
@@ -764,11 +691,9 @@ class SplitAxis(Function):
         return concatenate(grads, self.axis)
 
 
-def split_axis(x, indices_or_sections, axis, force_tuple=True):
+def split_axis(x, indices_or_sections, axis):
     res = SplitAxis(indices_or_sections, axis)(x)
-    if force_tuple or len(res) != 1:
-        return res
-    return res[0]
+    return res
 
 
 # =============================================================================

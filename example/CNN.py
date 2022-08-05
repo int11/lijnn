@@ -212,12 +212,14 @@ class GoogLeNet(Layer):
     https://arxiv.org/abs/1409.4842
     2014, Christian Szegedy, Wei Liu, Yangqing Jia, Pierre Sermanet, Scott Reed, Dragomir Anguelov, Dumitru Erhan, Vincent Vanhoucke, Andrew Rabinovich
     """
+
     def __init__(self):
         class Conv2d_Relu(Layer):
             def __init__(self, out_channels, kernel_size, stride=1,
-                 pad=0):
+                         pad=0):
                 super().__init__()
-                self.conv = L.Conv2d(out_channels, kernel_size, stride=1,pad=0)
+                self.conv = L.Conv2d(out_channels, kernel_size, stride, pad)
+
             def forward(self, x):
                 return F.relu(self.conv(x))
 
@@ -268,7 +270,7 @@ class GoogLeNet(Layer):
 
     def forward(self, x):
         x = self.conv1(x)
-        x = F.max_pooling(x,kernel_size=3,stride=2,pad=1)
+        x = F.max_pooling(x, kernel_size=3, stride=2, pad=1)
         x = F.local_response_normalization(x)
         x = self.conv2_reduce(x)
         x = self.conv2(x)

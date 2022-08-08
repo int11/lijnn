@@ -334,8 +334,9 @@ def load_cache_npz(filename, train=False):
 def save_cache_npz(data, label, filename, train=False):
     filename = filename[filename.rfind('/') + 1:]
     prefix = '.train.npz' if train else '.test.npz'
+    print(cache_dir)
     filepath = os.path.join(cache_dir, filename + prefix)
-
+    print(filepath)
     if os.path.exists(filepath):
         return
 

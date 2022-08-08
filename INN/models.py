@@ -15,24 +15,24 @@ class Model(Layer):
         return utils.plot_dot_graph(y, verbose=True, to_file=to_file)
 
     def save_weights(self, epoch, name='default'):
-        model_dir = f'{utils.cache_dir}/{self.__class__.__name__}'
+        model_dir = os.path.join(utils.cache_dir, self.__class__.__name__)
         if not os.path.exists(model_dir):
             os.mkdir(model_dir)
-        weight_dir = f'{model_dir}/{name}_{epoch}_epoch.npz'
+        weight_dir = os.path.join(model_dir, f'{name}_{epoch}_epoch.npz')
 
         super().save_weights(weight_dir)
         print(f'model weight save : {weight_dir}')
 
     def load_weights(self, epoch=None, name='default'):
-        model_dir = f'{utils.cache_dir}/{self.__class__.__name__}'
-        listdir = os.listdir(f'{utils.cache_dir}/{self.__class__.__name__}')
+        model_dir = os.path.join(utils.cache_dir, self.__class__.__name__)
+        listdir = os.listdir(model_dir)
 
         name_listdir = [i for i in [i.split('_') for i in listdir] if i[0] == name]
 
         if epoch is None:
             epoch = max([i[1] for i in name_listdir])
 
-        weight_dir = f'{model_dir}/{name}_{epoch}_epoch.npz'
+        weight_dir = os.path.join(model_dir, f'{name}_{epoch}_epoch.npz')
         print(f'model weight load : {weight_dir}')
         super().load_weights(weight_dir)
         return int(epoch)

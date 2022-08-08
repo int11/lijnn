@@ -660,7 +660,6 @@ class Concatenate(Function):
         if len(self.inputs) == 1:
             return gx
         sizes = np.array([v.shape[self.axis] for v in self.inputs[:-1]]).cumsum()
-        print(sizes,self.axis)
         return tuple(split_axis(gx, sizes, self.axis))
 
 

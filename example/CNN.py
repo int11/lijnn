@@ -213,7 +213,7 @@ class GoogLeNet(Layer):
     2014, Christian Szegedy, Wei Liu, Yangqing Jia, Pierre Sermanet, Scott Reed, Dragomir Anguelov, Dumitru Erhan, Vincent Vanhoucke, Andrew Rabinovich
     """
 
-    def __init__(self):
+    def __init__(self, output_channel=1000):
         class Conv2d_Relu(Layer):
             def __init__(self, out_channels, kernel_size, stride=1,
                          pad=0):
@@ -258,15 +258,15 @@ class GoogLeNet(Layer):
         self.inc5a = Inception(256, 160, 320, 32, 128, 128)
         self.inc5b = Inception(384, 192, 384, 48, 128, 128)
 
-        self.loss3_fc = L.Linear(1000)
+        self.loss3_fc = L.Linear(output_channel)
 
         self.loss1_conv = L.Conv2d(512, 128, 1)
         self.loss1_fc1 = L.Linear(1024)
-        self.loss1_fc2 = L.Linear(1000)
+        self.loss1_fc2 = L.Linear(output_channel)
 
         self.loss2_conv = L.Conv2d(128, 1)
         self.loss2_fc1 = L.Linear(1024)
-        self.loss2_fc2 = L.Linear(1000)
+        self.loss2_fc2 = L.Linear(output_channel)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -291,6 +291,7 @@ class GoogLeNet(Layer):
         x = self.inc5a(x)
         x = self.inc5b(x)
         x = F.average_pooling(x, kernel_size=7, stride=1)
+
         x = F.dropout(x, 0.4)
         x = F.reshape(x, (x.shape[0], -1))
         x = self.loss3_fc(x)
@@ -404,6 +405,57 @@ def main_VGG16():
     test_loader = INN.iterators.iterator(testset, batch_size, shuffle=False)
 
     model = VGG16(output_channel=10)
+    optimizer = INN.optimizers.Adam(alpha=0.0001).setup(model)
+
+    if INN.cuda.gpu_enable:
+        model.to_gpu()
+        train_loader.to_gpu()
+        test_loader.to_gpu()
+
+    for i in range(epoch):
+        sum_loss, sum_acc = 0, 0
+
+        for x, t in train_loader:
+            y = model(x)
+            loss = INN.functions.softmax_cross_entropy(y, t)
+            acc = INN.functions.accuracy(y, t)
+            model.cleargrads()
+            loss.backward()
+            optimizer.update()
+            sum_loss += loss.data
+            sum_acc += acc.data
+            print(f"loss : {loss.data} accuracy {acc.data}")
+        print(f"epoch {i + 1}")
+        print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
+        sum_loss, sum_acc = 0, 0
+
+        with INN.test_mode():
+            with INN.no_grad():
+                for x, t in test_loader:
+                    y = model(x)
+                    loss = INN.functions.softmax_cross_entropy(y, t)
+                    acc = INN.functions.accuracy(y, t)
+                    sum_loss += loss.data
+                    sum_acc += acc.data
+        print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')
+
+        weight_path = os.path.join(INN.utils.cache_dir, f'{model.__class__.__name__}{i}.npz')
+        print(weight_path)
+        model.save_weights(weight_path)
+
+
+def main_GoogleNet():
+    batch_size = 10
+    epoch = 10
+    transfrom = transforms.compose(
+        [transforms.toOpencv(), transforms.opencv_resize(224), transforms.toArray(), transforms.toFloat(),
+         transforms.z_score_Normalize(0.5, 0.5)])
+    trainset = INN.datasets.CIFAR10(train=True, x_transform=transfrom)
+    testset = INN.datasets.CIFAR10(train=False, x_transform=transfrom)
+    train_loader = INN.iterators.iterator(trainset, batch_size, shuffle=True)
+    test_loader = INN.iterators.iterator(testset, batch_size, shuffle=False)
+
+    model = GoogLeNet(output_channel=10)
     optimizer = INN.optimizers.Adam(alpha=0.0001).setup(model)
 
     if INN.cuda.gpu_enable:

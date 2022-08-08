@@ -452,7 +452,6 @@ def main_GoogleNet():
         [transforms.toOpencv(), transforms.opencv_resize(224), transforms.toArray(), transforms.toFloat(),
          transforms.z_score_Normalize(0.5, 0.5)])
     trainset = INN.datasets.CIFAR10(train=True, x_transform=transfrom)
-
     testset = INN.datasets.CIFAR10(train=False, x_transform=transfrom)
     train_loader = INN.iterators.iterator(trainset, batch_size, shuffle=True)
     test_loader = INN.iterators.iterator(testset, batch_size, shuffle=False)

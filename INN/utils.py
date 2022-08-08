@@ -6,6 +6,13 @@ from INN import as_variable
 from INN import Variable
 from INN import cuda
 
+"""
+if use colab, os.path.expanduser() function return "/root"
+
+drive mount directory have to be "/content/drive" 
+ex) drive.mount("/content/drive")
+"""
+
 cache_dir = '/content/drive/MyDrive/.INN' if 'root' in os.path.expanduser('~') else \
     os.path.join(os.path.expanduser('~'), '.INN')
 

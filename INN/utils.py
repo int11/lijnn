@@ -315,10 +315,6 @@ def array_allclose(a, b, rtol=1e-4, atol=1e-5):
 # download function
 # =============================================================================
 
-
-cache_dir = os.path.join(os.path.expanduser('~'), '.INN')
-
-
 def get_file(url, file_name=None):
     """Download a file from the `url` if it is not in the cache.
 

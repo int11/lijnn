@@ -207,7 +207,7 @@ class VGG16(Model):
         return image
 
 
-class GoogLeNet(Layer):
+class GoogleNet(Model):
     """
     https://arxiv.org/abs/1409.4842
     2014, Christian Szegedy, Wei Liu, Yangqing Jia, Pierre Sermanet, Scott Reed, Dragomir Anguelov, Dumitru Erhan, Vincent Vanhoucke, Andrew Rabinovich
@@ -445,25 +445,28 @@ def main_VGG16():
 
 
 def main_GoogleNet():
-    batch_size = 10
+    model_load = True
+    batch_size = 5
     epoch = 10
     transfrom = transforms.compose(
         [transforms.toOpencv(), transforms.opencv_resize(224), transforms.toArray(), transforms.toFloat(),
          transforms.z_score_Normalize(0.5, 0.5)])
     trainset = INN.datasets.CIFAR10(train=True, x_transform=transfrom)
+
     testset = INN.datasets.CIFAR10(train=False, x_transform=transfrom)
     train_loader = INN.iterators.iterator(trainset, batch_size, shuffle=True)
     test_loader = INN.iterators.iterator(testset, batch_size, shuffle=False)
 
-    model = GoogLeNet(output_channel=10)
+    model = GoogleNet(output_channel=10)
     optimizer = INN.optimizers.Adam(alpha=0.0001).setup(model)
+    start_epoch = model.load_weights() + 1 if model_load else 1
 
     if INN.cuda.gpu_enable:
         model.to_gpu()
         train_loader.to_gpu()
         test_loader.to_gpu()
 
-    for i in range(epoch):
+    for i in range(start_epoch, epoch + 1):
         sum_loss, sum_acc = 0, 0
 
         for x, t in train_loader:
@@ -476,7 +479,7 @@ def main_GoogleNet():
             sum_loss += loss.data
             sum_acc += acc.data
             print(f"loss : {loss.data} accuracy {acc.data}")
-        print(f"epoch {i + 1}")
+        print(f"epoch {i}")
         print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
         sum_loss, sum_acc = 0, 0
 
@@ -490,6 +493,4 @@ def main_GoogleNet():
                     sum_acc += acc.data
         print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')
 
-        weight_path = os.path.join(INN.utils.cache_dir, f'{model.__class__.__name__}{i}.npz')
-        print(weight_path)
-        model.save_weights(weight_path)
+        model.save_weights(i)

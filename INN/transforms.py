@@ -117,6 +117,25 @@ class z_score_Normalize:
             std = np.array(self.std, dtype=array.dtype).reshape(*rshape)
         return (array - mean) / std
 
+class z_score_Normalize1:
+    """Normalize a NumPy array with mean and standard deviation.
+
+    Args:
+        mean (float or sequence): mean for all values or sequence of means for
+         each channel.
+        std (float or sequence):
+    """
+
+    def __init__(self, mean=0, std=1):
+        self.mean = mean
+        self.std = std
+
+    def __call__(self, array):
+        mean, std = self.mean, self.std
+
+
+        return (array - mean) / std
+
 
 class flatten:
     def __call__(self, array):

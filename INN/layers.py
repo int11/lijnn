@@ -39,6 +39,7 @@ class Layer:
                 yield from obj.params()
             else:
                 yield obj
+
     @property
     def params_size(self):
         size = 0
@@ -81,9 +82,12 @@ class Layer:
             if os.path.exists(path):
                 os.remove(path)
             raise
+        finally:
+            if cuda.gpu_enable:
+                self.to_gpu()
 
     def load_weights(self, path):
-        npz = np.load(path)
+        npz = np.load(path, allow_pickle=True)
         params_dict = {}
         self._params_dict(params_dict)
         for key, param in params_dict.items():

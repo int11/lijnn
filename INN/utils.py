@@ -6,9 +6,7 @@ from INN import as_variable
 from INN import Variable
 from INN import cuda
 
-
-
-cache_dir = '/content/drive/MyDrive/.INN' if os.path.expanduser('~') in 'root' else \
+cache_dir = '/content/drive/MyDrive/.INN' if 'root' in os.path.expanduser('~') else \
     os.path.join(os.path.expanduser('~'), '.INN')
 
 

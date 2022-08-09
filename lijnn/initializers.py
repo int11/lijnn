@@ -1,5 +1,5 @@
 import numpy as np
-import INN.functions as F
+import lijnn.functions as F
 
 
 def Xavier(I, O, xp=np):

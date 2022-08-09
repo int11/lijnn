@@ -1,8 +1,8 @@
 import numpy as np
-from INN import cuda
-from INN.core import Function, as_variable
-from INN.utils import pair, get_conv_outsize, get_deconv_outsize
-from INN.functions import linear, broadcast_to
+from lijnn import cuda
+from lijnn.core import Function, as_variable
+from lijnn.utils import pair, get_conv_outsize, get_deconv_outsize
+from lijnn.functions import linear, broadcast_to
 
 
 # =============================================================================

@@ -1,8 +1,8 @@
-import INN
-from INN import *
-from INN import layers as L
-from INN import functions as F
-from INN.transforms import *
+import lijnn
+from lijnn import *
+from lijnn import layers as L
+from lijnn import functions as F
+from lijnn.transforms import *
 
 import cv2 as cv
 import numpy as np
@@ -15,7 +15,7 @@ class LeNet_5(Model):
     https://ieeexplore.ieee.org/abstract/document/726791
     "Gradient-based learning applied to document recognition"
     1998, Yann LeCun Léon Bottou Yoshua Bengio Patrick Haffner
-    params_size = 3317546
+    params_size = 3,317,546
 
     frist typical CNN model
     input (32,32)
@@ -319,16 +319,16 @@ def main_LeNet():
         [toOpencv(), opencv_resize((32, 32)), toArray(), toFloat(),
          z_score_normalize(mean=[125.30691805, 122.95039414, 113.86538318],
                            std=[62.99321928, 62.08870764, 66.70489964])])
-    trainset = INN.datasets.MNIST(train=True, x_transform=transfrom)
-    testset = INN.datasets.MNIST(train=False, x_transform=transfrom)
+    trainset = lijnn.datasets.MNIST(train=True, x_transform=transfrom)
+    testset = lijnn.datasets.MNIST(train=False, x_transform=transfrom)
 
-    train_loader = INN.iterators.iterator(trainset, batch_size, shuffle=True)
-    test_loader = INN.iterators.iterator(testset, batch_size, shuffle=False)
+    train_loader = lijnn.iterators.iterator(trainset, batch_size, shuffle=True)
+    test_loader = lijnn.iterators.iterator(testset, batch_size, shuffle=False)
 
     model = LeNet_5()
-    optimizer = INN.optimizers.Adam().setup(model)
+    optimizer = lijnn.optimizers.Adam().setup(model)
 
-    if INN.cuda.gpu_enable:
+    if lijnn.cuda.gpu_enable:
         model.to_gpu()
         train_loader.to_gpu()
         test_loader.to_gpu()
@@ -338,8 +338,8 @@ def main_LeNet():
 
         for x, t in train_loader:
             y = model(x)
-            loss = INN.functions.softmax_cross_entropy(y, t)
-            acc = INN.functions.accuracy(y, t)
+            loss = lijnn.functions.softmax_cross_entropy(y, t)
+            acc = lijnn.functions.accuracy(y, t)
             model.cleargrads()
             loss.backward()
             optimizer.update()
@@ -353,8 +353,8 @@ def main_LeNet():
         with no_grad():
             for x, t in test_loader:
                 y = model(x)
-                loss = INN.functions.softmax_cross_entropy(y, t)
-                acc = INN.functions.accuracy(y, t)
+                loss = lijnn.functions.softmax_cross_entropy(y, t)
+                acc = lijnn.functions.accuracy(y, t)
                 sum_loss += loss.data
                 sum_acc += acc.data
         print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')
@@ -367,15 +367,15 @@ def main_AlexNet():
         [toOpencv(), opencv_resize(227), toArray(), toFloat(),
          z_score_normalize(mean=[125.30691805, 122.95039414, 113.86538318],
                            std=[62.99321928, 62.08870764, 66.70489964])])
-    trainset = INN.datasets.CIFAR10(train=True, x_transform=transfrom)
-    testset = INN.datasets.CIFAR10(train=False, x_transform=transfrom)
-    train_loader = INN.iterators.iterator(trainset, batch_size, shuffle=True)
-    test_loader = INN.iterators.iterator(testset, batch_size, shuffle=False)
+    trainset = lijnn.datasets.CIFAR10(train=True, x_transform=transfrom)
+    testset = lijnn.datasets.CIFAR10(train=False, x_transform=transfrom)
+    train_loader = lijnn.iterators.iterator(trainset, batch_size, shuffle=True)
+    test_loader = lijnn.iterators.iterator(testset, batch_size, shuffle=False)
 
     model = AlexNet(10)
-    optimizer = INN.optimizers.Adam(alpha=0.0001).setup(model)
+    optimizer = lijnn.optimizers.Adam(alpha=0.0001).setup(model)
 
-    if INN.cuda.gpu_enable:
+    if lijnn.cuda.gpu_enable:
         model.to_gpu()
         train_loader.to_gpu()
         test_loader.to_gpu()
@@ -385,8 +385,8 @@ def main_AlexNet():
 
         for x, t in train_loader:
             y = model(x)
-            loss = INN.functions.softmax_cross_entropy(y, t)
-            acc = INN.functions.accuracy(y, t)
+            loss = lijnn.functions.softmax_cross_entropy(y, t)
+            acc = lijnn.functions.accuracy(y, t)
             model.cleargrads()
             loss.backward()
             optimizer.update()
@@ -400,8 +400,8 @@ def main_AlexNet():
         with no_grad(), test_mode():
             for x, t in test_loader:
                 y = model(x)
-                loss = INN.functions.softmax_cross_entropy(y, t)
-                acc = INN.functions.accuracy(y, t)
+                loss = lijnn.functions.softmax_cross_entropy(y, t)
+                acc = lijnn.functions.accuracy(y, t)
                 sum_loss += loss.data
                 sum_acc += acc.data
         print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')
@@ -414,15 +414,15 @@ def main_VGG16():
         [toOpencv(), opencv_resize(224), toArray(), toFloat(),
          z_score_normalize(mean=[125.30691805, 122.95039414, 113.86538318],
                            std=[62.99321928, 62.08870764, 66.70489964])])
-    trainset = INN.datasets.CIFAR10(train=True, x_transform=transfrom)
-    testset = INN.datasets.CIFAR10(train=False, x_transform=transfrom)
-    train_loader = INN.iterators.iterator(trainset, batch_size, shuffle=True)
-    test_loader = INN.iterators.iterator(testset, batch_size, shuffle=False)
+    trainset = lijnn.datasets.CIFAR10(train=True, x_transform=transfrom)
+    testset = lijnn.datasets.CIFAR10(train=False, x_transform=transfrom)
+    train_loader = lijnn.iterators.iterator(trainset, batch_size, shuffle=True)
+    test_loader = lijnn.iterators.iterator(testset, batch_size, shuffle=False)
 
     model = VGG16(output_channel=10)
-    optimizer = INN.optimizers.Adam(alpha=0.0001).setup(model)
+    optimizer = lijnn.optimizers.Adam(alpha=0.0001).setup(model)
 
-    if INN.cuda.gpu_enable:
+    if lijnn.cuda.gpu_enable:
         model.to_gpu()
         train_loader.to_gpu()
         test_loader.to_gpu()
@@ -432,8 +432,8 @@ def main_VGG16():
 
         for x, t in train_loader:
             y = model(x)
-            loss = INN.functions.softmax_cross_entropy(y, t)
-            acc = INN.functions.accuracy(y, t)
+            loss = lijnn.functions.softmax_cross_entropy(y, t)
+            acc = lijnn.functions.accuracy(y, t)
             model.cleargrads()
             loss.backward()
             optimizer.update()
@@ -447,13 +447,13 @@ def main_VGG16():
         with no_grad(), test_mode():
             for x, t in test_loader:
                 y = model(x)
-                loss = INN.functions.softmax_cross_entropy(y, t)
-                acc = INN.functions.accuracy(y, t)
+                loss = lijnn.functions.softmax_cross_entropy(y, t)
+                acc = lijnn.functions.accuracy(y, t)
                 sum_loss += loss.data
                 sum_acc += acc.data
         print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')
 
-        weight_path = os.path.join(INN.utils.cache_dir, f'{model.__class__.__name__}{i}.npz')
+        weight_path = os.path.join(lijnn.utils.cache_dir, f'{model.__class__.__name__}{i}.npz')
         print(weight_path)
         model.save_weights(weight_path)
 
@@ -465,16 +465,16 @@ def main_GoogleNet():
     transfrom = compose(
         [toOpencv(), opencv_resize(224), toArray(), toFloat(),
          z_score_normalize(mean=[129.30416561, 124.0699627, 112.43405006], std=[68.1702429, 65.39180804, 70.41837019])])
-    trainset = INN.datasets.CIFAR100(train=True, x_transform=transfrom)
-    testset = INN.datasets.CIFAR100(train=False, x_transform=transfrom)
-    train_loader = INN.iterators.iterator(trainset, batch_size, shuffle=True)
-    test_loader = INN.iterators.iterator(testset, batch_size, shuffle=False)
+    trainset = lijnn.datasets.CIFAR100(train=True, x_transform=transfrom)
+    testset = lijnn.datasets.CIFAR100(train=False, x_transform=transfrom)
+    train_loader = lijnn.iterators.iterator(trainset, batch_size, shuffle=True)
+    test_loader = lijnn.iterators.iterator(testset, batch_size, shuffle=False)
 
     model = GoogleNet(output_channel=100)
-    optimizer = INN.optimizers.Adam(alpha=0.0001).setup(model)
+    optimizer = lijnn.optimizers.Adam(alpha=0.0001).setup(model)
     start_epoch = model.load_weights() + 1 if model_load else 1
 
-    if INN.cuda.gpu_enable:
+    if lijnn.cuda.gpu_enable:
         model.to_gpu()
         train_loader.to_gpu()
         test_loader.to_gpu()
@@ -485,11 +485,11 @@ def main_GoogleNet():
         for x, t in train_loader:
             aux1, aux2,y = model(x)
 
-            loss1 = INN.functions.softmax_cross_entropy(aux1, t)
-            loss2 = INN.functions.softmax_cross_entropy(aux2, t)
-            loss3 = INN.functions.softmax_cross_entropy(y, t)
+            loss1 = lijnn.functions.softmax_cross_entropy(aux1, t)
+            loss2 = lijnn.functions.softmax_cross_entropy(aux2, t)
+            loss3 = lijnn.functions.softmax_cross_entropy(y, t)
             loss = loss3 + 0.3 * (loss1+loss2)
-            acc = INN.functions.accuracy(y, t)
+            acc = lijnn.functions.accuracy(y, t)
             model.cleargrads()
             loss.backward()
             optimizer.update()
@@ -503,8 +503,8 @@ def main_GoogleNet():
         with no_grad(), test_mode():
             for x, t in test_loader:
                 y = model(x)
-                loss = INN.functions.softmax_cross_entropy(y, t)
-                acc = INN.functions.accuracy(y, t)
+                loss = lijnn.functions.softmax_cross_entropy(y, t)
+                acc = lijnn.functions.accuracy(y, t)
                 sum_loss += loss.data
                 sum_acc += acc.data
         print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')

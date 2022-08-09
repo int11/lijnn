@@ -1,7 +1,7 @@
 import numpy as np
-import INN
-from INN import cuda, utils
-from INN.core import Function, Variable, as_variable, as_array
+import lijnn
+from lijnn import cuda, utils
+from lijnn.core import Function, Variable, as_variable, as_array
 
 
 # =============================================================================
@@ -150,7 +150,7 @@ class GetItemGrad(Function):
         self.in_shape = in_shape
 
     def forward(self, gy):
-        xp = INN.cuda.get_array_module(gy)
+        xp = lijnn.cuda.get_array_module(gy)
         gx = xp.zeros(self.in_shape, dtype=gy.dtype)
 
         if xp is np:
@@ -230,7 +230,7 @@ class BroadcastTo(Function):
 
     def forward(self, x):
         self.x_shape = x.shape
-        xp = INN.cuda.get_array_module(x)
+        xp = lijnn.cuda.get_array_module(x)
         y = xp.broadcast_to(x, self.shape)
         return y
 
@@ -503,7 +503,7 @@ def accuracy(y, t):
 def dropout(x, dropout_ratio=0.5):
     x = as_variable(x)
 
-    if INN.Config.train:
+    if lijnn.Config.train:
         xp = cuda.get_array_module(x)
         mask = xp.random.rand(*x.shape) > dropout_ratio
         scale = xp.array(1.0 - dropout_ratio).astype(x.dtype)
@@ -532,7 +532,7 @@ class BatchNorm(Function):
 
         xp = cuda.get_array_module(x)
 
-        if INN.Config.train:
+        if lijnn.Config.train:
             mean = x.mean(axis=0)
             var = x.var(axis=0)
             inv_std = 1 / xp.sqrt(var + self.eps)
@@ -698,17 +698,17 @@ def split_axis(x, indices_or_sections, axis):
 # =============================================================================
 # conv2d / col2im / im2col / basic_math
 # =============================================================================
-from INN.functions_conv import conv2d
-from INN.functions_conv import deconv2d
-from INN.functions_conv import im2col
-from INN.functions_conv import col2im
-from INN.functions_conv import max_pooling
-from INN.functions_conv import average_pooling
-from INN.functions_conv import local_response_normalization
-from INN.core import add
-from INN.core import sub
-from INN.core import rsub
-from INN.core import mul
-from INN.core import div
-from INN.core import neg
-from INN.core import pow
+from lijnn.functions_conv import conv2d
+from lijnn.functions_conv import deconv2d
+from lijnn.functions_conv import im2col
+from lijnn.functions_conv import col2im
+from lijnn.functions_conv import max_pooling
+from lijnn.functions_conv import average_pooling
+from lijnn.functions_conv import local_response_normalization
+from lijnn.core import add
+from lijnn.core import sub
+from lijnn.core import rsub
+from lijnn.core import mul
+from lijnn.core import div
+from lijnn.core import neg
+from lijnn.core import pow

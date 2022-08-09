@@ -1,5 +1,5 @@
 import math
-from INN import cuda, Parameter
+from lijnn import cuda, Parameter
 
 
 # =============================================================================

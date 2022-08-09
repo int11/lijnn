@@ -4,8 +4,8 @@ import tarfile
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
-from INN.utils import get_file, cache_dir
-from INN.transforms import *
+from lijnn.utils import get_file, cache_dir
+from lijnn.transforms import *
 
 
 class Dataset:

@@ -1,8 +1,8 @@
 import numpy as np
-from INN import Layer
-import INN.functions as F
-import INN.layers as L
-from INN import utils
+from lijnn import Layer
+import lijnn.functions as F
+import lijnn.layers as L
+from lijnn import utils
 import os
 
 

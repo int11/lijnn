@@ -5,7 +5,7 @@ try:
     cupy = cp
 except ImportError:
     gpu_enable = False
-from INN import Variable
+from lijnn import Variable
 
 
 def get_array_module(x):

@@ -1,5 +1,5 @@
 import numpy as np
-from INN.utils import pair
+from lijnn.utils import pair
 import cv2 as cv
 
 

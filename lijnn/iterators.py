@@ -5,7 +5,7 @@ try:
 except:
     pil_available = False
 import numpy as np
-from INN import cuda
+from lijnn import cuda
 
 
 class iterator:

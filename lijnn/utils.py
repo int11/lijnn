@@ -2,9 +2,9 @@ import os
 import subprocess
 import urllib.request
 import numpy as np
-from INN import as_variable
-from INN import Variable
-from INN import cuda
+from lijnn import as_variable
+from lijnn import Variable
+from lijnn import cuda
 
 """
 if use colab, os.path.expanduser() function return "/root"
@@ -13,8 +13,8 @@ drive mount directory have to be "/content/drive"
 ex) drive.mount("/content/drive")
 """
 
-cache_dir = '/content/drive/MyDrive/.INN' if 'root' in os.path.expanduser('~') else \
-    os.path.join(os.path.expanduser('~'), '.INN')
+cache_dir = '/content/drive/MyDrive/.lijnn' if 'root' in os.path.expanduser('~') else \
+    os.path.join(os.path.expanduser('~'), '.lijnn')
 
 
 # =============================================================================
@@ -129,7 +129,7 @@ def sum_to(x, shape):
 
 
 def reshape_sum_backward(gy, x_shape, axis, keepdims):
-    """Reshape gradient appropriately for INN.functions.sum's backward.
+    """Reshape gradient appropriately for lijnn.functions.sum's backward.
 
     Args:
         gy (dezero.Variable): Gradient variable from the output by backprop.
@@ -287,7 +287,7 @@ def array_equal(a, b):
     """True if two arrays have the same shape and elements, False otherwise.
 
     Args:
-        a, b (numpy.ndarray or cupy.ndarray or INN.Variable): input arrays
+        a, b (numpy.ndarray or cupy.ndarray or lijnn.Variable): input arrays
             to compare
 
     Returns:
@@ -304,7 +304,7 @@ def array_allclose(a, b, rtol=1e-4, atol=1e-5):
     tolerance.
 
     Args:
-        a, b (numpy.ndarray or cupy.ndarray or INN.Variable): input arrays
+        a, b (numpy.ndarray or cupy.ndarray or lijnn.Variable): input arrays
             to compare
         rtol (float): The relative tolerance parameter.
         atol (float): The absolute tolerance parameter.
@@ -326,7 +326,7 @@ def array_allclose(a, b, rtol=1e-4, atol=1e-5):
 def get_file(url, file_name=None):
     """Download a file from the `url` if it is not in the cache.
 
-    The file at the `url` is downloaded to the `~/INN`.
+    The file at the `url` is downloaded to the `~/lijnn`.
 
     Args:
         url (str): URL of the file.

@@ -1,11 +1,11 @@
 import os
 import weakref
 import numpy as np
-import INN.functions as F
-from INN import cuda
-from INN.core import Parameter
-from INN.utils import pair
-from INN import initializers
+import lijnn.functions as F
+from lijnn import cuda
+from lijnn.core import Parameter
+from lijnn.utils import pair
+from lijnn import initializers
 
 
 # =============================================================================
@@ -163,8 +163,7 @@ class Conv2d(Layer):
     def _init_W(self, xp=np):
         C, OC = self.in_channels, self.out_channels
         KH, KW = pair(self.kernel_size)
-        I, O = C * KH * KW, OC * KH * KW
-        scale = self.weight_init(I, O)
+        scale = self.weight_init(C * KH * KW, OC * KH * KW)
         self.W.data = xp.random.randn(OC, C, KH, KW).astype(self.dtype) * scale
 
     def forward(self, x):

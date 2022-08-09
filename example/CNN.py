@@ -257,11 +257,11 @@ class GoogleNet(Model):
 
         self.loss3_fc = L.Linear(output_channel)
 
-        self.loss1_conv = L.Conv2d(512, 128, 1)
+        self.loss1_conv = Conv2d_Relu(128, 1)
         self.loss1_fc1 = L.Linear(1024)
         self.loss1_fc2 = L.Linear(output_channel)
 
-        self.loss2_conv = L.Conv2d(128, 1)
+        self.loss2_conv = Conv2d_Relu(128, 1)
         self.loss2_fc1 = L.Linear(1024)
         self.loss2_fc2 = L.Linear(output_channel)
 
@@ -271,17 +271,32 @@ class GoogleNet(Model):
         x = F.local_response_normalization(x)
         x = self.conv2_reduce(x)
         x = self.conv2(x)
-        x = F.max_pooling(x, kernel_size=3, stride=2, pad=1)
         x = F.local_response_normalization(x)
+        x = F.max_pooling(x, kernel_size=3, stride=2, pad=1)
 
         x = self.inc3a(x)
         x = self.inc3b(x)
         x = F.max_pooling(x, kernel_size=3, stride=2, pad=1)
 
         x = self.inc4a(x)
+        if Config.train:
+            aux1 = F.average_pooling(x, kernel_size=5, stride=3)
+            aux1 = self.loss1_conv(aux1)
+            aux1 = F.reshape(aux1, (x.shape[0], -1))
+            aux1 = F.relu(self.loss1_fc1(aux1))
+            aux1 = F.dropout(aux1, 0.7)
+            aux1 = self.loss1_fc2(aux1)
         x = self.inc4b(x)
         x = self.inc4c(x)
         x = self.inc4d(x)
+        if Config.train:
+            aux2 = F.average_pooling(x, kernel_size=5, stride=3)
+            aux2 = self.loss2_conv(aux2)
+            aux2 = F.reshape(aux2, (x.shape[0], -1))
+            aux2 = F.relu(self.loss2_fc1(aux2))
+            aux2 = F.dropout(aux2, 0.7)
+            aux2 = self.loss2_fc2(aux2)
+
         x = self.inc4e(x)
         x = F.max_pooling(x, kernel_size=3, stride=2, pad=1)
 
@@ -292,7 +307,8 @@ class GoogleNet(Model):
         x = F.dropout(x, 0.4)
         x = F.reshape(x, (x.shape[0], -1))
         x = self.loss3_fc(x)
-
+        if Config.train:
+            return aux1, aux2,x
         return x
 
 
@@ -301,7 +317,8 @@ def main_LeNet():
     epoch = 10
     transfrom = compose(
         [toOpencv(), opencv_resize((32, 32)), toArray(), toFloat(),
-         z_score_normalize(mean = [125.30691805, 122.95039414, 113.86538318],std = [62.99321928, 62.08870764, 66.70489964])])
+         z_score_normalize(mean=[125.30691805, 122.95039414, 113.86538318],
+                           std=[62.99321928, 62.08870764, 66.70489964])])
     trainset = INN.datasets.MNIST(train=True, x_transform=transfrom)
     testset = INN.datasets.MNIST(train=False, x_transform=transfrom)
 
@@ -333,7 +350,7 @@ def main_LeNet():
         print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
         sum_loss, sum_acc = 0, 0
 
-        with INN.no_grad():
+        with no_grad():
             for x, t in test_loader:
                 y = model(x)
                 loss = INN.functions.softmax_cross_entropy(y, t)
@@ -344,12 +361,12 @@ def main_LeNet():
 
 
 def main_AlexNet():
-
     batch_size = 100
     epoch = 10
     transfrom = compose(
         [toOpencv(), opencv_resize(227), toArray(), toFloat(),
-         z_score_normalize(mean = [125.30691805, 122.95039414, 113.86538318],std = [62.99321928, 62.08870764, 66.70489964])])
+         z_score_normalize(mean=[125.30691805, 122.95039414, 113.86538318],
+                           std=[62.99321928, 62.08870764, 66.70489964])])
     trainset = INN.datasets.CIFAR10(train=True, x_transform=transfrom)
     testset = INN.datasets.CIFAR10(train=False, x_transform=transfrom)
     train_loader = INN.iterators.iterator(trainset, batch_size, shuffle=True)
@@ -380,14 +397,13 @@ def main_AlexNet():
         print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
         sum_loss, sum_acc = 0, 0
 
-        with INN.test_mode():
-            with INN.no_grad():
-                for x, t in test_loader:
-                    y = model(x)
-                    loss = INN.functions.softmax_cross_entropy(y, t)
-                    acc = INN.functions.accuracy(y, t)
-                    sum_loss += loss.data
-                    sum_acc += acc.data
+        with no_grad(), test_mode():
+            for x, t in test_loader:
+                y = model(x)
+                loss = INN.functions.softmax_cross_entropy(y, t)
+                acc = INN.functions.accuracy(y, t)
+                sum_loss += loss.data
+                sum_acc += acc.data
         print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')
 
 
@@ -396,7 +412,8 @@ def main_VGG16():
     epoch = 10
     transfrom = compose(
         [toOpencv(), opencv_resize(224), toArray(), toFloat(),
-         z_score_normalize(mean = [125.30691805, 122.95039414, 113.86538318],std = [62.99321928, 62.08870764, 66.70489964])])
+         z_score_normalize(mean=[125.30691805, 122.95039414, 113.86538318],
+                           std=[62.99321928, 62.08870764, 66.70489964])])
     trainset = INN.datasets.CIFAR10(train=True, x_transform=transfrom)
     testset = INN.datasets.CIFAR10(train=False, x_transform=transfrom)
     train_loader = INN.iterators.iterator(trainset, batch_size, shuffle=True)
@@ -427,14 +444,13 @@ def main_VGG16():
         print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
         sum_loss, sum_acc = 0, 0
 
-        with INN.test_mode():
-            with INN.no_grad():
-                for x, t in test_loader:
-                    y = model(x)
-                    loss = INN.functions.softmax_cross_entropy(y, t)
-                    acc = INN.functions.accuracy(y, t)
-                    sum_loss += loss.data
-                    sum_acc += acc.data
+        with no_grad(), test_mode():
+            for x, t in test_loader:
+                y = model(x)
+                loss = INN.functions.softmax_cross_entropy(y, t)
+                acc = INN.functions.accuracy(y, t)
+                sum_loss += loss.data
+                sum_acc += acc.data
         print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')
 
         weight_path = os.path.join(INN.utils.cache_dir, f'{model.__class__.__name__}{i}.npz')
@@ -444,11 +460,11 @@ def main_VGG16():
 
 def main_GoogleNet():
     model_load = False
-    batch_size = 5
+    batch_size = 64
     epoch = 10
     transfrom = compose(
         [toOpencv(), opencv_resize(224), toArray(), toFloat(),
-         z_score_normalize(mean = [129.30416561, 124.0699627,  112.43405006],std = [68.1702429,  65.39180804, 70.41837019])])
+         z_score_normalize(mean=[129.30416561, 124.0699627, 112.43405006], std=[68.1702429, 65.39180804, 70.41837019])])
     trainset = INN.datasets.CIFAR100(train=True, x_transform=transfrom)
     testset = INN.datasets.CIFAR100(train=False, x_transform=transfrom)
     train_loader = INN.iterators.iterator(trainset, batch_size, shuffle=True)
@@ -467,8 +483,12 @@ def main_GoogleNet():
         sum_loss, sum_acc = 0, 0
 
         for x, t in train_loader:
-            y = model(x)
-            loss = INN.functions.softmax_cross_entropy(y, t)
+            aux1, aux2,y = model(x)
+
+            loss1 = INN.functions.softmax_cross_entropy(aux1, t)
+            loss2 = INN.functions.softmax_cross_entropy(aux2, t)
+            loss3 = INN.functions.softmax_cross_entropy(y, t)
+            loss = loss3 + 0.3 * (loss1+loss2)
             acc = INN.functions.accuracy(y, t)
             model.cleargrads()
             loss.backward()
@@ -480,14 +500,13 @@ def main_GoogleNet():
         print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
         sum_loss, sum_acc = 0, 0
 
-        with INN.test_mode():
-            with INN.no_grad():
-                for x, t in test_loader:
-                    y = model(x)
-                    loss = INN.functions.softmax_cross_entropy(y, t)
-                    acc = INN.functions.accuracy(y, t)
-                    sum_loss += loss.data
-                    sum_acc += acc.data
+        with no_grad(), test_mode():
+            for x, t in test_loader:
+                y = model(x)
+                loss = INN.functions.softmax_cross_entropy(y, t)
+                acc = INN.functions.accuracy(y, t)
+                sum_loss += loss.data
+                sum_acc += acc.data
         print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')
 
         model.save_weights(i)

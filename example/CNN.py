@@ -1,7 +1,9 @@
-from INN import *
 import INN
+from INN import *
 from INN import layers as L
 from INN import functions as F
+from INN.transforms import *
+
 import cv2 as cv
 import numpy as np
 import os
@@ -13,6 +15,7 @@ class LeNet_5(Model):
     https://ieeexplore.ieee.org/abstract/document/726791
     "Gradient-based learning applied to document recognition"
     1998, Yann LeCun Léon Bottou Yoshua Bengio Patrick Haffner
+    params_size = 3317546
 
     frist typical CNN model
     input (32,32)
@@ -48,6 +51,7 @@ class AlexNet(Model):
     https://papers.nips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf
     ImageNet Classification with Deep Convolutional Neural Networks
     2012, Alex Krizhevsky, Ilya Sutskever, Geoffrey E. Hinton
+    params_size = 76,009,832
 
     use Relu activation function - Shoter Training Time
     use Max Pooling, Dropout, Local Response Normalization
@@ -57,9 +61,7 @@ class AlexNet(Model):
     def __init__(self, output_channel=1000):
         super().__init__()
         self.conv1 = L.Conv2d(96, kernel_size=11, stride=4, pad=0)
-        self.batchnorm1 = L.BatchNorm()
         self.conv2 = L.Conv2d(256, kernel_size=5, stride=1, pad=2)
-        self.batchnorm2 = L.BatchNorm()
         self.conv3 = L.Conv2d(384, kernel_size=3, stride=1, pad=1)
         self.conv4 = L.Conv2d(384, kernel_size=3, stride=1, pad=1)
         self.conv5 = L.Conv2d(256, kernel_size=3, stride=1, pad=1)
@@ -70,12 +72,10 @@ class AlexNet(Model):
     def forward(self, x):
         x = F.relu(self.conv1(x))
         x = F.local_response_normalization(x)
-        # x = self.batchnorm1(x)
         x = F.max_pooling(x, kernel_size=3, stride=2)
 
         x = F.relu(self.conv2(x))
         x = F.local_response_normalization(x)
-        # x = self.batchnorm2(x)
         x = F.max_pooling(x, kernel_size=3, stride=2)
 
         x = F.relu(self.conv3(x))
@@ -96,6 +96,7 @@ class ZFNet(Model):
     https://arxiv.org/abs/1311.2901
     Visualizing and Understanding Convolutional Networks
     2013, Matthew D Zeiler, Rob Fergus
+    params_size = 386,539,432
 
     AlexNet -> ZFNet
     CONV1 : (11, 11) Kernel size, 4 strid -> (7, 7) Kernel size, 2 strid
@@ -105,9 +106,7 @@ class ZFNet(Model):
     def __init__(self, output_channel=1000):
         super().__init__()
         self.conv1 = L.Conv2d(96, kernel_size=7, stride=2, pad=0)
-        self.batchnorm1 = L.BatchNorm()
         self.conv2 = L.Conv2d(256, kernel_size=5, stride=1, pad=2)
-        self.batchnorm2 = L.BatchNorm()
         self.conv3 = L.Conv2d(512, kernel_size=3, stride=1, pad=1)
         self.conv4 = L.Conv2d(1024, kernel_size=3, stride=1, pad=1)
         self.conv5 = L.Conv2d(512, kernel_size=3, stride=1, pad=1)
@@ -118,12 +117,10 @@ class ZFNet(Model):
     def forward(self, x):
         x = F.relu(self.conv1(x))
         x = F.local_response_normalization(x)
-        # x = self.batchnorm1(x)
         x = F.max_pooling(x, kernel_size=3, stride=2)
 
         x = F.relu(self.conv2(x))
         x = F.local_response_normalization(x)
-        # x = self.batchnorm2(x)
         x = F.max_pooling(x, kernel_size=3, stride=2)
 
         x = F.relu(self.conv3(x))
@@ -302,9 +299,9 @@ class GoogleNet(Model):
 def main_LeNet():
     batch_size = 100
     epoch = 10
-    transfrom = transforms.compose(
-        [transforms.toOpencv(), transforms.opencv_resize((32, 32)), transforms.toArray(), transforms.toFloat(),
-         transforms.z_score_Normalize(0., 255.)])
+    transfrom = compose(
+        [toOpencv(), opencv_resize((32, 32)), toArray(), toFloat(),
+         z_score_normalize(mean = [125.30691805, 122.95039414, 113.86538318],std = [62.99321928, 62.08870764, 66.70489964])])
     trainset = INN.datasets.MNIST(train=True, x_transform=transfrom)
     testset = INN.datasets.MNIST(train=False, x_transform=transfrom)
 
@@ -347,17 +344,18 @@ def main_LeNet():
 
 
 def main_AlexNet():
+
     batch_size = 100
     epoch = 10
-    transfrom = transforms.compose(
-        [transforms.toOpencv(), transforms.opencv_resize(227), transforms.toArray(), transforms.toFloat(),
-         transforms.z_score_Normalize(0.5, 0.5)])
+    transfrom = compose(
+        [toOpencv(), opencv_resize(227), toArray(), toFloat(),
+         z_score_normalize(mean = [125.30691805, 122.95039414, 113.86538318],std = [62.99321928, 62.08870764, 66.70489964])])
     trainset = INN.datasets.CIFAR10(train=True, x_transform=transfrom)
     testset = INN.datasets.CIFAR10(train=False, x_transform=transfrom)
     train_loader = INN.iterators.iterator(trainset, batch_size, shuffle=True)
     test_loader = INN.iterators.iterator(testset, batch_size, shuffle=False)
 
-    model = AlexNet()
+    model = AlexNet(10)
     optimizer = INN.optimizers.Adam(alpha=0.0001).setup(model)
 
     if INN.cuda.gpu_enable:
@@ -396,9 +394,9 @@ def main_AlexNet():
 def main_VGG16():
     batch_size = 10
     epoch = 10
-    transfrom = transforms.compose(
-        [transforms.toOpencv(), transforms.opencv_resize(224), transforms.toArray(), transforms.toFloat(),
-         transforms.z_score_Normalize(0.5, 0.5)])
+    transfrom = compose(
+        [toOpencv(), opencv_resize(224), toArray(), toFloat(),
+         z_score_normalize(mean = [125.30691805, 122.95039414, 113.86538318],std = [62.99321928, 62.08870764, 66.70489964])])
     trainset = INN.datasets.CIFAR10(train=True, x_transform=transfrom)
     testset = INN.datasets.CIFAR10(train=False, x_transform=transfrom)
     train_loader = INN.iterators.iterator(trainset, batch_size, shuffle=True)
@@ -445,18 +443,18 @@ def main_VGG16():
 
 
 def main_GoogleNet():
-    model_load = True
+    model_load = False
     batch_size = 5
     epoch = 10
-    transfrom = transforms.compose(
-        [transforms.toOpencv(), transforms.opencv_resize(224), transforms.toArray(), transforms.toFloat(),
-         transforms.z_score_Normalize(0.5, 0.5)])
-    trainset = INN.datasets.CIFAR10(train=True, x_transform=transfrom)
-    testset = INN.datasets.CIFAR10(train=False, x_transform=transfrom)
+    transfrom = compose(
+        [toOpencv(), opencv_resize(224), toArray(), toFloat(),
+         z_score_normalize(mean = [129.30416561, 124.0699627,  112.43405006],std = [68.1702429,  65.39180804, 70.41837019])])
+    trainset = INN.datasets.CIFAR100(train=True, x_transform=transfrom)
+    testset = INN.datasets.CIFAR100(train=False, x_transform=transfrom)
     train_loader = INN.iterators.iterator(trainset, batch_size, shuffle=True)
     test_loader = INN.iterators.iterator(testset, batch_size, shuffle=False)
 
-    model = GoogleNet(output_channel=10)
+    model = GoogleNet(output_channel=100)
     optimizer = INN.optimizers.Adam(alpha=0.0001).setup(model)
     start_epoch = model.load_weights() + 1 if model_load else 1
 

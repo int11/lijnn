@@ -79,12 +79,12 @@ class Spiral(Dataset):
 # =============================================================================
 class MNIST(Dataset):
     """
-    mean = 33.31842145
-    std = 78.56748998
+    mean = [33.31842145],
+    std = [78.56748998]
     """
     def __init__(self, train=True,
                  x_transform=compose([flatten(), toFloat(),
-                                      z_score_Normalize(0., 255.)]),
+                                      z_score_normalize(33.31842145, 78.56748998)]),
                  t_transform=None):
         super().__init__(train, x_transform, t_transform)
 
@@ -130,11 +130,11 @@ class MNIST(Dataset):
 
 class CIFAR10(Dataset):
     """
-    mean = 125.30691805 122.95039414 113.86538318
-    std = 62.99321928 62.08870764 66.70489964
+    mean = [125.30691805, 122.95039414, 113.86538318],
+    std = [62.99321928, 62.08870764, 66.70489964]
     """
     def __init__(self, train=True,
-                 x_transform=compose([toFloat(), z_score_Normalize(mean=0.5, std=0.5)]),
+                 x_transform=compose([toFloat(), z_score_normalize(mean = [125.30691805, 122.95039414, 113.86538318],std = [62.99321928, 62.08870764, 66.70489964])]),
                  t_transform=None):
         super().__init__(train, x_transform, t_transform)
 
@@ -196,11 +196,11 @@ class CIFAR10(Dataset):
 
 class CIFAR100(CIFAR10):
     """
-    mean = 129.30416561 124.0699627  112.43405006
-    std = 68.1702429  65.39180804 70.41837019
+    mean = [129.30416561, 124.0699627,  112.43405006],
+    std = [68.1702429,  65.39180804, 70.41837019]
     """
     def __init__(self, train=True,
-                 x_transform=compose([toFloat(), z_score_Normalize(mean=0.5, std=0.5)]),
+                 x_transform=compose([toFloat(), z_score_normalize(mean = [129.30416561, 124.0699627,  112.43405006],std = [68.1702429,  65.39180804, 70.41837019])]),
                  t_transform=None,
                  label_type='fine'):
         assert label_type in ['fine', 'coarse']

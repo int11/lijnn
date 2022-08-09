@@ -1,9 +1,4 @@
 import numpy as np
-
-try:
-    import Image
-except ImportError:
-    from PIL import Image
 from INN.utils import pair
 import cv2 as cv
 
@@ -28,9 +23,6 @@ class compose:
         return data
 
 
-# =============================================================================
-# Transforms for PIL Image
-# =============================================================================
 class cvtColor:
     def __init__(self, mode=cv.COLOR_BGR2RGB):
         self.mode = mode
@@ -50,27 +42,6 @@ class opencv_resize:
         return cv.resize(img, self.size)
 
 
-class centerCrop:
-    """Resize the input PIL image to the given size.
-
-    Args:
-        size (int or (int, int)): Desired output size.
-        mode (int): Desired interpolation.
-    """
-
-    def __init__(self, size):
-        self.size = pair(size)
-
-    def __call__(self, img):
-        W, H = img.size
-        OW, OH = self.size
-        left = (W - OW) // 2
-        right = W - ((W - OW) // 2 + (W - OW) % 2)
-        up = (H - OH) // 2
-        bottom = H - ((H - OH) // 2 + (H - OH) % 2)
-        return img.crop((left, up, right, bottom))
-
-
 class toArray:
     def __init__(self, dtype=np.float32):
         self.dtype = dtype
@@ -88,10 +59,7 @@ class randomHorizontalFlip:
     pass
 
 
-# =============================================================================
-# Transforms for NumPy ndarray
-# =============================================================================
-class z_score_Normalize:
+class z_score_normalize:
     """Normalize a NumPy array with mean and standard deviation.
 
     Args:
@@ -117,32 +85,13 @@ class z_score_Normalize:
             std = np.array(self.std, dtype=array.dtype).reshape(*rshape)
         return (array - mean) / std
 
-class z_score_Normalize1:
-    """Normalize a NumPy array with mean and standard deviation.
-
-    Args:
-        mean (float or sequence): mean for all values or sequence of means for
-         each channel.
-        std (float or sequence):
-    """
-
-    def __init__(self, mean=0, std=1):
-        self.mean = mean
-        self.std = std
-
-    def __call__(self, array):
-        mean, std = self.mean, self.std
-
-
-        return (array - mean) / std
-
 
 class flatten:
     def __call__(self, array):
         return array.flatten()
 
 
-class asType:
+class astype:
     def __init__(self, dtype=np.float32):
         self.dtype = dtype
 
@@ -150,9 +99,30 @@ class asType:
         return array.astype(self.dtype)
 
 
-toFloat = asType
+toFloat = astype
 
 
-class toInt(asType):
+class toInt(astype):
     def __init__(self, dtype=np.int):
         super().__init__(dtype)
+
+
+class centerCrop:
+    """Resize the input PIL image to the given size.
+
+    Args:
+        size (int or (int, int)): Desired output size.
+        mode (int): Desired interpolation.
+    """
+
+    def __init__(self, size):
+        self.size = pair(size)
+
+    def __call__(self, img):
+        W, H = img.size
+        OW, OH = self.size
+        left = (W - OW) // 2
+        right = W - ((W - OW) // 2 + (W - OW) % 2)
+        up = (H - OH) // 2
+        bottom = H - ((H - OH) // 2 + (H - OH) % 2)
+        return img.crop((left, up, right, bottom))

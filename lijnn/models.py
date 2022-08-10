@@ -16,8 +16,10 @@ class Model(Layer):
 
     def save_weights(self, epoch, name='default'):
         model_dir = os.path.join(utils.cache_dir, self.__class__.__name__)
+
         if not os.path.exists(model_dir):
             os.mkdir(model_dir)
+
         weight_dir = os.path.join(model_dir, f'{name}_{epoch}_epoch.npz')
 
         super().save_weights(weight_dir)
@@ -30,7 +32,7 @@ class Model(Layer):
         name_listdir = [i for i in [i.split('_') for i in listdir] if i[0] == name]
 
         if epoch is None:
-            epoch = max([i[1] for i in name_listdir])
+            epoch = max([int(i[1]) for i in name_listdir])
 
         weight_dir = os.path.join(model_dir, f'{name}_{epoch}_epoch.npz')
         print(f'model weight load : {weight_dir}')

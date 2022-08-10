@@ -308,7 +308,7 @@ class GoogleNet(Model):
         x = F.reshape(x, (x.shape[0], -1))
         x = self.loss3_fc(x)
         if Config.train:
-            return aux1, aux2,x
+            return aux1, aux2, x
         return x
 
 
@@ -458,10 +458,9 @@ def main_VGG16():
         model.save_weights(weight_path)
 
 
-def main_GoogleNet():
-    model_load = False
+def main_GoogleNet(model_load = False, name='default'):
     batch_size = 64
-    epoch = 10
+    epoch = 100
     transfrom = compose(
         [toOpencv(), opencv_resize(224), toArray(), toFloat(),
          z_score_normalize(mean=[129.30416561, 124.0699627, 112.43405006], std=[68.1702429, 65.39180804, 70.41837019])])
@@ -472,7 +471,7 @@ def main_GoogleNet():
 
     model = GoogleNet(output_channel=100)
     optimizer = lijnn.optimizers.Adam(alpha=0.0001).setup(model)
-    start_epoch = model.load_weights() + 1 if model_load else 1
+    start_epoch = model.load_weights(name=name) + 1 if model_load else 1
 
     if lijnn.cuda.gpu_enable:
         model.to_gpu()
@@ -483,12 +482,12 @@ def main_GoogleNet():
         sum_loss, sum_acc = 0, 0
 
         for x, t in train_loader:
-            aux1, aux2,y = model(x)
+            aux1, aux2, y = model(x)
 
             loss1 = lijnn.functions.softmax_cross_entropy(aux1, t)
             loss2 = lijnn.functions.softmax_cross_entropy(aux2, t)
             loss3 = lijnn.functions.softmax_cross_entropy(y, t)
-            loss = loss3 + 0.3 * (loss1+loss2)
+            loss = loss3 + 0.3 * (loss1 + loss2)
             acc = lijnn.functions.accuracy(y, t)
             model.cleargrads()
             loss.backward()
@@ -509,4 +508,4 @@ def main_GoogleNet():
                 sum_acc += acc.data
         print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')
 
-        model.save_weights(i)
+        model.save_weights(i,name)

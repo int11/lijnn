@@ -54,8 +54,10 @@ class AlexNet(Model):
     params_size = 76,009,832
 
     use Relu activation function - Shoter Training Time
+    use 2 Gpu
+
     use Max Pooling, Dropout, Local Response Normalization
-    GPU use
+
     """
 
     def __init__(self, output_channel=1000):
@@ -95,7 +97,7 @@ class ZFNet(Model):
     """
     https://arxiv.org/abs/1311.2901
     Visualizing and Understanding Convolutional Networks
-    2013, Matthew D Zeiler, Rob Fergus
+    2013.11.12, Matthew D Zeiler, Rob Fergus
     params_size = 386,539,432
 
     AlexNet -> ZFNet
@@ -140,7 +142,7 @@ class VGG16(Model):
     """
     https://arxiv.org/abs/1409.1556
     Very Deep Convolutional Networks for Large-Scale Image Recognition
-    2014, Karen Simonyan, Andrew Zisserman
+    2014.9.4, Karen Simonyan, Andrew Zisserman
     params_size = 138,357,544
 
     """
@@ -207,7 +209,8 @@ class VGG16(Model):
 class GoogleNet(Model):
     """
     https://arxiv.org/abs/1409.4842
-    2014, Christian Szegedy, Wei Liu, Yangqing Jia, Pierre Sermanet, Scott Reed, Dragomir Anguelov, Dumitru Erhan, Vincent Vanhoucke, Andrew Rabinovich
+    2014.9.17, Christian Szegedy, Wei Liu, Yangqing Jia, Pierre Sermanet, Scott Reed, Dragomir Anguelov, Dumitru Erhan, Vincent Vanhoucke, Andrew Rabinovich
+    13,378,280
     """
 
     def __init__(self, output_channel=1000):
@@ -240,6 +243,7 @@ class GoogleNet(Model):
 
         super().__init__()
         self.conv1 = Conv2d_Relu(64, 7, stride=2, pad=3)
+
         self.conv2_reduce = Conv2d_Relu(64, 1)
         self.conv2 = Conv2d_Relu(192, 3, stride=1, pad=1)
 
@@ -309,6 +313,18 @@ class GoogleNet(Model):
         x = self.loss3_fc(x)
         if Config.train:
             return aux1, aux2, x
+        return x
+
+class ResNet():
+    """
+    https://arxiv.org/abs/1512.03385
+    Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
+    2015.12.10
+    """
+    def __init__(self, output_channel=1000):
+        super().__init__()
+
+    def forward(self, x):
         return x
 
 

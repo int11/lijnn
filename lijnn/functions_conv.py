@@ -373,6 +373,11 @@ def im2col_array(img, kernel_size, stride, pad, to_matrix=True):
                 i_lim = i + SW * OW
                 col[:, :, j, i, :, :] = img[:, :, j:j_lim:SH, i:i_lim:SW]
 
+
+        strides = img.strides
+        a = np.lib.stride_tricks.as_strided(img, (N, C, KH, KW, OH, OW), (strides[0],strides[1], strides[3], strides[3], strides[2]*SH, strides[3]*SW))
+        print(a)
+
     if to_matrix:
         col = col.transpose((0, 4, 5, 1, 2, 3)).reshape((N * OH * OW, -1))
 

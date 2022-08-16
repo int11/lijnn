@@ -446,8 +446,9 @@ def _im2col_gpu(img, kernel_size, stride, pad):
              col = 0;
            }
         ''',
-        'im2col')(img.reduced_view(),
-                  h, w, out_h, out_w, kh, kw, sy, sx, ph, pw, dy, dx, col)
+        'im2col')(img.reduced_view(), h, w, out_h, out_w,
+                  kh, kw, sy, sx, ph, pw,
+                  dy, dx, col)
 
     return col
 

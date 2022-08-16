@@ -69,7 +69,7 @@ class Layer:
             else:
                 params_dict[key] = obj
 
-    def save_weights(self, path):
+    def save_weights_epoch(self, path):
         self.to_cpu()
 
         params_dict = {}
@@ -86,7 +86,7 @@ class Layer:
             if cuda.gpu_enable:
                 self.to_gpu()
 
-    def load_weights(self, path):
+    def load_weights_epoch(self, path):
         npz = np.load(path, allow_pickle=True)
         params_dict = {}
         self._params_dict(params_dict)

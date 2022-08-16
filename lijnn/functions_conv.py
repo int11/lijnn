@@ -400,7 +400,7 @@ def stride_im2col_array(img, kernel_size, stride, pad, to_matrix=True):
 
     xp = cuda.get_array_module(img)
 
-    img = np.pad(img,
+    img = xp.pad(img,
                  ((0, 0), (0, 0), (PH, PH + SH - 1), (PW, PW + SW - 1)),
                  mode='constant', constant_values=(0,))
 

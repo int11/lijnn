@@ -399,7 +399,8 @@ def stride_im2col_array(img, kernel_size, stride, pad, to_matrix=True):
     OW = get_conv_outsize(W, KW, SW, PW)
 
     xp = cuda.get_array_module(img)
-
+    import cupy as cp
+    print(xp, xp == np, xp == cp,cuda.gpu_enable)
     img = xp.pad(img,
                  ((0, 0), (0, 0), (PH, PH + SH - 1), (PW, PW + SW - 1)),
                  mode='constant', constant_values=(0,))
@@ -442,6 +443,7 @@ def col2im_array(col, img_shape, kernel_size, stride, pad, to_matrix=True):
 
 
 def _im2col_gpu(img, kernel_size, stride, pad):
+    print('use gpu')
     """im2col function for GPU.
     This code is ported from Chainer:
     https://github.com/chainer/chainer/blob/v6.4.0/chainer/utils/conv.py

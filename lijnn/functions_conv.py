@@ -350,7 +350,18 @@ def col2im(x, input_shape, kernel_size, stride=1, pad=0, to_matrix=True):
 # =============================================================================
 #  numpy im2col
 # =============================================================================
+ustride = 0
+
+
 def im2col_array(img, kernel_size, stride, pad, to_matrix=True):
+    if ustride:
+        col = stride_im2col_array(img, kernel_size, stride, pad, to_matrix)
+    else:
+        col = im2col_array1(img, kernel_size, stride, pad, to_matrix)
+    return col
+
+
+def im2col_array1(img, kernel_size, stride, pad, to_matrix=True):
     N, C, H, W = img.shape
     KH, KW = pair(kernel_size)
     SH, SW = pair(stride)
@@ -373,10 +384,30 @@ def im2col_array(img, kernel_size, stride, pad, to_matrix=True):
                 i_lim = i + SW * OW
                 col[:, :, j, i, :, :] = img[:, :, j:j_lim:SH, i:i_lim:SW]
 
+    if to_matrix:
+        col = col.transpose((0, 4, 5, 1, 2, 3)).reshape((N * OH * OW, -1))
 
-        strides = img.strides
-        a = np.lib.stride_tricks.as_strided(img, (N, C, KH, KW, OH, OW), (strides[0],strides[1], strides[3], strides[3], strides[2]*SH, strides[3]*SW))
-        print(a)
+    return col
+
+
+def stride_im2col_array(img, kernel_size, stride, pad, to_matrix=True):
+    N, C, H, W = img.shape
+    KH, KW = pair(kernel_size)
+    SH, SW = pair(stride)
+    PH, PW = pair(pad)
+    OH = get_conv_outsize(H, KH, SH, PH)
+    OW = get_conv_outsize(W, KW, SW, PW)
+
+    xp = cuda.get_array_module(img)
+
+    img = np.pad(img,
+                 ((0, 0), (0, 0), (PH, PH + SH - 1), (PW, PW + SW - 1)),
+                 mode='constant', constant_values=(0,))
+
+    strides = img.strides
+
+    col = xp.lib.stride_tricks.as_strided(img, (N, C, KH, KW, OH, OW), (
+        strides[0], strides[1], strides[2], strides[3], strides[2] * SH, strides[3] * SW))
 
     if to_matrix:
         col = col.transpose((0, 4, 5, 1, 2, 3)).reshape((N * OH * OW, -1))

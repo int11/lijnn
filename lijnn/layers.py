@@ -26,6 +26,7 @@ class Layer:
             outputs = (outputs,)
         self.inputs = [weakref.ref(x) for x in inputs]
         self.outputs = [weakref.ref(y) for y in outputs]
+
         return outputs if len(outputs) > 1 else outputs[0]
 
     def forward(self, inputs):
@@ -69,7 +70,7 @@ class Layer:
             else:
                 params_dict[key] = obj
 
-    def save_weights_epoch(self, path):
+    def save_weights(self, path):
         self.to_cpu()
 
         params_dict = {}
@@ -86,7 +87,7 @@ class Layer:
             if cuda.gpu_enable:
                 self.to_gpu()
 
-    def load_weights_epoch(self, path):
+    def load_weights(self, path):
         npz = np.load(path, allow_pickle=True)
         params_dict = {}
         self._params_dict(params_dict)

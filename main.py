@@ -1,6 +1,3 @@
-from example.CNN import *
-import lijnn
-import cv2 as cv
-import numpy as np
+from example import CNN
 
-main_GoogleNet(True, '3loss')
+CNN.main_ResNet()

@@ -22,22 +22,32 @@ class Model(Layer):
 
         weight_dir = os.path.join(model_dir, f'{name}_{epoch}_epoch.npz')
 
-        super().save_weights_epoch(weight_dir)
+        self.save_weights(weight_dir)
         print(f'model weight save : {weight_dir}')
 
     def load_weights_epoch(self, epoch=None, name='default'):
         model_dir = os.path.join(utils.cache_dir, self.__class__.__name__)
-        listdir = os.listdir(model_dir)
+        try:
+            listdir = os.listdir(model_dir)
+            if not os.path.exists(model_dir):
+                raise
 
-        name_listdir = [i for i in [i.split('_') for i in listdir] if i[0] == name]
+            name_listdir = [i for i in [i.split('_') for i in listdir] if i[0] == name]
 
-        if epoch is None:
-            epoch = max([int(i[1]) for i in name_listdir])
+            if len(name_listdir) == 0:
+                raise
 
-        weight_dir = os.path.join(model_dir, f'{name}_{epoch}_epoch.npz')
-        print(f'model weight load : {weight_dir}')
-        super().load_weights_epoch(weight_dir)
-        return int(epoch)
+            if epoch is None:
+                epoch = max([int(i[1]) for i in name_listdir])
+            weight_dir = os.path.join(model_dir, f'{name}_{epoch}_epoch.npz')
+            print(f'\n model weight load : {weight_dir}')
+            self.load_weights(weight_dir)
+        except:
+            epoch = 0
+            print("\n Not found any weights file, model train from scratch.")
+
+        start_epoch = int(epoch) + 1
+        return start_epoch
 
 
 class Sequential(Model):
@@ -69,8 +79,6 @@ class MLP(Model):
         for l in self.layers[:-1]:
             x = self.activation(l(x))
         return self.layers[-1](x)
-
-
 
 
 # =============================================================================

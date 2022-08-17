@@ -363,21 +363,19 @@ def im2col_array(img, kernel_size, stride, pad, to_matrix=True):
     if xp != np:
         col = _im2col_gpu(img, kernel_size, stride, pad)
     else:
-        """
+
         img = np.pad(img,
                      ((0, 0), (0, 0), (PH, PH + SH - 1), (PW, PW + SW - 1)),
                      mode='constant', constant_values=(0,))
-        col = np.ndarray((N, C, KH, KW, OH, OW), dtype=img.dtype)
-
-        for j in range(KH):
-            j_lim = j + SH * OH
-            for i in range(KW):
-                i_lim = i + SW * OW
-                col[:, :, j, i, :, :] = img[:, :, j:j_lim:SH, i:i_lim:SW]
-        """
+        # col = np.ndarray((N, C, KH, KW, OH, OW), dtype=img.dtype)
+        #
+        # for j in range(KH):
+        #     j_lim = j + SH * OH
+        #     for i in range(KW):
+        #         i_lim = i + SW * OW
+        #         col[:, :, j, i, :, :] = img[:, :, j:j_lim:SH, i:i_lim:SW]
 
         strides = img.strides
-
         col = xp.lib.stride_tricks.as_strided(img, (N, C, KH, KW, OH, OW), (
             strides[0], strides[1], strides[2], strides[3], strides[2] * SH, strides[3] * SW))
 

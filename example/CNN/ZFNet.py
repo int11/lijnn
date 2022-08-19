@@ -3,10 +3,6 @@ from lijnn import layers as L
 from lijnn import functions as F
 from lijnn.transforms import *
 
-import cv2 as cv
-import numpy as np
-import os
-
 
 class ZFNet(Model):
     """
@@ -20,7 +16,7 @@ class ZFNet(Model):
     CONV3,4,5 : 384, 384, 256  out channels -> 512, 1024, 512 out channels
     """
 
-    def __init__(self, output_channel=1000):
+    def __init__(self, num_classes=1000):
         super().__init__()
         self.conv1 = L.Conv2d(96, kernel_size=7, stride=2, pad=0)
         self.conv2 = L.Conv2d(256, kernel_size=5, stride=1, pad=2)
@@ -29,7 +25,7 @@ class ZFNet(Model):
         self.conv5 = L.Conv2d(512, kernel_size=3, stride=1, pad=1)
         self.fc6 = L.Linear(4096)
         self.fc7 = L.Linear(4096)
-        self.fc8 = L.Linear(output_channel)
+        self.fc8 = L.Linear(num_classes)
 
     def forward(self, x):
         x = F.relu(self.conv1(x))

@@ -3,10 +3,6 @@ from lijnn import layers as L
 from lijnn import functions as F
 from lijnn.transforms import *
 
-import cv2 as cv
-import numpy as np
-import os
-
 
 class AlexNet(Model):
     """
@@ -22,7 +18,7 @@ class AlexNet(Model):
 
     """
 
-    def __init__(self, output_channel=1000):
+    def __init__(self, num_classes=1000):
         super().__init__()
         self.conv1 = L.Conv2d(96, kernel_size=11, stride=4, pad=0)
         self.conv2 = L.Conv2d(256, kernel_size=5, stride=1, pad=2)
@@ -31,7 +27,7 @@ class AlexNet(Model):
         self.conv5 = L.Conv2d(256, kernel_size=3, stride=1, pad=1)
         self.fc6 = L.Linear(4096)
         self.fc7 = L.Linear(4096)
-        self.fc8 = L.Linear(output_channel)
+        self.fc8 = L.Linear(num_classes)
 
     def forward(self, x):
         x = F.relu(self.conv1(x))

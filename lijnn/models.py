@@ -14,6 +14,15 @@ class Model(Layer):
         y = self.forward(*inputs)
         return utils.plot_dot_graph(y, verbose=True, to_file=to_file)
 
+    def layers_info(self, parent_key=""):
+        for name in self._params:
+            obj = self.__dict__[name]
+            key = parent_key + '/' + name if parent_key else name
+            if isinstance(obj, Model):
+                obj.layers_info(key)
+            else:
+                print(key, obj)
+
     def save_weights_epoch(self, epoch, name='default'):
         model_dir = os.path.join(utils.cache_dir, self.__class__.__name__)
 

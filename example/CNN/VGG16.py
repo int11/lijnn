@@ -5,7 +5,6 @@ from lijnn.transforms import *
 
 import cv2 as cv
 import numpy as np
-import os
 
 
 class VGG16(Model):
@@ -18,7 +17,7 @@ class VGG16(Model):
     """
     WEIGHTS_PATH = 'https://github.com/koki0702/dezero-models/releases/download/v0.1/vgg16.npz'
 
-    def __init__(self, pretrained=False, output_channel=1000):
+    def __init__(self, pretrained=False, num_classes=1000):
         super().__init__()
         self.conv1_1 = L.Conv2d(64, kernel_size=3, stride=1, pad=1)
         self.conv1_2 = L.Conv2d(64, kernel_size=3, stride=1, pad=1)
@@ -35,7 +34,7 @@ class VGG16(Model):
         self.conv5_3 = L.Conv2d(512, kernel_size=3, stride=1, pad=1)
         self.fc6 = L.Linear(4096)
         self.fc7 = L.Linear(4096)
-        self.fc8 = L.Linear(output_channel)
+        self.fc8 = L.Linear(num_classes)
 
         if pretrained:
             weights_path = utils.get_file(VGG16.WEIGHTS_PATH)
@@ -88,7 +87,7 @@ def main_VGG16(name='default'):
     train_loader = iterators.iterator(trainset, batch_size, shuffle=True)
     test_loader = iterators.iterator(testset, batch_size, shuffle=False)
 
-    model = VGG16(output_channel=10)
+    model = VGG16(num_classes=10)
     optimizer = optimizers.Adam(alpha=0.0001).setup(model)
     start_epoch = model.load_weights_epoch(name=name)
     if cuda.gpu_enable:

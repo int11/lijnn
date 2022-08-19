@@ -3,10 +3,6 @@ from lijnn import layers as L
 from lijnn import functions as F
 from lijnn.transforms import *
 
-import cv2 as cv
-import numpy as np
-import os
-
 
 class GoogleNet(Model):
     """
@@ -15,7 +11,7 @@ class GoogleNet(Model):
     params_size = 13,378,280
     """
 
-    def __init__(self, output_channel=1000):
+    def __init__(self, num_classes=1000):
         class Conv2d_Relu(Layer):
             def __init__(self, out_channels, kernel_size, stride=1,
                          pad=0):
@@ -61,15 +57,15 @@ class GoogleNet(Model):
         self.inc5a = Inception(256, 160, 320, 32, 128, 128)
         self.inc5b = Inception(384, 192, 384, 48, 128, 128)
 
-        self.loss3_fc = L.Linear(output_channel)
+        self.loss3_fc = L.Linear(num_classes)
 
         self.loss1_conv = Conv2d_Relu(128, 1)
         self.loss1_fc1 = L.Linear(1024)
-        self.loss1_fc2 = L.Linear(output_channel)
+        self.loss1_fc2 = L.Linear(num_classes)
 
         self.loss2_conv = Conv2d_Relu(128, 1)
         self.loss2_fc1 = L.Linear(1024)
-        self.loss2_fc2 = L.Linear(output_channel)
+        self.loss2_fc2 = L.Linear(num_classes)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -129,7 +125,7 @@ def main_GoogleNet(name='default'):
     train_loader = iterators.iterator(trainset, batch_size, shuffle=True)
     test_loader = iterators.iterator(testset, batch_size, shuffle=False)
 
-    model = GoogleNet(output_channel=100)
+    model = GoogleNet(num_classes=100)
     optimizer = optimizers.Adam(alpha=0.0001).setup(model)
     start_epoch = model.load_weights_epoch(name=name)
 

@@ -137,57 +137,72 @@ class ResNet(Model):
 
 
 def resnet18(num_classes=1000):
-    r"""ResNet-18 model from
-    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
+    """
+    ResNet-18 model from
+    "Deep Residual Learning for Image Recognition"
+    <https://arxiv.org/abs/1512.03385>`_
     """
     return ResNet(BasicBlock, [2, 2, 2, 2], num_classes)
 
 
 def resnet34(num_classes=1000):
-    r"""ResNet-34 model from
-    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
+    """
+    ResNet-34 model from
+    "Deep Residual Learning for Image Recognition"
+    <https://arxiv.org/abs/1512.03385>`_
     """
     return ResNet(BasicBlock, [3, 4, 6, 3], num_classes)
 
 
 def resnet50(num_classes=1000):
-    r"""ResNet-50 model from
-    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
+    """
+    ResNet-50 model from
+    "Deep Residual Learning for Image Recognition"
+    <https://arxiv.org/abs/1512.03385>`_
     """
     return ResNet(Bottleneck, [3, 4, 6, 3], num_classes)
 
 
 def resnet101(num_classes=1000):
-    r"""ResNet-101 model from
-    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
+    """
+    ResNet-101 model from
+    "Deep Residual Learning for Image Recognition"
+    <https://arxiv.org/abs/1512.03385>`_
     """
     return ResNet(Bottleneck, [3, 4, 23, 3], num_classes)
 
 
 def resnet152(num_classes=1000):
-    r"""ResNet-152 model from
-    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
+    """
+    ResNet-152 model from
+    "Deep Residual Learning for Image Recognition"
+    <https://arxiv.org/abs/1512.03385>`_
     """
     return ResNet(Bottleneck, [3, 8, 36, 3], num_classes)
 
 
 def resnext50_32x4d(num_classes=1000):
-    r"""ResNeXt-50 32x4d model from
-    `"Aggregated Residual Transformation for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_
+    """
+    ResNeXt-50 32x4d model from
+    "Aggregated Residual Transformation for Deep Neural Networks"
+    https://arxiv.org/abs/1611.05431
     """
     return ResNet(Bottleneck, [3, 4, 6, 3], num_classes, 4, 32)
 
 
 def resnext101_32x8d(num_classes=1000):
-    r"""ResNeXt-101 32x8d model from
-    `"Aggregated Residual Transformation for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_
+    """ResNeXt-101 32x8d model from
+    "Aggregated Residual Transformation for Deep Neural Networks"
+    https://arxiv.org/abs/1611.05431
     """
     return ResNet(Bottleneck, [3, 4, 23, 3], num_classes, 8, 32)
 
 
 def wide_resnet50_2(num_classes=1000):
-    r"""Wide ResNet-50-2 model from
-    `"Wide Residual Networks" <https://arxiv.org/pdf/1605.07146.pdf>`_
+    """
+    Wide ResNet-50-2 model from
+    "Wide Residual Networks"
+    https://arxiv.org/abs/1605.07146
     The model is the same as ResNet except for the bottleneck number of channels
     which is twice larger in every block. The number of channels in outer 1x1
     convolutions is the same, e.g. last block in ResNet-50 has 2048-512-2048
@@ -197,11 +212,62 @@ def wide_resnet50_2(num_classes=1000):
 
 
 def wide_resnet101_2(num_classes=1000):
-    r"""Wide ResNet-101-2 model from
-    `"Wide Residual Networks" <https://arxiv.org/pdf/1605.07146.pdf>`_
+    """
+    Wide ResNet-101-2 model from
+    "Wide Residual Networks"
+    https://arxiv.org/abs/1605.07146
     The model is the same as ResNet except for the bottleneck number of channels
     which is twice larger in every block. The number of channels in outer 1x1
     convolutions is the same, e.g. last block in ResNet-50 has 2048-512-2048
     channels, and in Wide ResNet-50-2 has 2048-1024-2048.
     """
     return ResNet(Bottleneck, [3, 4, 23, 3], num_classes, 64 * 2)
+
+
+def main_ResNet(name='default'):
+    batch_size = 32
+    epoch = 100
+    transfrom = compose(
+        [toOpencv(), opencv_resize(224), toArray(), toFloat(),
+         z_score_normalize(mean=[129.30416561, 124.0699627, 112.43405006], std=[68.1702429, 65.39180804, 70.41837019])])
+    trainset = datasets.CIFAR100(train=True, x_transform=transfrom)
+    testset = datasets.CIFAR100(train=False, x_transform=transfrom)
+    train_loader = iterators.iterator(trainset, batch_size, shuffle=True)
+    test_loader = iterators.iterator(testset, batch_size, shuffle=False)
+
+    model = resnet50(num_classes=100)
+    optimizer = optimizers.Adam(alpha=0.0001).setup(model)
+    start_epoch = model.load_weights_epoch(name=name)
+
+    if cuda.gpu_enable:
+        model.to_gpu()
+        train_loader.to_gpu()
+        test_loader.to_gpu()
+
+    for i in range(start_epoch, epoch + 1):
+        sum_loss, sum_acc = 0, 0
+
+        for x, t in train_loader:
+            y = model(x)
+            loss = functions.softmax_cross_entropy(y, t)
+            acc = functions.accuracy(y, t)
+            model.cleargrads()
+            loss.backward()
+            optimizer.update()
+            sum_loss += loss.data
+            sum_acc += acc.data
+            print(f"loss : {loss.data} accuracy {acc.data}")
+        print(f"epoch {i}")
+        print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
+        sum_loss, sum_acc = 0, 0
+
+        with no_grad(), test_mode():
+            for x, t in test_loader:
+                y = model(x)
+                loss = functions.softmax_cross_entropy(y, t)
+                acc = functions.accuracy(y, t)
+                sum_loss += loss.data
+                sum_acc += acc.data
+        print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')
+
+        model.save_weights_epoch(i, name)

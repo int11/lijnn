@@ -3,10 +3,6 @@ from lijnn import layers as L
 from lijnn import functions as F
 from lijnn.transforms import *
 
-import cv2 as cv
-import numpy as np
-import os
-
 
 class LeNet_5(Model):
     """

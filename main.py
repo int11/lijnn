@@ -1,3 +1,3 @@
 from example import CNN
 
-CNN.ResNet
+CNN.main_ResNet()

@@ -7,15 +7,15 @@ from lijnn.transforms import *
 class BasicBlock(Model):
     expansion = 1
 
-    def __init__(self, out_channel, stride, downsample):
+    def __init__(self, in_channel, out_channel, stride):
         super().__init__()
-        self.downsample = downsample
 
         self.conv1 = L.Conv2d(out_channel, kernel_size=3, stride=stride, pad=1, nobias=True)
         self.bn1 = L.BatchNorm()
         self.conv2 = L.Conv2d(out_channel, kernel_size=3, stride=1, pad=1, nobias=True)
         self.bn2 = L.BatchNorm()
-        if self.downsample:
+
+        if stride != 1 or in_channel != out_channel * self.expansion:
             self.conv1_1 = L.Conv2d(out_channel * self.expansion, kernel_size=1, stride=stride, pad=0, nobias=True)
             self.bn1_1 = L.BatchNorm()
 
@@ -23,7 +23,7 @@ class BasicBlock(Model):
         h1 = F.relu(self.bn1(self.conv1(x)))
         h1 = self.bn2(self.conv2(h1))
 
-        if self.downsample:
+        if hasattr(self, 'conv1_1'):
             x = self.conv1_1(x)
             x = self.bn1_1(x)
 
@@ -41,9 +41,8 @@ class Bottleneck(Model):
 
     expansion = 4
 
-    def __init__(self, out_channel, stride, downsample):
+    def __init__(self, in_channel, out_channel, stride):
         super(Bottleneck, self).__init__()
-        self.downsample = downsample
 
         self.conv1 = L.Conv2d(out_channel, kernel_size=1, stride=1, pad=0, nobias=True)
         self.bn1 = L.BatchNorm()
@@ -51,7 +50,8 @@ class Bottleneck(Model):
         self.bn2 = L.BatchNorm()
         self.conv3 = L.Conv2d(out_channel * self.expansion, kernel_size=1, stride=1, pad=0, nobias=True)
         self.bn3 = L.BatchNorm()
-        if self.downsample:
+
+        if stride != 1 or in_channel != out_channel * self.expansion:
             self.conv1_1 = L.Conv2d(out_channel * self.expansion, kernel_size=1, stride=stride, pad=0, nobias=True)
             self.bn1_1 = L.BatchNorm()
 
@@ -60,7 +60,7 @@ class Bottleneck(Model):
         h1 = F.relu(self.bn2(self.conv2(h1)))
         h1 = self.bn3(self.conv3(h1))
 
-        if self.downsample:
+        if hasattr(self, 'conv1_1'):
             x = self.conv1_1(x)
             x = self.bn1_1(x)
 
@@ -73,10 +73,8 @@ class ResNet(Model):
     def __init__(self, block, num_layers, num_classes=1000):
         super(ResNet, self).__init__()
 
+        self.conv1 = L.Conv2d(64, kernel_size=7, stride=2, pad=3, nobias=True)
         self.in_channel = 64
-
-        self.conv1 = L.Conv2d(self.in_channel, kernel_size=7, stride=2, pad=3,
-                              nobias=True)
         self.bn1 = L.BatchNorm()
 
         self.layer1 = self._make_layer(block, num_layers[0], 64, stride=1)
@@ -86,19 +84,13 @@ class ResNet(Model):
         self.fc = L.Linear(num_classes)
 
     def _make_layer(self, block, num_blocks, out_channel, stride):
-        downsample = False
-        print(1, stride, self.in_channel, out_channel * block.expansion, end='   ')
-        if stride != 1 or self.in_channel != out_channel * block.expansion:
-            print(2)
-            downsample = True
-
-        layers = []
-        layers.append(block(out_channel, stride, downsample))
-        for _ in range(num_blocks - 1):
-            layers.append(block(out_channel, 1, False))
-
+        layers = [block(self.in_channel, out_channel, stride)]
         self.in_channel = out_channel * block.expansion
-        print()
+
+        for _ in range(num_blocks - 1):
+            layers.append(block(self.in_channel, out_channel, 1))
+            self.in_channel = out_channel * block.expansion
+
         return models.Sequential(*layers)
 
     def forward(self, x):
@@ -224,8 +216,6 @@ def main_ResNet(name='default'):
         model.save_weights_epoch(i, name)
 
 
-resnet18()
-resnet34()
-resnet50()
-resnet101()
-resnet152()
+model0 = resnet18()
+data = np.random.randint(1, 10, (1, 3, 224, 224))
+model0(data)

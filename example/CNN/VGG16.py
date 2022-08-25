@@ -9,8 +9,8 @@ import numpy as np
 
 class VGG16(Model):
     """
+    "Very Deep Convolutional Networks for Large-Scale Image Recognition"
     https://arxiv.org/abs/1409.1556
-    Very Deep Convolutional Networks for Large-Scale Image Recognition
     2014.9.4, Karen Simonyan, Andrew Zisserman
     params_size = 138,357,544
 

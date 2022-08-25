@@ -6,8 +6,8 @@ from lijnn.transforms import *
 
 class ZFNet(Model):
     """
+    "Visualizing and Understanding Convolutional Networks"
     https://arxiv.org/abs/1311.2901
-    Visualizing and Understanding Convolutional Networks
     2013.11.12, Matthew D Zeiler, Rob Fergus
     params_size = 386,539,432
 

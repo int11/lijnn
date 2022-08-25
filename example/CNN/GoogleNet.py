@@ -6,6 +6,7 @@ from lijnn.transforms import *
 
 class GoogleNet(Model):
     """
+    "Going Deeper with Convolutions"
     https://arxiv.org/abs/1409.4842
     2014.9.17, Christian Szegedy, Wei Liu, Yangqing Jia, Pierre Sermanet, Scott Reed, Dragomir Anguelov, Dumitru Erhan, Vincent Vanhoucke, Andrew Rabinovich
     params_size = 13,378,280

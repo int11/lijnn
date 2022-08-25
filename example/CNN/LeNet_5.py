@@ -6,9 +6,9 @@ from lijnn.transforms import *
 
 class LeNet_5(Model):
     """
+    "Gradient-based learning applied to document recognition"
     http://yann.lecun.com/exdb/publis/pdf/lecun-01a.pdf
     https://ieeexplore.ieee.org/abstract/document/726791
-    "Gradient-based learning applied to document recognition"
     1998, Yann LeCun Léon Bottou Yoshua Bengio Patrick Haffner
     params_size = 3,317,546
 

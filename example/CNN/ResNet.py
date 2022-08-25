@@ -70,6 +70,12 @@ class Bottleneck(Model):
 
 
 class ResNet(Model):
+    """
+    "Deep Residual Learning for Image Recognition"
+    https://arxiv.org/abs/1512.03385
+    2015.12.10, Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
+    """
+
     def __init__(self, block, num_layers, num_classes=1000):
         super(ResNet, self).__init__()
 
@@ -117,53 +123,26 @@ class ResNet(Model):
 
 
 def resnet18(num_classes=1000):
-    """
-    ResNet-18 model from
-    "Deep Residual Learning for Image Recognition"
-    https://arxiv.org/abs/1512.03385
-    2015.12.10, Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
-    """
     return ResNet(BasicBlock, [2, 2, 2, 2], num_classes)
 
 
 def resnet34(num_classes=1000):
-    """
-    ResNet-34 model from
-    "Deep Residual Learning for Image Recognition"
-    https://arxiv.org/abs/1512.03385
-    2015.12.10, Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
-    """
     return ResNet(BasicBlock, [3, 4, 6, 3], num_classes)
 
 
 def resnet50(num_classes=1000):
     """
-    ResNet-50 model from
-    "Deep Residual Learning for Image Recognition"
-    https://arxiv.org/abs/1512.03385
-    2015.12.10, Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
     param_size = 25610152
     """
     return ResNet(Bottleneck, [3, 4, 6, 3], num_classes)
 
 
 def resnet101(num_classes=1000):
-    """
-    ResNet-101 model from
-    "Deep Residual Learning for Image Recognition"
-    https://arxiv.org/abs/1512.03385
-    2015.12.10, Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
-    """
     return ResNet(Bottleneck, [3, 4, 23, 3], num_classes)
 
 
 def resnet152(num_classes=1000):
-    """
-    ResNet-152 model from
-    "Deep Residual Learning for Image Recognition"
-    https://arxiv.org/abs/1512.03385
-    2015.12.10, Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
-    """
+
     return ResNet(Bottleneck, [3, 8, 36, 3], num_classes)
 
 

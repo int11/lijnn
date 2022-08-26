@@ -32,18 +32,35 @@ class cvtColor:
         return cv.cvtColor(data, self.mode)
 
 
+def _lijnn_resize(data, size):
+    if data.dtype != np.uint8:
+        raise ValueError("opencv.resize only supports uint8 type")
+
+    data = cv.resize(data, (size[1], size[0]))
+    if len(data.shape) == 2:
+        data = data.reshape(data.shape + (1,))
+    return data
+
+
 class resize:
     def __init__(self, size):
         self.size = pair(size)
 
     def __call__(self, data):
-        if data.dtype != np.uint8:
-            raise ValueError("opencv.resize only supports uint8 type")
+        return _lijnn_resize(data, self.size)
 
-        data = cv.resize(data, (self.size[1], self.size[0]))
-        if len(data.shape) == 2:
-            data = data.reshape(data.shape + (1,))
-        return data
+
+class randomResize:
+    def __init__(self, Hstart, Hend, Wstart=None, Wend=None):
+        self.a = 0 if Wstart is None else 1
+        self.Hstart, self.Hend, self.Wstart, self.Wend = Hstart, Hend, Wstart, Wend
+
+    def __call__(self, data):
+        H = random.randrange(self.Hstart, self.Hend)
+        W = random.randrange(self.Wstart, self.Wend) if self.a else H
+        size = (H, W)
+        size = pair(size)
+        return _lijnn_resize(data, size)
 
 
 class isotropically_resize:
@@ -55,19 +72,25 @@ class isotropically_resize:
 
         if argmin:
             proportion = data.shape[0] / data.shape[1]
-            size = (self.S, int(self.S * proportion))
+            size = (int(self.S * proportion), self.S)
         else:
             proportion = data.shape[1] / data.shape[0]
-            size = (int(self.S * proportion), self.S)
+            size = (self.S, int(self.S * proportion))
         # proportion = data.shape[argmin == 0] / data.shape[argmin]
         # size = [self.S] * 2
         # size[argmin == 0] = int(size[argmin == 0] * proportion)
-        # size = (size[1], size[0])
 
-        data = cv.resize(data, size)
-        if len(data.shape) == 2:
-            data = data.reshape(data.shape + (1,))
-        return data
+        return _lijnn_resize(data, size)
+
+
+class random_isotropically_resize:
+    def __init__(self, start, end):
+        self.start = start
+        self.end = end
+
+    def __call__(self, data):
+        S = random.randrange(self.start, self.end)
+        return isotropically_resize(S)(data)
 
 
 class toArray:

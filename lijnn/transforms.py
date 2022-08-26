@@ -1,6 +1,7 @@
 import numpy as np
 from lijnn.utils import pair
 import cv2 as cv
+import random
 
 
 class compose:
@@ -27,19 +28,37 @@ class cvtColor:
     def __init__(self, mode=cv.COLOR_BGR2RGB):
         self.mode = mode
 
-    def __call__(self, img):
-        return cv.cvtColor(img, self.mode)
+    def __call__(self, data):
+        return cv.cvtColor(data, self.mode)
 
 
-class opencv_resize:
+class resize:
     def __init__(self, size):
         self.size = pair(size)
 
-    def __call__(self, img):
-        if img.shape[2] == 1:
-            img = cv.resize(img, self.size)
-            return img.reshape(self.size + (1,))
-        return cv.resize(img, self.size)
+    def __call__(self, data):
+        if data.dtype != np.uint8:
+            raise ValueError("opencv.resize only supports uint8 type")
+
+        data = cv.resize(data, (self.size[1], self.size[0]))
+        if len(data.shape) == 2:
+            data = data.reshape(data.shape + (1,))
+        return data
+
+
+class isotropically_resize:
+    def __init__(self, S):
+        self.S = S
+
+    def __call__(self, data):
+        argmin = np.argmin(data.shape[:-1])
+        proportion = data.shape[argmin == 0] / data.shape[argmin]
+        size = [self.S] * 2
+        size[argmin == 0] = int(size[argmin == 0] * proportion)
+        data = cv.resize(data, (size[1], size[0]))
+        if len(data.shape) == 2:
+            data = data.reshape(data.shape + (1,))
+        return data
 
 
 class toArray:
@@ -107,22 +126,13 @@ class toInt(astype):
         super().__init__(dtype)
 
 
-class centerCrop:
-    """Resize the input PIL image to the given size.
-
-    Args:
-        size (int or (int, int)): Desired output size.
-        mode (int): Desired interpolation.
-    """
-
+class randomCrop:
     def __init__(self, size):
         self.size = pair(size)
 
-    def __call__(self, img):
-        W, H = img.size
-        OW, OH = self.size
-        left = (W - OW) // 2
-        right = W - ((W - OW) // 2 + (W - OW) % 2)
-        up = (H - OH) // 2
-        bottom = H - ((H - OH) // 2 + (H - OH) % 2)
-        return img.crop((left, up, right, bottom))
+    def __call__(self, data):
+        C, H, W = data.shape
+        KH, KW = self.size
+        RH, RW = random.randrange(0, H - KH + 1), random.randrange(0, W - KW + 1)
+
+        return data[:, RH:RH + KH, RW:RW + KW]

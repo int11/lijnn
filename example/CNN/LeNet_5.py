@@ -45,7 +45,7 @@ def main_LeNet_5(name='default'):
     batch_size = 100
     epoch = 10
     transfrom = compose(
-        [toOpencv(), opencv_resize((32, 32)), toArray(), toFloat(),
+        [toOpencv(), resize((32, 32)), toArray(), toFloat(),
          z_score_normalize(mean=[33.31842145], std=[78.56748998])])
     trainset = datasets.MNIST(train=True, x_transform=transfrom)
     testset = datasets.MNIST(train=False, x_transform=transfrom)

@@ -150,7 +150,7 @@ def main_ResNet(name='default'):
     batch_size = 32
     epoch = 100
     transfrom = compose(
-        [toOpencv(), opencv_resize(224), toArray(), toFloat(),
+        [toOpencv(), resize(224), toArray(), toFloat(),
          z_score_normalize(mean=[129.30416561, 124.0699627, 112.43405006], std=[68.1702429, 65.39180804, 70.41837019])])
     trainset = datasets.CIFAR100(train=True, x_transform=transfrom)
     testset = datasets.CIFAR100(train=False, x_transform=transfrom)
@@ -193,8 +193,3 @@ def main_ResNet(name='default'):
         print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')
 
         model.save_weights_epoch(i, name)
-
-
-model0 = resnet18()
-data = np.random.randint(1, 10, (1, 3, 224, 224))
-model0(data)

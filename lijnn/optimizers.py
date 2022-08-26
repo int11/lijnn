@@ -99,6 +99,7 @@ class MomentumSGD(Optimizer):
             self.vs[pointer] = xp.zeros_like(param.data)
 
         v = self.vs[pointer]
+
         v *= self.momentum
         v -= self.lr * param.grad.data
         param.data += v

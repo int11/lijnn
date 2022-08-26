@@ -119,7 +119,7 @@ def main_GoogleNet(name='default'):
     batch_size = 64
     epoch = 100
     transfrom = compose(
-        [toOpencv(), opencv_resize(224), toArray(), toFloat(),
+        [toOpencv(), resize(224), toArray(), toFloat(),
          z_score_normalize(mean=[129.30416561, 124.0699627, 112.43405006], std=[68.1702429, 65.39180804, 70.41837019])])
     trainset = datasets.CIFAR100(train=True, x_transform=transfrom)
     testset = datasets.CIFAR100(train=False, x_transform=transfrom)

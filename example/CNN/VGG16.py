@@ -79,7 +79,7 @@ def main_VGG16(name='default'):
     batch_size = 10
     epoch = 10
     transfrom = compose(
-        [toOpencv(), opencv_resize(224), toArray(), toFloat(),
+        [toOpencv(), resize(224), toArray(), toFloat(),
          z_score_normalize(mean=[125.30691805, 122.95039414, 113.86538318],
                            std=[62.99321928, 62.08870764, 66.70489964])])
     trainset = datasets.CIFAR10(train=True, x_transform=transfrom)

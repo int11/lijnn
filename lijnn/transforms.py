@@ -52,10 +52,19 @@ class isotropically_resize:
 
     def __call__(self, data):
         argmin = np.argmin(data.shape[:-1])
-        proportion = data.shape[argmin == 0] / data.shape[argmin]
-        size = [self.S] * 2
-        size[argmin == 0] = int(size[argmin == 0] * proportion)
-        data = cv.resize(data, (size[1], size[0]))
+
+        if argmin:
+            proportion = data.shape[0] / data.shape[1]
+            size = (self.S, int(self.S * proportion))
+        else:
+            proportion = data.shape[1] / data.shape[0]
+            size = (int(self.S * proportion), self.S)
+        # proportion = data.shape[argmin == 0] / data.shape[argmin]
+        # size = [self.S] * 2
+        # size[argmin == 0] = int(size[argmin == 0] * proportion)
+        # size = (size[1], size[0])
+
+        data = cv.resize(data, size)
         if len(data.shape) == 2:
             data = data.reshape(data.shape + (1,))
         return data

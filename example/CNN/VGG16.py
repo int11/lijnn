@@ -78,12 +78,12 @@ class VGG16(Model):
 def main_VGG16(name='default'):
     batch_size = 10
     epoch = 10
-    transfrom = compose(
-        [toOpencv(), resize(224), toArray(), toFloat(),
+    multi_scale_transform = compose(
+        [toOpencv(), random_isotropically_resize(256, 512), toArray(), randomCrop(224), toFloat(),
          z_score_normalize(mean=[125.30691805, 122.95039414, 113.86538318],
                            std=[62.99321928, 62.08870764, 66.70489964])])
-    trainset = datasets.CIFAR10(train=True, x_transform=transfrom)
-    testset = datasets.CIFAR10(train=False, x_transform=transfrom)
+    trainset = datasets.CIFAR10(train=True, x_transform=multi_scale_transform)
+    testset = datasets.CIFAR10(train=False, x_transform=multi_scale_transform)
     train_loader = iterators.iterator(trainset, batch_size, shuffle=True)
     test_loader = iterators.iterator(testset, batch_size, shuffle=False)
 

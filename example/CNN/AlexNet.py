@@ -2,6 +2,7 @@ from lijnn import *
 from lijnn import layers as L
 from lijnn import functions as F
 from lijnn.transforms import *
+from lijnn.transforms import isotropically_resize
 
 
 class AlexNet(Model):
@@ -55,7 +56,7 @@ def main_AlexNet(name='default'):
     batch_size = 100
     epoch = 10
     transfrom = compose(
-        [toOpencv(), resize(227), toArray(), toFloat(),
+        [toOpencv(), isotropically_resize(259), toArray(), centerCrop(259), randomCrop(227), randomFlip(), toFloat(),
          z_score_normalize(mean=[125.30691805, 122.95039414, 113.86538318],
                            std=[62.99321928, 62.08870764, 66.70489964])])
     trainset = datasets.CIFAR10(train=True, x_transform=transfrom)

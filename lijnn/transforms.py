@@ -35,7 +35,6 @@ class cvtColor:
 def _lijnn_resize(data, size):
     if data.dtype != np.uint8:
         raise ValueError("opencv.resize only supports uint8 type")
-
     data = cv.resize(data, (size[1], size[0]))
     if len(data.shape) == 2:
         data = data.reshape(data.shape + (1,))
@@ -106,10 +105,6 @@ class toOpencv:
         return array.transpose(1, 2, 0)
 
 
-class randomHorizontalFlip:
-    pass
-
-
 class z_score_normalize:
     """Normalize a NumPy array with mean and standard deviation.
 
@@ -168,3 +163,34 @@ class randomCrop:
         RH, RW = random.randrange(0, H - KH + 1), random.randrange(0, W - KW + 1)
 
         return data[:, RH:RH + KH, RW:RW + KW]
+
+
+class centerCrop:
+    def __init__(self, size):
+        self.size = pair(size)
+
+    def __call__(self, data):
+        H, W, C = data.shape
+        OH, OW = self.size
+        left = (W - OW) // 2
+        right = W - ((W - OW) // 2 + (W - OW) % 2)
+        up = (H - OH) // 2
+        bottom = H - ((H - OH) // 2 + (H - OH) % 2)
+        return data[:, up:bottom, left:right]
+
+
+class randomFlip:
+    """
+    0 means flipping around the x-axis and positive value
+    (for example, 1) means flipping around y-axis. Negative value
+    (for example, -1) means flipping around both axes.
+    """
+
+    def __init__(self, flipcode=2, p=0.5):
+        self.flipcode = flipcode
+        self.p = p
+
+    def __call__(self, data):
+        if random.randrange(0, 100) < self.p * 100:
+            data = np.flib(data, self.flipcode)
+        return data

@@ -170,7 +170,7 @@ class centerCrop:
         self.size = pair(size)
 
     def __call__(self, data):
-        H, W, C = data.shape
+        C, H, W = data.shape
         OH, OW = self.size
         left = (W - OW) // 2
         right = W - ((W - OW) // 2 + (W - OW) % 2)
@@ -179,18 +179,26 @@ class centerCrop:
         return data[:, up:bottom, left:right]
 
 
-class randomFlip:
+class flip:
     """
     0 means flipping around the x-axis and positive value
-    (for example, 1) means flipping around y-axis. Negative value
-    (for example, -1) means flipping around both axes.
+    1 means flipping around y-axis. Negative value
+    -1 means flipping around both axes.
     """
 
+    def __init__(self, flipcode=2):
+        self.flipcode = flipcode
+
+    def __call__(self, data):
+        return np.flip(data, self.flipcode)
+
+
+class randomFlip:
     def __init__(self, flipcode=2, p=0.5):
         self.flipcode = flipcode
         self.p = p
 
     def __call__(self, data):
         if random.randrange(0, 100) < self.p * 100:
-            data = np.flib(data, self.flipcode)
+            data = np.flip(data, self.flipcode)
         return data

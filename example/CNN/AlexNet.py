@@ -51,6 +51,26 @@ class AlexNet(Model):
         x = self.fc8(x)
         return x
 
+    def predict(self, data):
+        datalist = []
+
+        transfrom = compose([isotropically_resize(259), toArray(),centerCrop(259),
+                             z_score_normalize(mean=[125.30691805, 122.95039414, 113.86538318],
+                                               std=[62.99321928, 62.08870764, 66.70489964])])
+        data = transfrom(data)
+        C, H, W = data.shape
+        s = 227
+        datalist += [data[:, :s, :s], data[:, :s, W - s:], data[:, H - s:, :s],
+                     data[:, H - s:, W - s:]]
+
+        datalist += [flip()(i) for i in datalist]
+
+        for i, x in enumerate(datalist):
+            cv.imshow(str(i), x.transpose(1, 2, 0))
+            F.softmax(self(x))
+
+        cv.waitKey(0)
+
 
 def main_AlexNet(name='default'):
     batch_size = 100

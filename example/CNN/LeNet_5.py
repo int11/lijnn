@@ -45,8 +45,7 @@ def main_LeNet_5(name='default'):
     batch_size = 100
     epoch = 10
     transfrom = compose(
-        [toOpencv(), resize((32, 32)), toArray(), toFloat(),
-         z_score_normalize(mean=[33.31842145], std=[78.56748998])])
+        [resize((32, 32)), toFloat(), z_score_normalize(mean=[33.31842145], std=[78.56748998])])
     trainset = datasets.MNIST(train=True, x_transform=transfrom)
     testset = datasets.MNIST(train=False, x_transform=transfrom)
 
@@ -66,8 +65,8 @@ def main_LeNet_5(name='default'):
 
         for x, t in train_loader:
             y = model(x)
-            loss = functions.softmax_cross_entropy(y, t)
-            acc = functions.accuracy(y, t)
+            loss = F.softmax_cross_entropy(y, t)
+            acc = F.accuracy(y, t)
             model.cleargrads()
             loss.backward()
             optimizer.update()
@@ -81,8 +80,8 @@ def main_LeNet_5(name='default'):
         with no_grad():
             for x, t in test_loader:
                 y = model(x)
-                loss = functions.softmax_cross_entropy(y, t)
-                acc = functions.accuracy(y, t)
+                loss = F.softmax_cross_entropy(y, t)
+                acc = F.accuracy(y, t)
                 sum_loss += loss.data
                 sum_acc += acc.data
         print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')

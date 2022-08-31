@@ -150,7 +150,7 @@ def main_ResNet(name='default'):
     batch_size = 32
     epoch = 100
     transfrom = compose(
-        [toOpencv(), resize(224), toArray(), toFloat(),
+        [resize(224), toFloat(),
          z_score_normalize(mean=[129.30416561, 124.0699627, 112.43405006], std=[68.1702429, 65.39180804, 70.41837019])])
     trainset = datasets.CIFAR100(train=True, x_transform=transfrom)
     testset = datasets.CIFAR100(train=False, x_transform=transfrom)
@@ -171,8 +171,8 @@ def main_ResNet(name='default'):
 
         for x, t in train_loader:
             y = model(x)
-            loss = functions.softmax_cross_entropy(y, t)
-            acc = functions.accuracy(y, t)
+            loss = F.softmax_cross_entropy(y, t)
+            acc = F.accuracy(y, t)
             model.cleargrads()
             loss.backward()
             optimizer.update()
@@ -186,8 +186,8 @@ def main_ResNet(name='default'):
         with no_grad(), test_mode():
             for x, t in test_loader:
                 y = model(x)
-                loss = functions.softmax_cross_entropy(y, t)
-                acc = functions.accuracy(y, t)
+                loss = F.softmax_cross_entropy(y, t)
+                acc = F.accuracy(y, t)
                 sum_loss += loss.data
                 sum_acc += acc.data
         print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')

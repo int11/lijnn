@@ -33,11 +33,12 @@ class cvtColor:
 
 
 def _lijnn_resize(data, size):
-    if data.dtype != np.uint8:
-        raise ValueError("opencv.resize only supports uint8 type")
+    data = data.transpose(1, 2, 0)
+
     data = cv.resize(data, (size[1], size[0]))
     if len(data.shape) == 2:
         data = data.reshape(data.shape + (1,))
+    data = data.transpose(2, 0, 1)
     return data
 
 
@@ -67,13 +68,13 @@ class isotropically_resize:
         self.S = S
 
     def __call__(self, data):
-        argmin = np.argmin(data.shape[:-1])
+        argmin = np.argmin(data.shape[1:])
 
-        if argmin:
-            proportion = data.shape[0] / data.shape[1]
+        if argmin == 2:
+            proportion = data.shape[1] / data.shape[2]
             size = (int(self.S * proportion), self.S)
         else:
-            proportion = data.shape[1] / data.shape[0]
+            proportion = data.shape[2] / data.shape[1]
             size = (self.S, int(self.S * proportion))
         # proportion = data.shape[argmin == 0] / data.shape[argmin]
         # size = [self.S] * 2

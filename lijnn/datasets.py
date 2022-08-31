@@ -144,13 +144,11 @@ class CIFAR10(Dataset):
             return
         filepath = get_file(url)
         if self.train:
-            self.data = np.empty((50000, 3 * 32 * 32))
-            self.label = np.empty((50000), dtype=np.int)
+            self.data = np.empty((50000, 3 * 32 * 32), dtype=np.uint8)
+            self.label = np.empty((50000), dtype=np.uint8)
             for i in range(5):
-                self.data[i * 10000:(i + 1) * 10000] = self._load_data(
-                    filepath, i + 1, 'train')
-                self.label[i * 10000:(i + 1) * 10000] = self._load_label(
-                    filepath, i + 1, 'train')
+                self.data[i * 10000:(i + 1) * 10000] = self._load_data(filepath, i + 1, 'train')
+                self.label[i * 10000:(i + 1) * 10000] = self._load_label(filepath, i + 1, 'train')
         else:
             self.data = self._load_data(filepath, 5, 'test')
             self.label = self._load_label(filepath, 5, 'test')

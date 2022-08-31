@@ -390,3 +390,7 @@ def pair(x):
         return x
     else:
         raise ValueError
+
+
+def printoptions(precision=6, threshold=np.inf, suppress=True):
+    np.set_printoptions(precision=precision, threshold=threshold, suppress=suppress)

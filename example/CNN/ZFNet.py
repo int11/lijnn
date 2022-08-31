@@ -48,16 +48,42 @@ class ZFNet(Model):
         x = self.fc8(x)
         return x
 
+    def predict(self, x):
+        if x.ndim == 3:
+            x = x[np.newaxis]
+
+        transfrom = compose([isotropically_resize(259), centerCrop(259), toFloat(),
+                             z_score_normalize(mean=[125.30691805, 122.95039414, 113.86538318],
+                                               std=[62.99321928, 62.08870764, 66.70489964])])
+        xp = cuda.get_array_module(x)
+        x = xp.array([transfrom(i) for i in x])
+
+        N, C, H, W = x.shape
+        s = 227
+        result = [x[:, :, :s, :s], x[:, :, :s, W - s:], x[:, :, H - s:, :s], x[:, :, H - s:, W - s:],
+                  xp.array([centerCrop(s)(i) for i in x])]
+        result += [np.flip(i, 3) for i in result]
+        result = xp.array(result)
+
+        result = result.transpose((1, 0, 2, 3, 4)).reshape((-1, C, s, s))
+
+        result = F.softmax(self(result))
+
+        result = result.data.reshape((-1, 10, C, s, s))
+        result = np.mean(result, axis=1)
+        return result
+
 
 def main_ZFNet(name='default'):
     batch_size = 100
     epoch = 10
     transfrom = compose(
-        [toOpencv(), isotropically_resize(259), toArray(), centerCrop(259), randomCrop(227), randomFlip(), toFloat(),
+        [isotropically_resize(259), centerCrop(259), randomCrop(227), randomFlip(), toFloat(),
          z_score_normalize(mean=[125.30691805, 122.95039414, 113.86538318],
                            std=[62.99321928, 62.08870764, 66.70489964])])
     trainset = datasets.CIFAR10(train=True, x_transform=transfrom)
-    testset = datasets.CIFAR10(train=False, x_transform=transfrom)
+    testset = datasets.CIFAR10(train=False, x_transform=None)
+
     train_loader = iterators.iterator(trainset, batch_size, shuffle=True)
     test_loader = iterators.iterator(testset, batch_size, shuffle=False)
 
@@ -71,11 +97,10 @@ def main_ZFNet(name='default'):
 
     for i in range(start_epoch, epoch + 1):
         sum_loss, sum_acc = 0, 0
-
         for x, t in train_loader:
             y = model(x)
-            loss = functions.softmax_cross_entropy(y, t)
-            acc = functions.accuracy(y, t)
+            loss = F.softmax_cross_entropy(y, t)
+            acc = F.accuracy(y, t)
             model.cleargrads()
             loss.backward()
             optimizer.update()
@@ -84,13 +109,13 @@ def main_ZFNet(name='default'):
             print(f"loss : {loss.data} accuracy {acc.data}")
         print(f"epoch {i}")
         print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
-        sum_loss, sum_acc = 0, 0
 
+        sum_loss, sum_acc = 0, 0
         with no_grad(), test_mode():
             for x, t in test_loader:
-                y = model(x)
-                loss = functions.softmax_cross_entropy(y, t)
-                acc = functions.accuracy(y, t)
+                y = model.predict(x)
+                loss = F.categorical_cross_entropy(y, t)
+                acc = F.accuracy(y, t)
                 sum_loss += loss.data
                 sum_acc += acc.data
         print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')

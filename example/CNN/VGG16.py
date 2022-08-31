@@ -79,7 +79,7 @@ def main_VGG16(name='default'):
     batch_size = 10
     epoch = 10
     multi_scale_transform = compose(
-        [toOpencv(), random_isotropically_resize(256, 512), toArray(), randomCrop(224), toFloat(),
+        [random_isotropically_resize(256, 512), randomCrop(224), toFloat(),
          z_score_normalize(mean=[125.30691805, 122.95039414, 113.86538318],
                            std=[62.99321928, 62.08870764, 66.70489964])])
     trainset = datasets.CIFAR10(train=True, x_transform=multi_scale_transform)
@@ -100,8 +100,8 @@ def main_VGG16(name='default'):
 
         for x, t in train_loader:
             y = model(x)
-            loss = functions.softmax_cross_entropy(y, t)
-            acc = functions.accuracy(y, t)
+            loss = F.softmax_cross_entropy(y, t)
+            acc = F.accuracy(y, t)
             model.cleargrads()
             loss.backward()
             optimizer.update()
@@ -115,8 +115,8 @@ def main_VGG16(name='default'):
         with no_grad(), test_mode():
             for x, t in test_loader:
                 y = model(x)
-                loss = functions.softmax_cross_entropy(y, t)
-                acc = functions.accuracy(y, t)
+                loss = F.softmax_cross_entropy(y, t)
+                acc = F.accuracy(y, t)
                 sum_loss += loss.data
                 sum_acc += acc.data
         print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')

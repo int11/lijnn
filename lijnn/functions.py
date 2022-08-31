@@ -472,9 +472,12 @@ def binary_cross_entropy(p, t):
 
 class CategoricalCrossEntropy(Function):
     def forward(self, x, t):
-        batch_size = t.shape[0]
-        out = -np.sum(t * np.log(x + 1e-7)) / batch_size
-        return out
+        xp = cuda.get_array_module(x)
+        N = x.shape[0]
+        p = xp.clip(x, 1e-15, 1.0)
+        log_p = xp.log(p[xp.arange(N), t.ravel()])
+        y = -log_p.sum() / N
+        return y
 
     def backward(self, dout=1):
         x, t = self.inputs

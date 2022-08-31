@@ -2,7 +2,6 @@ from lijnn import *
 from lijnn import layers as L
 from lijnn import functions as F
 from lijnn.transforms import *
-from lijnn.transforms import isotropically_resize
 
 
 class AlexNet(Model):
@@ -52,39 +51,37 @@ class AlexNet(Model):
         return x
 
     def predict(self, x):
+        xp = cuda.get_array_module(x)
+
         if x.ndim == 3:
             x = x[np.newaxis]
 
         transfrom = compose([isotropically_resize(259), centerCrop(259), toFloat(),
                              z_score_normalize(mean=[125.30691805, 122.95039414, 113.86538318],
                                                std=[62.99321928, 62.08870764, 66.70489964])])
-        xp = cuda.get_array_module(x)
+        x = cuda.as_numpy(x)
         x = xp.array([transfrom(i) for i in x])
 
         N, C, H, W = x.shape
         s = 227
         result = [x[:, :, :s, :s], x[:, :, :s, W - s:], x[:, :, H - s:, :s], x[:, :, H - s:, W - s:],
                   xp.array([centerCrop(s)(i) for i in x])]
-        result += [np.flip(i, 3) for i in result]
+        result += [xp.flip(i, 3) for i in result]
+        result = [F.softmax(self(i)).data for i in result]
+
         result = xp.array(result)
 
-        result = result.transpose((1, 0, 2, 3, 4)).reshape((-1, C, s, s))
-
-        result = F.softmax(self(result))
-
-        result = result.data.reshape((-1, 10, C, s, s))
-        result = np.mean(result, axis=1)
-        return result
+        return xp.mean(result, 0)
 
 
 def main_AlexNet(name='default'):
     batch_size = 100
     epoch = 10
-    transfrom = compose(
+    trainset = datasets.CIFAR10(train=True, x_transform=compose(
         [isotropically_resize(259), centerCrop(259), randomCrop(227), randomFlip(), toFloat(),
          z_score_normalize(mean=[125.30691805, 122.95039414, 113.86538318],
-                           std=[62.99321928, 62.08870764, 66.70489964])])
-    trainset = datasets.CIFAR10(train=True, x_transform=transfrom)
+                           std=[62.99321928, 62.08870764, 66.70489964])]))
+
     testset = datasets.CIFAR10(train=False, x_transform=None)
 
     train_loader = iterators.iterator(trainset, batch_size, shuffle=True)

@@ -1,4 +1,5 @@
 import numpy as np
+from lijnn import cuda
 from lijnn.utils import pair
 import cv2 as cv
 import random

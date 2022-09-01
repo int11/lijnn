@@ -59,6 +59,7 @@ class VGG16(Model):
         x = F.relu(self.conv5_2(x))
         x = F.relu(self.conv5_3(x))
         x = F.max_pooling(x, 2, 2)
+        # x.shape = (10, 512, 7, 7)
         x = F.reshape(x, (x.shape[0], -1))
         x = F.dropout(F.relu(self.fc6(x)))
         x = F.dropout(F.relu(self.fc7(x)))

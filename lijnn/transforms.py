@@ -34,13 +34,19 @@ class cvtColor:
 
 
 def _lijnn_resize(data, size):
+    if not (data.dtype == np.uint8 or data.dtype == np.float32):
+        print(data.dtype)
+        raise ValueError('opencv_resize dtype must be uint8 or float32')
     data = data.transpose(1, 2, 0)
+
+    xp = cuda.get_array_module(data)
+    data = cuda.as_numpy(data)
 
     data = cv.resize(data, (size[1], size[0]))
     if len(data.shape) == 2:
         data = data.reshape(data.shape + (1,))
     data = data.transpose(2, 0, 1)
-    return data
+    return xp.array(data)
 
 
 class resize:

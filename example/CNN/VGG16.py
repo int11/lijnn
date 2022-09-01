@@ -98,7 +98,6 @@ def main_VGG16(name='default'):
 
     for i in range(start_epoch, epoch + 1):
         sum_loss, sum_acc = 0, 0
-
         for x, t in train_loader:
             y = model(x)
             loss = F.softmax_cross_entropy(y, t)
@@ -111,8 +110,9 @@ def main_VGG16(name='default'):
             print(f"loss : {loss.data} accuracy {acc.data}")
         print(f"epoch {i + 1}")
         print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
-        sum_loss, sum_acc = 0, 0
+        model.save_weights_epoch(i, name)
 
+        sum_loss, sum_acc = 0, 0
         with no_grad(), test_mode():
             for x, t in test_loader:
                 y = model(x)
@@ -122,4 +122,4 @@ def main_VGG16(name='default'):
                 sum_acc += acc.data
         print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')
 
-        model.save_weights_epoch(i, name)
+

@@ -105,6 +105,7 @@ def main_AlexNet(name='default'):
             print(f"loss : {loss.data} accuracy {acc.data}")
         print(f"epoch {i}")
         print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
+        model.save_weights_epoch(i, name)
 
         sum_loss, sum_acc = 0, 0
         with no_grad(), test_mode():
@@ -116,4 +117,4 @@ def main_AlexNet(name='default'):
                 sum_acc += acc.data
         print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')
 
-        model.save_weights_epoch(i, name)
+

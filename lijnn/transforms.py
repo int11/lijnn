@@ -75,6 +75,7 @@ class isotropically_resize:
         self.S = S
 
     def __call__(self, data):
+        # data.shape type is tuple
         argmin = np.argmin(data.shape[1:])
 
         if argmin == 2:
@@ -126,18 +127,18 @@ class z_score_normalize:
         self.mean = mean
         self.std = std
 
-    def __call__(self, array):
+    def __call__(self, data):
         mean, std = self.mean, self.std
-
-        if not np.isscalar(mean):
-            mshape = [1] * array.ndim
-            mshape[0] = len(array) if len(self.mean) == 1 else len(self.mean)
-            mean = np.array(self.mean, dtype=array.dtype).reshape(*mshape)
-        if not np.isscalar(std):
-            rshape = [1] * array.ndim
-            rshape[0] = len(array) if len(self.std) == 1 else len(self.std)
-            std = np.array(self.std, dtype=array.dtype).reshape(*rshape)
-        return (array - mean) / std
+        xp = cuda.get_array_module(data)
+        if not xp.isscalar(mean):
+            mshape = [1] * data.ndim
+            mshape[0] = len(data) if len(self.mean) == 1 else len(self.mean)
+            mean = xp.array(self.mean, dtype=data.dtype).reshape(*mshape)
+        if not xp.isscalar(std):
+            rshape = [1] * data.ndim
+            rshape[0] = len(data) if len(self.std) == 1 else len(self.std)
+            std = xp.array(self.std, dtype=data.dtype).reshape(*rshape)
+        return (data - mean) / std
 
 
 class flatten:
@@ -198,7 +199,8 @@ class flip:
         self.flipcode = flipcode
 
     def __call__(self, data):
-        return np.flip(data, self.flipcode)
+        xp = cuda.get_array_module(data)
+        return xp.flip(data, self.flipcode)
 
 
 class randomFlip:
@@ -207,6 +209,7 @@ class randomFlip:
         self.p = p
 
     def __call__(self, data):
+        xp = cuda.get_array_module(data)
         if random.randrange(0, 100) < self.p * 100:
-            data = np.flip(data, self.flipcode)
+            data = xp.flip(data, self.flipcode)
         return data

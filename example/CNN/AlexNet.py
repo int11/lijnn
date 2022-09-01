@@ -52,14 +52,12 @@ class AlexNet(Model):
 
     def predict(self, x):
         xp = cuda.get_array_module(x)
-
         if x.ndim == 3:
             x = x[np.newaxis]
 
         transfrom = compose([isotropically_resize(259), centerCrop(259), toFloat(),
                              z_score_normalize(mean=[125.30691805, 122.95039414, 113.86538318],
                                                std=[62.99321928, 62.08870764, 66.70489964])])
-        x = cuda.as_numpy(x)
         x = xp.array([transfrom(i) for i in x])
 
         N, C, H, W = x.shape
@@ -68,9 +66,7 @@ class AlexNet(Model):
                   xp.array([centerCrop(s)(i) for i in x])]
         result += [xp.flip(i, 3) for i in result]
         result = [F.softmax(self(i)).data for i in result]
-
         result = xp.array(result)
-
         return xp.mean(result, 0)
 
 

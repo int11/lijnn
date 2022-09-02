@@ -92,6 +92,9 @@ class isotropically_resize:
 
 
 class random_isotropically_resize:
+    """
+    Scale jittering
+    """
     def __init__(self, start, end):
         self.start = start
         self.end = end

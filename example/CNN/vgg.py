@@ -173,20 +173,20 @@ B모델은 dense evaluation 적용을 위해 마지막 layer 3개가 conv layer 
 
 example 1,
 (225,225) 이미지를 상하좌우 crop 하여 4개의 이미지를 A모델에서 평가 합니다.
-(225,225) 이미지를 그대로 넣어 B모델에서 dense 평가 합니다.
+(225,225) 이미지를 넣어 B모델에서 dense 평가 합니다.
 A모델은                               4개의 이미지를 평가합니다.
 B모델은 size = 225-224+1, size*size = 4개의 이미지를 평가합니다.
 input img size를 더 키워보겠습니다
 
 example 2, 
 (256,256) 이미지를 상하좌우,중간 crop 하여 5개의 이미지를 A모델에서 평가 합니다.
-(256,256) 이미지를 그대로 넣어 B모델에서 dense 평가합니다.
+(256,256) 이미지를 넣어 B모델에서 dense 평가합니다.
 A모델은                                 5 개의 이미지를 평가합니다.
 B모델은 size = 256-224+1, size*size= 1089 개의 이미지를 평가합니다.
 
 example 3, 
 (256,256) 이미지를 stride = 1 pixel 기준으로 (224,224) size crop 하여 1089개의 이미지를 A모델에서 평가합니다.
-(256,256) 이미지를 그대로 넣어 B모델에서 dense 평가합니다.
+(256,256) 이미지를 넣어 B모델에서 dense 평가합니다.
 A,B 두 모델 모두 1089개의 이미지를 평가합니다.
 여기서 질문이
 글에서 말씀하신 "연산량이 효율적이다" 라는 의미는 모델안의 conv2d layer 이라던지 dense layer 의 연산횟수가 다름으로써 효율적이다가 아닌 
@@ -196,19 +196,24 @@ dense evaluation쓰므로서 for문 crop과정을 생략하여 얻어지는 연�
 """
 
 """
-실제 해보니깐 stride=2 maxpooling layer이 5개있어서. 224 -> 225 로 늘려도 마지막 픽셀하나가 잘리기 때문에  그게 총 5번. 행해지기 때문에
+실험 해보니깐 stride=2 maxpooling layer이 5개있어서. 224 -> 225 로 늘려도 마지막 픽셀하나가 잘리기 때문에  그게 총 5번. 행해지기 때문에
 최소한 input img 2^5 = 32 픽셀을 늘려야 dense evaluation 최종 img size가 1 늘어나네요.
-example 1, A모델 4개, B모델 1개 평가하는것이고 (224 ~ 255 size 모두 앞서말한 pixel 잘림 이유로 모두 output으로 1개의 이미지만 나옴)
+
+example 1, A모델 4개, B모델 1개 평가하는것이고 (input img 224 ~ 255 size 모두 앞서말한 pixel 잘림 이유로 모두 output으로 1개의 이미지만 나옴)
 example 2, A 5개, B 4개 평가
 example 3, A, 1089개, B 4개 평가
-하는것으로 보이네요.
+
+하는것으로 보이네요. 굳이 예시를 들면
 
 example 4, 
 (256,256) 이미지를 stride = 32 pixel 기준으로 (224,224) size crop 하여 4개개의 이미지를 A모델에서 평가합니다.
-(256,256) 이미지를 그대로 넣어 B모델에서 dense 평가합니다.
+(256,256) 이미지를 넣어 B모델에서 dense 평가합니다.
 A,B 두 모델 모두 4개의 이미지를 평가합니다.
 
-이 예제가 layer forward 동일한 연산횟수네요.
+이게 그나마 비슷한 가정같은데 layer forward 순차적 연산에서 연산과정이 완벽히 똑같지는 않네요.
+이런 연산과정의 차이가 엄밀이 무슨 의미를 가지는지 잘모르겠는데 나중에 실험해봐야겠네요..
+
+코드참고하실분 링크 : https://colab.research.google.com/drive/1XjaHDLveIMuSa4jD-lScJfXaZoGfnkre?usp=sharing
 """
 
 

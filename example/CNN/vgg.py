@@ -166,6 +166,8 @@ def main_VGG16(name='default'):
 
 
 """
+https://blog.naver.com/laonple/220749876381
+https://blog.naver.com/laonple/220752877630
 OverFeat dense evaluation방식을 vgg에 적용하므로써 연산량이 효율적이라고하셨는데 질문드립니다.
 
 A모델은 마지막 layer이 3개가 fc-layer인 다들 아시는 vgg 기본 모델입니다.

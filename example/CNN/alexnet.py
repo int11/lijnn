@@ -50,22 +50,22 @@ class AlexNet(Model):
         x = self.fc8(x)
         return x
 
-    def predict(self, x):
+    def predict(self, x, mean, std):
         xp = cuda.get_array_module(x)
         if x.ndim == 3:
             x = x[np.newaxis]
 
-        transfrom = compose([isotropically_resize(259), centerCrop(259), toFloat(),
-                             z_score_normalize(mean=[125.30691805, 122.95039414, 113.86538318],
-                                               std=[62.99321928, 62.08870764, 66.70489964])])
+        transfrom = compose([isotropically_resize(259), centerCrop(259), toFloat(), z_score_normalize(mean, std)])
         x = xp.array([transfrom(i) for i in x])
 
         N, C, H, W = x.shape
         s = 227
+        #corner and center crop
         result = [x[:, :, :s, :s], x[:, :, :s, W - s:], x[:, :, H - s:, :s], x[:, :, H - s:, W - s:],
                   xp.array([centerCrop(s)(i) for i in x])]
         result += [xp.flip(i, 3) for i in result]
-        result = [F.softmax(self(i)).data for i in result]
+        with no_grad(), test_mode():
+            result = [F.softmax(self(i)).data for i in result]
         result = xp.array(result)
         return xp.mean(result, 0)
 
@@ -73,10 +73,11 @@ class AlexNet(Model):
 def main_AlexNet(name='default'):
     batch_size = 100
     epoch = 10
+    mean = [125.30691805, 122.95039414, 113.86538318]
+    std = [62.99321928, 62.08870764, 66.70489964]
     trainset = datasets.CIFAR10(train=True, x_transform=compose(
         [isotropically_resize(259), centerCrop(259), randomCrop(227), randomFlip(), toFloat(),
-         z_score_normalize(mean=[125.30691805, 122.95039414, 113.86538318],
-                           std=[62.99321928, 62.08870764, 66.70489964])]))
+         z_score_normalize(mean, std)]))
 
     testset = datasets.CIFAR10(train=False, x_transform=None)
 
@@ -110,11 +111,9 @@ def main_AlexNet(name='default'):
         sum_loss, sum_acc = 0, 0
         with no_grad(), test_mode():
             for x, t in test_loader:
-                y = model.predict(x)
+                y = model.predict(x, mean, std)
                 loss = F.categorical_cross_entropy(y, t)
                 acc = F.accuracy(y, t)
                 sum_loss += loss.data
                 sum_acc += acc.data
         print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')
-
-

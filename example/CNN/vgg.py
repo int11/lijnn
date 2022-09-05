@@ -226,7 +226,7 @@ def _imagenet_pretrainmodel_test():
 def _dense_evaluation_test():
     class VGG16_print(VGG16):
         def forward(self, x):
-            print(x.shape)
+            print(data.shape)
             x = F.relu(self.conv1_1(x))
             x = F.relu(self.conv1_2(x))
             x = F.max_pooling(x, 2, 2)
@@ -260,7 +260,6 @@ def _dense_evaluation_test():
                 x = self.conv6(x)
                 x = self.conv7(x)
                 x = self.conv8(x)
-            print(f'{x.shape}  <-- {x.shape[2:]}개의 이미지 평가 \n')
             return x
 
     def preprocess(image, size=(224, 224), dtype=np.float32):
@@ -273,6 +272,7 @@ def _dense_evaluation_test():
 
     model = VGG16_print(imagenet_pretrained=True)
 
+    labels = lijnn.datasets.ImageNet.labels()
     url = 'https://github.com/oreilly-japan/deep-learning-from-scratch-3/raw/images/zebra.jpg'
     img_path = lijnn.utils.get_file(url)
     data = cv.imread(img_path)
@@ -281,18 +281,16 @@ def _dense_evaluation_test():
               preprocess(data, size=(256, 256))]
     datali = [data[np.newaxis] for data in datali]
 
+    print('\nB모델에 224, 255, 256 size img test \n')
+
     with no_grad(), test_mode():
-        y = [model(data) for data in datali]
+        for data in datali:
+            print(f'{data.shape[2:]} size img 평가 \n')
+            y = model(data)
+            print(f'{y.shape}       <-- {y.shape[2:]}개의 이미지 평가 \n')
 
-    predict_id = [np.argmax(i.data, axis=1) for i in y]
-
-    print('\n\nresult')
-    print('B모델에 224, 255, 256 size img test \n')
-
-    labels = lijnn.datasets.ImageNet.labels()
-    for i in predict_id:
-        i = i.reshape(-1)
-        print(i, end=' ')
-        for e in i:
-            print(labels[e], end=' ')
-        print(f'          {len(i)}개의 이미지 평가')
+            predict_id = np.argmax(y.data, axis=1).reshape(-1)
+            print(predict_id, end='   ')
+            for e in predict_id:
+                print(labels[e], end=' ')
+            print('\n\n\n\n')

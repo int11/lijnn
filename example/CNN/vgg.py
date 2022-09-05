@@ -212,8 +212,6 @@ A,B 두 모델 모두 4개의 이미지를 평가합니다.
 
 이게 그나마 비슷한 가정같은데 layer forward 순차적 연산에서 연산과정이 완벽히 똑같지는 않네요.
 이런 연산과정의 차이가 엄밀이 무슨 의미를 가지는지 잘모르겠는데 나중에 실험해봐야겠네요..
-
-코드참고하실분 링크 : https://colab.research.google.com/drive/1XjaHDLveIMuSa4jD-lScJfXaZoGfnkre?usp=sharing
 """
 
 

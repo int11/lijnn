@@ -242,6 +242,8 @@ class share_weight_conv2d(Conv2d):
 
         self.W.data = self.target.W.data.reshape((C, KH, KW, OC)).transpose(3, 0, 1, 2)
         self.b.data = self.target.b.data
+
+
 # =============================================================================
 # RNN / LSTM
 # =============================================================================

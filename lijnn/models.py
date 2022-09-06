@@ -49,11 +49,11 @@ class Model(Layer):
             if epoch is None:
                 epoch = max([int(i[1]) for i in name_listdir])
             weight_dir = os.path.join(model_dir, f'{name}_{epoch}_epoch.npz')
-            print(f'\n model weight load : {weight_dir}')
+            print(f'\n model weight load : {weight_dir}\n')
             self.load_weights(weight_dir)
         except:
             epoch = 0
-            print("\n Not found any weights file, model train from scratch.")
+            print("\n Not found any weights file, model train from scratch.\n")
 
         start_epoch = int(epoch) + 1
         return start_epoch

@@ -67,7 +67,7 @@ class AlexNet(Model):
         with no_grad(), test_mode():
             result = [F.softmax(self(i)).data for i in result]
         result = xp.array(result)
-        return xp.mean(result, 0)
+        return xp.mean(result, axis=0)
 
 
 def main_AlexNet(name='default'):

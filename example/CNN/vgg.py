@@ -35,8 +35,6 @@ class VGG16(Model):
         self.fc7 = L.Linear(4096)
         self.fc8 = L.Linear(num_classes)
 
-
-
         self.conv6 = L.share_weight_conv2d(4096, kernel_size=7, stride=1, pad=0, target=self.fc6)
         self.conv7 = L.share_weight_conv2d(4096, kernel_size=1, stride=1, pad=0, target=self.fc7)
         self.conv8 = L.share_weight_conv2d(num_classes, kernel_size=1, stride=1, pad=0, target=self.fc8)
@@ -74,8 +72,8 @@ class VGG16(Model):
             x = F.dropout(F.relu(self.fc7(x)))
             x = self.fc8(x)
         else:
-            x = self.conv6(x)
-            x = self.conv7(x)
+            x = F.relu(self.conv6(x))
+            x = F.relu(self.conv7(x))
             x = self.conv8(x)
         return x
 
@@ -96,7 +94,7 @@ class VGG16(Model):
         # 3 ,N, num_classes, H, W
         result = [np.mean(i, (2, 3)) for i in result]
         # 3 ,N, num_classes
-        return xp.mean(xp.array(result), 0)
+        return xp.mean(xp.array(result), axis=0)
 
     def predict_imagenet(self, x):
         # imagenet pretrain model train by BGR

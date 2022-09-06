@@ -227,6 +227,21 @@ class Deconv2d(Layer):
         return y
 
 
+class share_weight_conv2d(Conv2d):
+    def __init__(self, out_channels, kernel_size, stride, pad, target):
+        super(share_weight_conv2d, self).__init__(out_channels, kernel_size, stride, pad, False, np.float32,
+                                                  None, initializers.He)
+        self.target = target
+
+    def _init_W(self, xp=np):
+        C, OC = self.in_channels, self.out_channels
+        KH, KW = pair(self.kernel_size)
+        if self.target.W.data is None:
+            self.target.in_size = C * KH * KW
+            self.target._init_W(xp)
+
+        self.W.data = self.target.W.data.reshape((C, KH, KW, OC)).transpose(3, 0, 1, 2)
+        self.b.data = self.target.b.data
 # =============================================================================
 # RNN / LSTM
 # =============================================================================

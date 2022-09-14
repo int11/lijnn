@@ -81,6 +81,7 @@ class MNIST(Dataset):
     mean = [33.31842145],
     std = [78.56748998]
     """
+
     def __init__(self, train=True,
                  x_transform=compose([flatten(), toFloat(),
                                       z_score_normalize(33.31842145, 78.56748998)]),
@@ -132,8 +133,10 @@ class CIFAR10(Dataset):
     mean = [125.30691805, 122.95039414, 113.86538318],
     std = [62.99321928, 62.08870764, 66.70489964]
     """
+
     def __init__(self, train=True,
-                 x_transform=compose([toFloat(), z_score_normalize(mean = [125.30691805, 122.95039414, 113.86538318],std = [62.99321928, 62.08870764, 66.70489964])]),
+                 x_transform=compose([toFloat(), z_score_normalize(mean=[125.30691805, 122.95039414, 113.86538318],
+                                                                   std=[62.99321928, 62.08870764, 66.70489964])]),
                  t_transform=None):
         super().__init__(train, x_transform, t_transform)
 
@@ -159,7 +162,7 @@ class CIFAR10(Dataset):
         assert data_type in ['train', 'test']
         with tarfile.open(filename, 'r:gz') as file:
             for item in file.getmembers():
-                if ('data_batch_{}'.format(idx) in item.name and data_type == 'train') or (
+                if (f'data_batch_{idx}' in item.name and data_type == 'train') or (
                         'test_batch' in item.name and data_type == 'test'):
                     data_dict = pickle.load(file.extractfile(item), encoding='bytes')
                     data = data_dict[b'data']
@@ -196,8 +199,10 @@ class CIFAR100(CIFAR10):
     mean = [129.30416561, 124.0699627,  112.43405006],
     std = [68.1702429,  65.39180804, 70.41837019]
     """
+
     def __init__(self, train=True,
-                 x_transform=compose([toFloat(), z_score_normalize(mean = [129.30416561, 124.0699627,  112.43405006],std = [68.1702429,  65.39180804, 70.41837019])]),
+                 x_transform=compose([toFloat(), z_score_normalize(mean=[129.30416561, 124.0699627, 112.43405006],
+                                                                   std=[68.1702429, 65.39180804, 70.41837019])]),
                  t_transform=None,
                  label_type='fine'):
         assert label_type in ['fine', 'coarse']
@@ -251,9 +256,36 @@ class CIFAR100(CIFAR10):
         return fine_labels if label_type == 'fine' else coarse_labels
 
 
-# =============================================================================
-# Big datasets
-# =============================================================================
+class VOCDetection(Dataset):
+    DATASET_YEAR_DICT = {
+        "2012": "http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar",
+        "2011": "http://host.robots.ox.ac.uk/pascal/VOC/voc2011/VOCtrainval_25-May-2011.tar",
+        "2010": "http://host.robots.ox.ac.uk/pascal/VOC/voc2010/VOCtrainval_03-May-2010.tar",
+        "2009": "http://host.robots.ox.ac.uk/pascal/VOC/voc2009/VOCtrainval_11-May-2009.tar",
+        "2008": "http://host.robots.ox.ac.uk/pascal/VOC/voc2008/VOCtrainval_14-Jul-2008.tar",
+        "2007": "http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtrainval_06-Nov-2007.tar",
+        "2007-test": "http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtest_06-Nov-2007.tar"}
+
+    def __init__(self, train=True, year=2007, x_transform=None, t_transform=None):
+        self.year = str(year)
+        super().__init__(train, x_transform, t_transform)
+
+    def prepare(self):
+        if self.train == False and self.year == "2007": self.year = "2007-test"
+        url = self.DATASET_YEAR_DICT[self.year]
+        self.data, self.label = load_cache_npz(url, self.train)
+        if self.data is not None:
+            return
+        filepath = get_file(url)
+        with tarfile.open(filepath, 'r') as file:
+            for item in file.getmembers():
+                if '.jpg' in item.name:
+                    a = file.extractfile(item).read()
+                    na = np.frombuffer(a, dtype=np.uint8)
+                    im = cv.imdecode(na, cv.IMREAD_COLOR)
+                    print(im.shape)
+
+
 class ImageNet(Dataset):
 
     def __init__(self):
@@ -331,9 +363,7 @@ def load_cache_npz(filename, train=False):
 def save_cache_npz(data, label, filename, train=False):
     filename = filename[filename.rfind('/') + 1:]
     prefix = '.train.npz' if train else '.test.npz'
-    print(cache_dir)
     filepath = os.path.join(cache_dir, filename + prefix)
-    print(filepath)
     if os.path.exists(filepath):
         return
 

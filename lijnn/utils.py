@@ -346,7 +346,7 @@ def get_file(url, file_name=None):
     if os.path.exists(file_path):
         return file_path
 
-    print("Downloading: " + file_name)
+    print(f"Downloading: {file_name} to file_path")
 
     def show_progress(block_num, block_size, total_size):
         bar_template = "\r[{}] {:.2f}%"
@@ -366,7 +366,6 @@ def get_file(url, file_name=None):
             os.remove(file_path)
         raise
     print(" Done")
-    print(f"file download complate : {file_path} \n")
 
     return file_path
 

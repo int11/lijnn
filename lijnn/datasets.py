@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from lijnn.utils import get_file, cache_dir
 from lijnn.transforms import *
+import xml.etree.ElementTree as ET
 
 
 class Dataset:
@@ -209,7 +210,7 @@ class CIFAR100(CIFAR10):
         self.label_type = label_type
         super().__init__(train, x_transform, t_transform)
 
-    def prepare(self):
+    def prepare1(self):
         url = 'https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz'
         self.data, self.label = load_cache_npz(url, self.train)
         if self.data is not None:
@@ -224,6 +225,44 @@ class CIFAR100(CIFAR10):
             self.label = self._load_label(filepath, 'test')
         self.data = self.data.reshape(-1, 3, 32, 32)
         save_cache_npz(self.data, self.label, url, self.train)
+
+    def prepare(self):
+        url = 'https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz'
+        self.data, self.label = load_cache_npz(url, self.train)
+        if self.data is not None:
+            return
+
+        def save_cache_npz1(data, filename, train=False):
+            filename = filename[filename.rfind('/') + 1:]
+            prefix = '.train.npz' if train else '.test.npz'
+            filepath = os.path.join(cache_dir, filename + prefix)
+            if os.path.exists(filepath):
+                return
+
+            print(f"Saving: {filepath}")
+            try:
+                np.savez_compressed(filepath, *data)
+            except (Exception, KeyboardInterrupt) as e:
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+                raise
+            print("Done")
+            return filepath
+
+        filepath = get_file(url)
+        if self.train:
+            self.data = self._load_data(filepath, 'train')
+            self.label = self._load_label(filepath, 'train')
+        else:
+            self.data = self._load_data(filepath, 'test')
+            self.label = self._load_label(filepath, 'test')
+        self.data = self.data.reshape(-1, 3, 32, 32)
+        temp = {}
+        for i, e in enumerate(self.data):
+            temp[i] = e
+        import time
+        time.sleep(10)
+        save_cache_npz1(self.data, url, self.train)
 
     def _load_data(self, filename, data_type='train'):
         with tarfile.open(filename, 'r:gz') as file:
@@ -273,17 +312,54 @@ class VOCDetection(Dataset):
     def prepare(self):
         if self.train == False and self.year == "2007": self.year = "2007-test"
         url = self.DATASET_YEAR_DICT[self.year]
+        revers_label = dict(map(reversed, self.labels().items()))
+        data_tmp, label_tmp = [], []
+
         self.data, self.label = load_cache_npz(url, self.train)
         if self.data is not None:
             return
         filepath = get_file(url)
+
         with tarfile.open(filepath, 'r') as file:
             for item in file.getmembers():
                 if '.jpg' in item.name:
-                    a = file.extractfile(item).read()
-                    na = np.frombuffer(a, dtype=np.uint8)
+                    bytes = file.extractfile(item).read()
+                    na = np.frombuffer(bytes, dtype=np.uint8)
                     im = cv.imdecode(na, cv.IMREAD_COLOR)
-                    print(im.shape)
+                    data_tmp.append(im.transpose(2, 0, 1)[::-1])
+                elif '.xml' in item.name:
+                    bytes = file.extractfile(item).read()
+                    annotation = ET.fromstring(bytes)
+                    li = []
+                    for i in annotation.iter(tag="object"):
+                        budbox = i.find("bndbox")
+                        lis = [int(budbox.find(i).text) for i in ['xmin', 'ymin', 'xmax', 'ymax']]
+                        lis.append(revers_label[i.find("name").text])
+                        li.append(lis)
+                    label_tmp.append(np.array(li))
+
+
+        # asdf = {
+        #     'data': data_tmp,
+        #     'label': label_tmp,
+        # }
+        #
+        # # save
+        # with open('data.pickle', 'wb') as f:
+        #     pickle.dump(asdf, f, pickle.HIGHEST_PROTOCOL)
+
+        # self.label = np.array(label_tmp, dtype=object)
+        # data_tmp.append('trick')
+        # self.data = np.array(data_tmp, dtype=object)
+        # self.data = np.delete(self.data, -1)
+        #
+        # np.savez_compressed('test.npz', data=self.data, label=self.label)
+
+    @staticmethod
+    def labels():
+        return dict(enumerate(["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow",
+                               "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa",
+                               "train", "tvmonitor"]))
 
 
 class ImageNet(Dataset):

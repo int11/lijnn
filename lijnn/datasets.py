@@ -210,7 +210,7 @@ class CIFAR100(CIFAR10):
         self.label_type = label_type
         super().__init__(train, x_transform, t_transform)
 
-    def prepare1(self):
+    def prepare(self):
         url = 'https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz'
         self.data, self.label = load_cache_npz(url, self.train)
         if self.data is not None:
@@ -225,44 +225,6 @@ class CIFAR100(CIFAR10):
             self.label = self._load_label(filepath, 'test')
         self.data = self.data.reshape(-1, 3, 32, 32)
         save_cache_npz(self.data, self.label, url, self.train)
-
-    def prepare(self):
-        url = 'https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz'
-        self.data, self.label = load_cache_npz(url, self.train)
-        if self.data is not None:
-            return
-
-        def save_cache_npz1(data, filename, train=False):
-            filename = filename[filename.rfind('/') + 1:]
-            prefix = '.train.npz' if train else '.test.npz'
-            filepath = os.path.join(cache_dir, filename + prefix)
-            if os.path.exists(filepath):
-                return
-
-            print(f"Saving: {filepath}")
-            try:
-                np.savez_compressed(filepath, *data)
-            except (Exception, KeyboardInterrupt) as e:
-                if os.path.exists(filepath):
-                    os.remove(filepath)
-                raise
-            print("Done")
-            return filepath
-
-        filepath = get_file(url)
-        if self.train:
-            self.data = self._load_data(filepath, 'train')
-            self.label = self._load_label(filepath, 'train')
-        else:
-            self.data = self._load_data(filepath, 'test')
-            self.label = self._load_label(filepath, 'test')
-        self.data = self.data.reshape(-1, 3, 32, 32)
-        temp = {}
-        for i, e in enumerate(self.data):
-            temp[i] = e
-        import time
-        time.sleep(10)
-        save_cache_npz1(self.data, url, self.train)
 
     def _load_data(self, filename, data_type='train'):
         with tarfile.open(filename, 'r:gz') as file:

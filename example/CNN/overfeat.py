@@ -5,6 +5,9 @@ from lijnn.transforms import *
 
 
 class OverFeat_accuracy(Model):
+    """
+    2013.12.21
+    """
     def __init__(self, num_classes=1000):
         super().__init__()
         self.conv1 = L.Conv2d(96, kernel_size=7, stride=2, pad=0)
@@ -27,39 +30,30 @@ class OverFeat_accuracy(Model):
     def forward(self, x):
         x = F.relu(self.conv1(x))
         x = F.max_pooling(x, kernel_size=3, stride=3)
-        print(x.shape)
 
         x = F.relu(self.conv2(x))
         x = F.max_pooling(x, kernel_size=2, stride=2)
-        print(x.shape)
 
         x = F.relu(self.conv3(x))
-        print(x.shape)
 
         x = F.relu(self.conv4(x))
-        print(x.shape)
 
         x = F.relu(self.conv5(x))
-        print(x.shape)
 
         x = F.relu(self.conv6(x))
         x = F.max_pooling(x, kernel_size=3, stride=3)
         # receptive field = 77
-        print(x.shape)
 
         if Config.train:
             x = F.reshape(x, (x.shape[0], -1))
             x = F.dropout(F.relu(self.fc7(x)))
-            print(x.shape)
             x = F.dropout(F.relu(self.fc8(x)))
-            print(x.shape)
             x = self.fc9(x)
         else:
             x = F.relu(self.conv7(x))
             x = F.relu(self.conv8(x))
             x = self.conv9(x)
             # receptive field = 221
-        print(x.shape)
 
         return x
 
@@ -86,38 +80,26 @@ class OverFeat_fast(Model):
     def forward(self, x):
         x = F.relu(self.conv1(x))
         x = F.max_pooling(x, kernel_size=2, stride=2)
-        print(x.shape)
 
         x = F.relu(self.conv2(x))
         x = F.max_pooling(x, kernel_size=2, stride=2)
-        print(x.shape)
 
         x = F.relu(self.conv3(x))
-        print(x.shape)
 
         x = F.relu(self.conv4(x))
-        print(x.shape)
 
         x = F.relu(self.conv5(x))
         x = F.max_pooling(x, kernel_size=2, stride=2)
         # receptive field = 71
-        print(x.shape)
 
         if Config.train:
             x = F.reshape(x, (x.shape[0], -1))
             x = F.dropout(F.relu(self.fc6(x)))
-            print(x.shape)
             x = F.dropout(F.relu(self.fc7(x)))
-            print(x.shape)
             x = self.fc8(x)
         else:
             x = F.relu(self.conv6(x))
-            print(x.shape)
             x = F.relu(self.conv7(x))
-            print(x.shape)
             x = self.conv8(x)
             # receptive field = 231
-        print(x.shape)
         return x
-
-

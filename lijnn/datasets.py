@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from lijnn.utils import get_file, cache_dir
 from lijnn.transforms import *
 import xml.etree.ElementTree as ET
+import cv2 as cv
 
 
 class Dataset:
@@ -19,77 +20,53 @@ class Dataset:
         if self.t_transform is None:
             self.t_transform = lambda x: x
 
-        self.data = None
-        self.label = None
-        self.prepare()
+    def __getitem__(self, index):
+        raise NotImplementedError
+
+    def __len__(self):
+        raise NotImplementedError
+
+
+class Spiral(Dataset):
+    def __init__(self, train=True, x_transform=None, t_transform=None):
+        super().__init__(train, x_transform, t_transform)
+        seed = 1984 if self.train else 2020
+        np.random.seed(seed=seed)
+
+        num_data, num_class, input_dim = 100, 3, 2
+        data_size = num_class * num_data
+        x = np.zeros((data_size, input_dim), dtype=np.float32)
+        t = np.zeros(data_size, dtype=np.int)
+
+        for j in range(num_class):
+            for i in range(num_data):
+                rate = i / num_data
+                radius = 1.0 * rate
+                theta = j * 4.0 + 4.0 * rate + np.random.randn() * 0.2
+                ix = num_data * j + i
+                x[ix] = np.array([radius * np.sin(theta),
+                                  radius * np.cos(theta)]).flatten()
+                t[ix] = j
+        # Shuffle
+        indices = np.random.permutation(num_data * num_class)
+        self.data, self.label = x[indices], t[indices]
 
     def __getitem__(self, index):
         assert np.isscalar(index)
-        if self.label is None:
-            return self.x_transform(self.data[index]), None
-        else:
-            return self.x_transform(self.data[index]), self.t_transform(self.label[index])
+        return self.x_transform(self.data[index]), self.t_transform(self.label[index])
 
     def __len__(self):
         return len(self.data)
 
-    @property
-    def shape(self):
-        return self.data.shape, self.label.shape
 
-    def prepare(self):
-        pass
-
-
-# =============================================================================
-# Toy datasets
-# =============================================================================
-def get_spiral(train=True):
-    seed = 1984 if train else 2020
-    np.random.seed(seed=seed)
-
-    num_data, num_class, input_dim = 100, 3, 2
-    data_size = num_class * num_data
-    x = np.zeros((data_size, input_dim), dtype=np.float32)
-    t = np.zeros(data_size, dtype=np.int)
-
-    for j in range(num_class):
-        for i in range(num_data):
-            rate = i / num_data
-            radius = 1.0 * rate
-            theta = j * 4.0 + 4.0 * rate + np.random.randn() * 0.2
-            ix = num_data * j + i
-            x[ix] = np.array([radius * np.sin(theta),
-                              radius * np.cos(theta)]).flatten()
-            t[ix] = j
-    # Shuffle
-    indices = np.random.permutation(num_data * num_class)
-    x = x[indices]
-    t = t[indices]
-    return x, t
-
-
-class Spiral(Dataset):
-    def prepare(self):
-        self.data, self.label = get_spiral(self.train)
-
-
-# =============================================================================
-# MNIST-like dataset: MNIST / CIFAR /
-# =============================================================================
 class MNIST(Dataset):
     """
     mean = [33.31842145],
     std = [78.56748998]
     """
 
-    def __init__(self, train=True,
-                 x_transform=compose([flatten(), toFloat(),
-                                      z_score_normalize(33.31842145, 78.56748998)]),
-                 t_transform=None):
+    def __init__(self, train=True, x_transform=None, t_transform=None):
         super().__init__(train, x_transform, t_transform)
-
-    def prepare(self):
         url = 'http://yann.lecun.com/exdb/mnist/'
         train_files = {'target': 'train-images-idx3-ubyte.gz',
                        'label': 'train-labels-idx1-ubyte.gz'}
@@ -100,19 +77,19 @@ class MNIST(Dataset):
         data_path = get_file(url + files['target'])
         label_path = get_file(url + files['label'])
 
-        self.data = self._load_data(data_path)
-        self.label = self._load_label(label_path)
-
-    def _load_data(self, filepath):
-        with gzip.open(filepath, 'rb') as f:
+        with gzip.open(data_path, 'rb') as f:
             data = np.frombuffer(f.read(), np.uint8, offset=16)
-        data = data.reshape(-1, 1, 28, 28)
-        return data
+        self.data = data.reshape(-1, 1, 28, 28)
 
-    def _load_label(self, filepath):
-        with gzip.open(filepath, 'rb') as f:
-            labels = np.frombuffer(f.read(), np.uint8, offset=8)
-        return labels
+        with gzip.open(label_path, 'rb') as f:
+            self.label = np.frombuffer(f.read(), np.uint8, offset=8)
+
+    def __getitem__(self, index):
+        assert np.isscalar(index)
+        return self.x_transform(self.data[index]), self.t_transform(self.label[index])
+
+    def __len__(self):
+        return len(self.data)
 
     def show(self, row=10, col=10):
         H, W = 28, 28
@@ -135,48 +112,39 @@ class CIFAR10(Dataset):
     std = [62.99321928, 62.08870764, 66.70489964]
     """
 
-    def __init__(self, train=True,
-                 x_transform=compose([toFloat(), z_score_normalize(mean=[125.30691805, 122.95039414, 113.86538318],
-                                                                   std=[62.99321928, 62.08870764, 66.70489964])]),
-                 t_transform=None):
+    def __init__(self, train=True, x_transform=None, t_transform=None):
         super().__init__(train, x_transform, t_transform)
 
-    def prepare(self):
         url = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
         self.data, self.label = load_cache_npz(url, self.train)
         if self.data is not None:
             return
+
         filepath = get_file(url)
+        file = tarfile.open(filepath, 'r:gz')
         if self.train:
             self.data = np.empty((50000, 3 * 32 * 32), dtype=np.uint8)
             self.label = np.empty((50000), dtype=np.uint8)
             for i in range(5):
-                self.data[i * 10000:(i + 1) * 10000] = self._load_data(filepath, i + 1, 'train')
-                self.label[i * 10000:(i + 1) * 10000] = self._load_label(filepath, i + 1, 'train')
+                data_dict = pickle.load(file.extractfile(file.getmember(f'cifar-10-batches-py/data_batch_{i + 1}')),
+                                        encoding='bytes')
+                self.data[i * 10000:(i + 1) * 10000] = data_dict[b'data']
+                self.label[i * 10000:(i + 1) * 10000] = np.array(data_dict[b'labels'])
         else:
-            self.data = self._load_data(filepath, 5, 'test')
-            self.label = self._load_label(filepath, 5, 'test')
+            data_dict = pickle.load(file.extractfile(file.getmember('cifar-10-batches-py/test_batch')),
+                                    encoding='bytes')
+            self.data = data_dict[b'data']
+            self.label = np.array(data_dict[b'labels'])
+
         self.data = self.data.reshape(-1, 3, 32, 32)
         save_cache_npz(self.data, self.label, url, self.train)
 
-    def _load_data(self, filename, idx, data_type='train'):
-        assert data_type in ['train', 'test']
-        with tarfile.open(filename, 'r:gz') as file:
-            for item in file.getmembers():
-                if (f'data_batch_{idx}' in item.name and data_type == 'train') or (
-                        'test_batch' in item.name and data_type == 'test'):
-                    data_dict = pickle.load(file.extractfile(item), encoding='bytes')
-                    data = data_dict[b'data']
-                    return data
+    def __getitem__(self, index):
+        assert np.isscalar(index)
+        return self.x_transform(self.data[index]), self.t_transform(self.label[index])
 
-    def _load_label(self, filename, idx, data_type='train'):
-        assert data_type in ['train', 'test']
-        with tarfile.open(filename, 'r:gz') as file:
-            for item in file.getmembers():
-                if ('data_batch_{}'.format(idx) in item.name and data_type == 'train') or (
-                        'test_batch' in item.name and data_type == 'test'):
-                    data_dict = pickle.load(file.extractfile(item), encoding='bytes')
-                    return np.array(data_dict[b'labels'])
+    def __len__(self):
+        return len(self.data)
 
     def show(self, row=10, col=10):
         H, W = 32, 32
@@ -201,49 +169,37 @@ class CIFAR100(CIFAR10):
     std = [68.1702429,  65.39180804, 70.41837019]
     """
 
-    def __init__(self, train=True,
-                 x_transform=compose([toFloat(), z_score_normalize(mean=[129.30416561, 124.0699627, 112.43405006],
-                                                                   std=[68.1702429, 65.39180804, 70.41837019])]),
-                 t_transform=None,
-                 label_type='fine'):
+    def __init__(self, train=True, x_transform=None, t_transform=None, label_type='fine'):
         assert label_type in ['fine', 'coarse']
         self.label_type = label_type
         super().__init__(train, x_transform, t_transform)
 
-    def prepare(self):
         url = 'https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz'
         self.data, self.label = load_cache_npz(url, self.train)
         if self.data is not None:
             return
 
         filepath = get_file(url)
+        file = tarfile.open(filepath, 'r:gz')
         if self.train:
-            self.data = self._load_data(filepath, 'train')
-            self.label = self._load_label(filepath, 'train')
+            data_dict = pickle.load(file.extractfile(file.getmember('cifar-100-python/train')), encoding='bytes')
         else:
-            self.data = self._load_data(filepath, 'test')
-            self.label = self._load_label(filepath, 'test')
+            data_dict = pickle.load(file.extractfile(file.getmember('cifar-100-python/test')), encoding='bytes')
+
+        self.data = data_dict[b'data']
+        if self.label_type == 'fine':
+            self.label = np.array(data_dict[b'fine_labels'])
+        elif self.label_type == 'coarse':
+            self.label = np.array(data_dict[b'coarse_labels'])
         self.data = self.data.reshape(-1, 3, 32, 32)
         save_cache_npz(self.data, self.label, url, self.train)
 
-    def _load_data(self, filename, data_type='train'):
-        with tarfile.open(filename, 'r:gz') as file:
-            for item in file.getmembers():
-                if data_type in item.name:
-                    data_dict = pickle.load(file.extractfile(item), encoding='bytes')
-                    data = data_dict[b'data']
-                    return data
+    def __getitem__(self, index):
+        assert np.isscalar(index)
+        return self.x_transform(self.data[index]), self.t_transform(self.label[index])
 
-    def _load_label(self, filename, data_type='train'):
-        assert data_type in ['train', 'test']
-        with tarfile.open(filename, 'r:gz') as file:
-            for item in file.getmembers():
-                if data_type in item.name:
-                    data_dict = pickle.load(file.extractfile(item), encoding='bytes')
-                    if self.label_type == 'fine':
-                        return np.array(data_dict[b'fine_labels'])
-                    elif self.label_type == 'coarse':
-                        return np.array(data_dict[b'coarse_labels'])
+    def __len__(self):
+        return len(self.data)
 
     @staticmethod
     def labels(label_type='fine'):
@@ -265,57 +221,40 @@ class VOCDetection(Dataset):
         "2009": "http://host.robots.ox.ac.uk/pascal/VOC/voc2009/VOCtrainval_11-May-2009.tar",
         "2008": "http://host.robots.ox.ac.uk/pascal/VOC/voc2008/VOCtrainval_14-Jul-2008.tar",
         "2007": "http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtrainval_06-Nov-2007.tar",
-        "2007-test": "http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtest_06-Nov-2007.tar"}
+        "2007test": "http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtest_06-Nov-2007.tar"}
 
     def __init__(self, train=True, year=2007, x_transform=None, t_transform=None):
-        self.year = str(year)
+        assert 2007 <= year <= 2012
         super().__init__(train, x_transform, t_transform)
+        self.year = str(year)
+        url = self.DATASET_YEAR_DICT[self.year + 'test'] if self.train == False and self.year == "2007" else \
+            self.DATASET_YEAR_DICT[self.year]
 
-    def prepare(self):
-        if self.train == False and self.year == "2007": self.year = "2007-test"
-        url = self.DATASET_YEAR_DICT[self.year]
-        revers_label = dict(map(reversed, self.labels().items()))
-        data_tmp, label_tmp = [], []
-
-        self.data, self.label = load_cache_npz(url, self.train)
-        if self.data is not None:
-            return
         filepath = get_file(url)
+        self.revers_label = dict(map(reversed, self.labels().items()))
+        self.file = tarfile.open(filepath, 'r')
 
-        with tarfile.open(filepath, 'r') as file:
-            for item in file.getmembers():
-                if '.jpg' in item.name:
-                    bytes = file.extractfile(item).read()
-                    na = np.frombuffer(bytes, dtype=np.uint8)
-                    im = cv.imdecode(na, cv.IMREAD_COLOR)
-                    data_tmp.append(im.transpose(2, 0, 1)[::-1])
-                elif '.xml' in item.name:
-                    bytes = file.extractfile(item).read()
-                    annotation = ET.fromstring(bytes)
-                    li = []
-                    for i in annotation.iter(tag="object"):
-                        budbox = i.find("bndbox")
-                        lis = [int(budbox.find(i).text) for i in ['xmin', 'ymin', 'xmax', 'ymax']]
-                        lis.append(revers_label[i.find("name").text])
-                        li.append(lis)
-                    label_tmp.append(np.array(li))
+        self.image_tarinfo = [i for i in self.file.getmembers() if '.jpg' in i.name]
+        self.xml_tarinfo = [i for i in self.file.getmembers() if '.xml' in i.name]
 
+    def __getitem__(self, index):
+        assert np.isscalar(index)
+        bytes = self.file.extractfile(self.xml_tarinfo[index]).read()
+        annotation = ET.fromstring(bytes)
+        bboxes = []
+        for i in annotation.iter(tag="object"):
+            budbox = i.find("bndbox")
+            bboxes = [int(budbox.find(i).text) for i in ['xmin', 'ymin', 'xmax', 'ymax']]
+            label = self.revers_label[i.find("name").text]
 
-        # asdf = {
-        #     'data': data_tmp,
-        #     'label': label_tmp,
-        # }
-        #
-        # # save
-        # with open('data.pickle', 'wb') as f:
-        #     pickle.dump(asdf, f, pickle.HIGHEST_PROTOCOL)
+        bytes = self.file.extractfile(self.image_tarinfo[index]).read()
+        na = np.frombuffer(bytes, dtype=np.uint8)
+        im = cv.imdecode(na, cv.IMREAD_COLOR)
 
-        # self.label = np.array(label_tmp, dtype=object)
-        # data_tmp.append('trick')
-        # self.data = np.array(data_tmp, dtype=object)
-        # self.data = np.delete(self.data, -1)
-        #
-        # np.savez_compressed('test.npz', data=self.data, label=self.label)
+        return self.x_transform(im.transpose(2, 0, 1)[::-1]), self.t_transform(label), bboxes
+
+    def __len__(self):
+        return len(self.image_tarinfo)
 
     @staticmethod
     def labels():
@@ -338,11 +277,7 @@ class ImageNet(Dataset):
         return labels
 
 
-# =============================================================================
-# Sequential datasets: SinCurve, Shapekspare
-# =============================================================================
 class SinCurve(Dataset):
-
     def prepare(self):
         num_data = 1000
         dtype = np.float64
@@ -360,7 +295,6 @@ class SinCurve(Dataset):
 
 
 class Shakespear(Dataset):
-
     def prepare(self):
         url = 'https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt'
         file_name = 'shakespear.txt'
@@ -387,14 +321,14 @@ class Shakespear(Dataset):
 # =============================================================================
 # Utils
 # =============================================================================
-def load_cache_npz(filename, train=False):
+def load_cache_npz(filename, train=False, allow_pickle=False):
     filename = filename[filename.rfind('/') + 1:]
     prefix = '.train.npz' if train else '.test.npz'
     filepath = os.path.join(cache_dir, filename + prefix)
     if not os.path.exists(filepath):
         return None, None
 
-    loaded = np.load(filepath)
+    loaded = np.load(filepath, allow_pickle=allow_pickle)
     return loaded['data'], loaded['label']
 
 

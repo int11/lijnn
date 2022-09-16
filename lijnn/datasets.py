@@ -241,17 +241,17 @@ class VOCDetection(Dataset):
         assert np.isscalar(index)
         bytes = self.file.extractfile(self.xml_tarinfo[index]).read()
         annotation = ET.fromstring(bytes)
-        bboxes = []
+        bboxes, label = [], []
         for i in annotation.iter(tag="object"):
             budbox = i.find("bndbox")
-            bboxes = [int(budbox.find(i).text) for i in ['xmin', 'ymin', 'xmax', 'ymax']]
-            label = self.revers_label[i.find("name").text]
+            bboxes.append([int(budbox.find(i).text) for i in ['xmin', 'ymin', 'xmax', 'ymax']])
+            label.append(self.revers_label[i.find("name").text])
 
         bytes = self.file.extractfile(self.image_tarinfo[index]).read()
         na = np.frombuffer(bytes, dtype=np.uint8)
         im = cv.imdecode(na, cv.IMREAD_COLOR)
 
-        return self.x_transform(im.transpose(2, 0, 1)[::-1]), self.t_transform(label), bboxes
+        return self.x_transform(im.transpose(2, 0, 1)[::-1]), self.t_transform(np.array(label)), np.array(bboxes)
 
     def __len__(self):
         return len(self.image_tarinfo)

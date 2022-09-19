@@ -251,10 +251,18 @@ class VOCDetection(Dataset):
         na = np.frombuffer(bytes, dtype=np.uint8)
         im = cv.imdecode(na, cv.IMREAD_COLOR)
 
-        return self.x_transform(im.transpose(2, 0, 1)[::-1]), self.t_transform(np.array(label)), np.array(bboxes)
+        return self.x_transform(im.transpose(2, 0, 1)[::-1]), self.t_transform(label), np.array(bboxes)
 
     def __len__(self):
         return len(self.image_tarinfo)
+
+    def show(self, index):
+        img, label, bboxes = self[index]
+        img = img[::-1].transpose(1, 2, 0)
+        for box in bboxes:
+            cv.rectangle(img, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 1)
+        cv.imshow('show', img)
+        cv.waitKey(0)
 
     @staticmethod
     def labels():
@@ -263,8 +271,35 @@ class VOCDetection(Dataset):
                                "train", "tvmonitor"]))
 
 
-class ImageNet(Dataset):
+class VOCclassfication(VOCDetection):
+    def __init__(self, train=True, year=2007, x_transform=None, t_transform=None):
+        super(VOCclassfication, self).__init__(train, year, x_transform, t_transform)
+        self.count = []
+        for a, b in enumerate(self.xml_tarinfo):
+            bytes = self.file.extractfile(b).read()
+            annotation = ET.fromstring(bytes)
 
+            for i in annotation.iter(tag="object"):
+                budbox = i.find("bndbox")
+                self.count.append([a, [int(budbox.find(i).text) for i in ['xmin', 'ymin', 'xmax', 'ymax']],
+                                   self.revers_label[i.find("name").text]])
+
+    def __getitem__(self, index):
+        index, bbox, label = self.count[index]
+        bytes = self.file.extractfile(self.image_tarinfo[index]).read()
+        na = np.frombuffer(bytes, dtype=np.uint8)
+        im = cv.imdecode(na, cv.IMREAD_COLOR)
+        im = im[bbox[1]:bbox[3], bbox[0]:bbox[2]]
+        return self.x_transform(im.transpose(2, 0, 1)[::-1]), self.t_transform(label)
+
+    def show(self, index):
+        img, label = self[index]
+        cv.imshow('1', img[::-1].transpose(1, 2, 0))
+        print(self.labels()[label])
+        cv.waitKey(0)
+
+
+class ImageNet(Dataset):
     def __init__(self):
         NotImplemented
 

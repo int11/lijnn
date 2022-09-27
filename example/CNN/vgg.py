@@ -82,16 +82,17 @@ class VGG16(Model):
         xp = cuda.get_array_module(x)
         if x.ndim == 3:
             x = x[np.newaxis]
+
         transfrom = compose([toFloat(), z_score_normalize(mean, std)])
         x = xp.array([transfrom(i) for i in x])
 
-        result = [xp.array([isotropically_resize(256)(i) for i in x]),
-                  xp.array([isotropically_resize(384)(i) for i in x]),
-                  xp.array([isotropically_resize(512)(i) for i in x])]
+        result = [xp.array([isotropically_resize(224+(32 * 1))(i) for i in x]),
+                  xp.array([isotropically_resize(224+(32 * 5))(i) for i in x]),
+                  xp.array([isotropically_resize(224+(32 * 9))(i) for i in x])]
 
         with no_grad(), test_mode():
             result = [F.softmax(self(i)).data for i in result]
-        # 3 ,N, num_classes, H, W
+        # (3) , N, num_classes, H, W
         result = [np.mean(i, (2, 3)) for i in result]
         # 3 ,N, num_classes
         return xp.mean(xp.array(result), axis=0)

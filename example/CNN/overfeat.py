@@ -43,6 +43,7 @@ class OverFeat_accuracy(Model):
         x = F.relu(self.conv6(x))
         x = F.max_pooling(x, kernel_size=3, stride=3)
         # receptive field = 77
+        # subsampling ratio = 36
 
         if Config.train:
             x = F.reshape(x, (x.shape[0], -1))
@@ -54,8 +55,25 @@ class OverFeat_accuracy(Model):
             x = F.relu(self.conv8(x))
             x = self.conv9(x)
             # receptive field = 221
+            # subsampling ratio = 36
 
         return x
+
+    def predict(self, x, mean, std):
+        xp = cuda.get_array_module(x)
+        if x.ndim == 3:
+            x = x[np.newaxis]
+
+        transfrom = compose([toFloat(), z_score_normalize(mean, std)])
+        x = xp.array([transfrom(i) for i in x])
+
+        result = [xp.array([resize(245)(i) for i in x]),
+                  xp.array([resize((281, 317))(i) for i in x]),
+                  xp.array([resize((389, 461))(i) for i in x]),
+                  xp.array([resize((461, 569))(i) for i in x])]
+
+        with no_grad(), test_mode():
+            result = [self(i).data for i in result]
 
 
 class OverFeat_fast(Model):
@@ -91,6 +109,7 @@ class OverFeat_fast(Model):
         x = F.relu(self.conv5(x))
         x = F.max_pooling(x, kernel_size=2, stride=2)
         # receptive field = 71
+        # subsampling ratio = 32
 
         if Config.train:
             x = F.reshape(x, (x.shape[0], -1))
@@ -102,4 +121,51 @@ class OverFeat_fast(Model):
             x = F.relu(self.conv7(x))
             x = self.conv8(x)
             # receptive field = 231
+            # subsampling ratio = 32
         return x
+
+
+def main_OverFeat(name='default'):
+    batch_size = 100
+    epoch = 10
+    trainset = datasets.VOCclassfication(train=True, x_transform=compose(
+        [isotropically_resize(256), centerCrop(256), randomCrop(221), randomFlip(), toFloat()]))
+
+    testset = datasets.VOCclassfication(train=False, x_transform=None)
+
+    train_loader = iterators.iterator(trainset, batch_size, shuffle=True)
+    test_loader = iterators.iterator(testset, batch_size, shuffle=False)
+
+    model = OverFeat_accuracy(20)
+    optimizer = optimizers.Adam(alpha=0.0001).setup(model)
+    start_epoch = model.load_weights_epoch(name=name)
+    if cuda.gpu_enable:
+        model.to_gpu()
+        train_loader.to_gpu()
+        test_loader.to_gpu()
+
+    for i in range(start_epoch, epoch + 1):
+        sum_loss, sum_acc = 0, 0
+        for x, t in train_loader:
+            y = model(x)
+            loss = F.softmax_cross_entropy(y, t)
+            acc = F.accuracy(y, t)
+            model.cleargrads()
+            loss.backward()
+            optimizer.update()
+            sum_loss += loss.data
+            sum_acc += acc.data
+            print(f"loss : {loss.data} accuracy {acc.data}")
+        print(f"epoch {i}")
+        print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
+        model.save_weights_epoch(i, name)
+
+        sum_loss, sum_acc = 0, 0
+        with no_grad(), test_mode():
+            for x, t in test_loader:
+                y = model.predict(x, mean, std)
+                loss = F.categorical_cross_entropy(y, t)
+                acc = F.accuracy(y, t)
+                sum_loss += loss.data
+                sum_acc += acc.data
+        print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')

@@ -78,7 +78,7 @@ class isotropically_resize:
         # data.shape type is tuple
         argmin = np.argmin(data.shape[1:])
 
-        if argmin == 2:
+        if argmin == 1:
             proportion = data.shape[1] / data.shape[2]
             size = (int(self.S * proportion), self.S)
         else:

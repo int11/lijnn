@@ -298,6 +298,9 @@ class VOCclassfication(VOCDetection):
         print(self.labels()[label])
         cv.waitKey(0)
 
+    def __len__(self):
+        return len(self.count)
+
 
 class ImageNet(Dataset):
     def __init__(self):

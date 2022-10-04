@@ -86,9 +86,9 @@ class VGG16(Model):
         transfrom = compose([toFloat(), z_score_normalize(mean, std)])
         x = xp.array([transfrom(i) for i in x])
 
-        result = [xp.array([isotropically_resize(224+(32 * 1))(i) for i in x]),
-                  xp.array([isotropically_resize(224+(32 * 5))(i) for i in x]),
-                  xp.array([isotropically_resize(224+(32 * 9))(i) for i in x])]
+        result = [xp.array([isotropically_resize(224 + 32 * 1)(i) for i in x]),
+                  xp.array([isotropically_resize(224 + 32 * 5)(i) for i in x]),
+                  xp.array([isotropically_resize(224 + 32 * 9)(i) for i in x])]
 
         with no_grad(), test_mode():
             result = [F.softmax(self(i)).data for i in result]

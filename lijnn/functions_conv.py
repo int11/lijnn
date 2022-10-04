@@ -139,9 +139,6 @@ class Conv2DGradW(Function):
         return gx, ggy
 
 
-# =============================================================================
-#  pooling(max-pooling) / average_pooling
-# =============================================================================
 class MaxPooling(Function):
     def __init__(self, kernel_size, stride=1, pad=0):
         super().__init__()
@@ -267,6 +264,38 @@ class AveragePooling(Function):
 
 def average_pooling(x, kernel_size, stride=1, pad=0):
     return AveragePooling(kernel_size, stride, pad)(x)
+
+
+class FinePooling(Function):
+    def __init__(self, kernel_size):
+        super().__init__()
+        self.kernel_size = kernel_size
+
+    def forward(self, x):
+        N, C, H, W = x.shape
+        KH, KW = pair(self.kernel_size)
+        SH, SW = pair(self.kernel_size)
+        OH = get_conv_outsize(H, KH, SH, 0)
+        OW = get_conv_outsize(W, KW, SW, 0)
+
+        xp = cuda.get_array_module(x)
+
+        strides = x.strides
+        col = xp.lib.stride_tricks.as_strided(x, (3, 3, N, C, KH, KW, OH, OW),
+                                              (strides[2], strides[3], strides[0], strides[1], strides[2], strides[3],
+                                               strides[2] * SH, strides[3] * SW))
+
+        col = col.reshape(3, 3, N, C, KH * KW, OH, OW)
+        y = col.max(axis=4)
+
+        return y
+
+    def backward(self, gy):
+        raise NotImplementedError
+
+
+def find_pooling(x, kernel_size):
+    return MaxPooling(kernel_size)(x)
 
 
 # =============================================================================

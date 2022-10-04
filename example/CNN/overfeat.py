@@ -8,6 +8,7 @@ class OverFeat_accuracy(Model):
     """
     2013.12.21
     """
+
     def __init__(self, num_classes=1000):
         super().__init__()
         self.conv1 = L.Conv2d(96, kernel_size=7, stride=2, pad=0)
@@ -41,22 +42,22 @@ class OverFeat_accuracy(Model):
         x = F.relu(self.conv5(x))
 
         x = F.relu(self.conv6(x))
-        x = F.max_pooling(x, kernel_size=3, stride=3)
-        # receptive field = 77
-        # subsampling ratio = 36
 
         if Config.train:
+            x = F.max_pooling(x, kernel_size=3, stride=3)
+            # receptive field = 77
+            # subsampling ratio = 36
             x = F.reshape(x, (x.shape[0], -1))
             x = F.dropout(F.relu(self.fc7(x)))
             x = F.dropout(F.relu(self.fc8(x)))
             x = self.fc9(x)
         else:
+            x = F.find_pooling(x, (3, 3))
             x = F.relu(self.conv7(x))
             x = F.relu(self.conv8(x))
             x = self.conv9(x)
-            # receptive field = 221
-            # subsampling ratio = 36
-
+        # receptive field = 221
+        # subsampling ratio = 36
         return x
 
     def predict(self, x, mean, std):
@@ -67,10 +68,10 @@ class OverFeat_accuracy(Model):
         transfrom = compose([toFloat(), z_score_normalize(mean, std)])
         x = xp.array([transfrom(i) for i in x])
 
-        result = [xp.array([resize(245)(i) for i in x]),
-                  xp.array([resize((281, 317))(i) for i in x]),
-                  xp.array([resize((389, 461))(i) for i in x]),
-                  xp.array([resize((461, 569))(i) for i in x])]
+        result = [xp.array([resize(221 + 12 * 2)(i) for i in x]),
+                  xp.array([resize((221 + 12 * 2 + 36 * 1, 221 + 12 * 2 + 36 * 2))(i) for i in x]),
+                  xp.array([resize((221 + 12 * 2 + 36 * 4, 221 + 12 * 2 + 36 * 6))(i) for i in x]),
+                  xp.array([resize((221 + 12 * 2 + 36 * 6, 221 + 12 * 2 + 36 * 9))(i) for i in x])]
 
         with no_grad(), test_mode():
             result = [self(i).data for i in result]

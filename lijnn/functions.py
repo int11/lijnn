@@ -708,6 +708,7 @@ from lijnn.functions_conv import col2im
 from lijnn.functions_conv import max_pooling
 from lijnn.functions_conv import average_pooling
 from lijnn.functions_conv import local_response_normalization
+from lijnn.functions_conv import find_pooling
 from lijnn.core import add
 from lijnn.core import sub
 from lijnn.core import rsub

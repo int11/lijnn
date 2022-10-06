@@ -40,7 +40,6 @@ class Conv2d(Function):
         if b is not None:
             y += b
         y = xp.rollaxis(y, 3, 1)
-        # y = np.transpose(y, (0, 3, 1, 2))
         return y
 
     def backward(self, gy):
@@ -397,7 +396,6 @@ def im2col_array(img, kernel_size, stride, pad, to_matrix=True):
                      ((0, 0), (0, 0), (PH, PH + SH - 1), (PW, PW + SW - 1)),
                      mode='constant', constant_values=(0,))
         # col = np.ndarray((N, C, KH, KW, OH, OW), dtype=img.dtype)
-        #
         # for j in range(KH):
         #     j_lim = j + SH * OH
         #     for i in range(KW):

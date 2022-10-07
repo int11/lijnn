@@ -67,14 +67,14 @@ class Deconv2d(Function):
         self.pad = pair(pad)
         self.outsize = outsize
 
-    def forward(self, x, W, b):
-        xp = cuda.get_array_module(x)
+    def forward(self, gy, W, b):
+        xp = cuda.get_array_module(gy)
 
         Weight = W
         SH, SW = self.stride
         PH, PW = self.pad
         C, OC, KH, KW = Weight.shape
-        N, C, H, W = x.shape
+        N, C, H, W = gy.shape
         if self.outsize is None:
             out_h = get_deconv_outsize(H, KH, SH, PH)
             out_w = get_deconv_outsize(W, KW, SW, PW)
@@ -82,15 +82,15 @@ class Deconv2d(Function):
             out_h, out_w = pair(self.outsize)
         img_shape = (N, OC, out_h, out_w)
 
-        gcol = xp.tensordot(Weight, x, (0, 1))
+        gcol = xp.tensordot(Weight, gy, (0, 1))
         gcol = xp.rollaxis(gcol, 3)
-        y = col2im_array(gcol, img_shape, (KH, KW), self.stride, self.pad,
+        gx = col2im_array(gcol, img_shape, (KH, KW), self.stride, self.pad,
                          to_matrix=False)
         # b, k, h, w
         if b is not None:
             self.no_bias = True
-            y += b.reshape((1, b.size, 1, 1))
-        return y
+            gx += b.reshape((1, b.size, 1, 1))
+        return gx
 
     def backward(self, gy):
         x, W, b = self.inputs

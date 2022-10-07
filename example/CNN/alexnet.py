@@ -15,7 +15,6 @@ class AlexNet(Model):
     use 2 Gpu
 
     use Max Pooling, Dropout, Local Response Normalization
-
     """
 
     def __init__(self, num_classes=1000):

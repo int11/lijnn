@@ -85,7 +85,7 @@ class Deconv2d(Function):
         gcol = xp.tensordot(Weight, gy, (0, 1))
         gcol = xp.rollaxis(gcol, 3)
         gx = col2im_array(gcol, img_shape, (KH, KW), self.stride, self.pad,
-                         to_matrix=False)
+                          to_matrix=False)
         # b, k, h, w
         if b is not None:
             self.no_bias = True
@@ -171,10 +171,10 @@ class MaxPooling(Function):
         return y
 
     def backward(self, gy):
-        return Pooling2DGrad(self)(gy)
+        return MaxPoolingGrad(self)(gy)
 
 
-class Pooling2DGrad(Function):
+class MaxPoolingGrad(Function):
     def __init__(self, mpool2d):
         self.mpool2d = mpool2d
         self.kernel_size = mpool2d.kernel_size
@@ -206,11 +206,11 @@ class Pooling2DGrad(Function):
         return gx
 
     def backward(self, ggx):
-        f = Pooling2DWithIndexes(self.mpool2d)
+        f = MaxPoolingWithIndexes(self.mpool2d)
         return f(ggx)
 
 
-class Pooling2DWithIndexes(Function):
+class MaxPoolingWithIndexes(Function):
     def __init__(self, mpool2d):
         self.kernel_size = mpool2d.kernel_size
         self.stride = mpool2d.stride
@@ -280,21 +280,60 @@ class FinePooling(Function):
         xp = cuda.get_array_module(x)
 
         strides = x.strides
-        col = xp.lib.stride_tricks.as_strided(x, (3, 3, N, C, KH, KW, OH, OW),
-                                              (strides[2], strides[3], strides[0], strides[1], strides[2], strides[3],
+        col = xp.lib.stride_tricks.as_strided(x, (N, C, 3, 3, KH, KW, OH, OW),
+                                              (strides[0], strides[1],strides[2], strides[3], strides[2], strides[3],
                                                strides[2] * SH, strides[3] * SW))
-
-        col = col.reshape(3, 3, N, C, KH * KW, OH, OW)
+        col = col.reshape(N, C, 3, 3, KH * KW, OH, OW)
+        self.indexes = col.argmax(axis=4)
         y = col.max(axis=4)
-
         return y
 
     def backward(self, gy):
-        raise NotImplementedError
+        return FinePoolingGrad(self)(gy)
 
+class FinePoolingGrad(Function):
+    def __init__(self, fpool2d):
+        self.mpool2d = fpool2d
+        self.kernel_size = fpool2d.kernel_size
+        self.input_shape = fpool2d.inputs[0].shape
+        self.dtype = fpool2d.inputs[0].dtype
+        self.indexes = fpool2d.indexes
+
+    def forward(self, gy):
+        xp = cuda.get_array_module(gy)
+
+        N, C, H, W = self.input_shape
+        N, C, _, _, OH, OW = gy.shape
+        KH, KW = pair(self.kernel_size)
+        SH, SW = pair(self.kernel_size)
+        PH, PW = pair(0)
+        OH = get_conv_outsize(H, KH, SH, PH)
+        OW = get_conv_outsize(W, KW, SW, PW)
+
+        gcol = xp.zeros((N * C * 3 * 3 * OH * OW * KH * KW), dtype=self.dtype)
+
+        indexes = (self.indexes.ravel()
+                   + xp.arange(0, self.indexes.size * KH * KW, KH * KW))
+
+        gcol[indexes] = gy.ravel()
+        gcol = gcol.reshape(N, C, 3, 3, OH, OW, KH, KW)
+        gcol = xp.swapaxes(gcol, 4, 6)
+        gcol = xp.swapaxes(gcol, 5, 7)
+
+
+        img = np.zeros((N, C, H, W), dtype=gcol.dtype)
+
+        for FH in range(3):
+            for FW in range(3):
+                for j in range(KH):
+                    j_lim = j + SH * OH
+                    for i in range(KW):
+                        i_lim = i + SW * OW
+                        img[:, :, j+FH:j_lim:SH, i+FW:i_lim:SW] += gcol[:, :, FH, FW, j, i, :, :]
+        return img[:, :, PH:H + PH, PW:W + PW]
 
 def find_pooling(x, kernel_size):
-    return MaxPooling(kernel_size)(x)
+    return FinePooling(kernel_size)(x)
 
 
 # =============================================================================

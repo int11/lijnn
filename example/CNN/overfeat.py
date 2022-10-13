@@ -52,7 +52,7 @@ class OverFeat_accuracy(Model):
             x = F.dropout(F.relu(self.fc8(x)))
             x = self.fc9(x)
         else:
-            x = F.find_pooling(x, (3, 3))
+            x = F.find_pooling(x, 3)
             x = F.relu(self.conv7(x))
             x = F.relu(self.conv8(x))
             x = self.conv9(x)

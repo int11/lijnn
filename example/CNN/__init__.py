@@ -1,5 +1,5 @@
 from example.CNN.lenet_5 import LeNet_5, main_LeNet_5
-from example.CNN.alexnet import AlexNet, main_AlexNet
+from example.CNN.alexnet import AlexNet, main_AlexNet, main_AlexNet_predict
 from example.CNN.zfnet import ZFNet, main_ZFNet
 from example.CNN.overfeat import OverFeat_accuracy, OverFeat_fast, main_OverFeat
 from example.CNN.vgg import VGG16, main_VGG16

@@ -17,9 +17,9 @@ class OverFeat_accuracy(Model):
         self.conv4 = L.Conv2d(512, kernel_size=3, stride=1, pad=1)
         self.conv5 = L.Conv2d(1024, kernel_size=3, stride=1, pad=1)
         self.conv6 = L.Conv2d(1024, kernel_size=3, stride=1, pad=1)
-        self.fc7 = L.Conv2d(4096, kernel_size=5, stride=1, pad=0)
-        self.fc8 = L.Conv2d(4096, kernel_size=1, stride=1, pad=0)
-        self.fc9 = L.Conv2d(num_classes, kernel_size=1, stride=1, pad=0)
+        self.fc7 = L.Linear(4096)
+        self.fc8 = L.Linear(4096)
+        self.fc9 = L.Linear(num_classes)
 
         self.conv7 = L.share_weight_conv2d(4096, kernel_size=5, stride=1, pad=0, target=self.fc7)
         self.conv8 = L.share_weight_conv2d(4096, kernel_size=1, stride=1, pad=0, target=self.fc8)
@@ -60,7 +60,7 @@ class OverFeat_accuracy(Model):
         # subsampling ratio = 36
         return x
 
-    def predict(self, x, mean, std):
+    def predict(self, x, mean=0, std=1):
         xp = cuda.get_array_module(x)
         if x.ndim == 3:
             x = x[np.newaxis]
@@ -74,7 +74,13 @@ class OverFeat_accuracy(Model):
                   xp.array([resize((221 + 12 * 2 + 36 * 6, 221 + 12 * 2 + 36 * 9))(i) for i in x])]
 
         with no_grad(), test_mode():
-            result = [self(i).data for i in result]
+            result = [F.softmax(self(i)).data for i in result]
+
+        # list(scales), 3*3*N, num_classes, H, W
+        result = xp.array([np.mean(i, (2, 3)) for i in result])
+        # scales, 3*3*N, num_classes
+        scales, N, num_classes = result.shape
+        return xp.mean(result.reshape(scales, 3, 3, int(N/(3*3)), num_classes), (0, 1, 2))
 
 
 class OverFeat_fast(Model):
@@ -164,7 +170,7 @@ def main_OverFeat(name='default'):
         sum_loss, sum_acc = 0, 0
         with no_grad(), test_mode():
             for x, t in test_loader:
-                y = model.predict(x, mean, std)
+                y = model.predict(x)
                 loss = F.categorical_cross_entropy(y, t)
                 acc = F.accuracy(y, t)
                 sum_loss += loss.data

@@ -92,10 +92,10 @@ class VGG16(Model):
 
         with no_grad(), test_mode():
             result = [F.softmax(self(i)).data for i in result]
-        # (3) , N, num_classes, H, W
-        result = [np.mean(i, (2, 3)) for i in result]
-        # 3 ,N, num_classes
-        return xp.mean(xp.array(result), axis=0)
+        # list(scales), N, num_classes, H, W
+        result = xp.array([np.mean(i, (2, 3)) for i in result])
+        # scales, N, num_classes
+        return xp.mean(result, axis=0)
 
     def predict_imagenet(self, x):
         # imagenet pretrain model train by BGR

@@ -49,7 +49,12 @@ class AlexNet(Model):
         x = self.fc8(x)
         return x
 
-    def predict(self, x, mean, std):
+    def predict(self, x, mean=None, std=None):
+        if std is None:
+            std = [62.99321928, 62.08870764, 66.70489964]
+        if mean is None:
+            mean = [125.30691805, 122.95039414, 113.86538318]
+
         xp = cuda.get_array_module(x)
         if x.ndim == 3:
             x = x[np.newaxis]
@@ -64,8 +69,7 @@ class AlexNet(Model):
                   xp.array([centerCrop(s)(i) for i in x])]
         result += [xp.flip(i, 3) for i in result]
         with no_grad(), test_mode():
-            result = [F.softmax(self(i)).data for i in result]
-        result = xp.array(result)
+            result = xp.array([F.softmax(self(i)).data for i in result])
         return xp.mean(result, axis=0)
 
 
@@ -116,3 +120,13 @@ def main_AlexNet(name='default'):
                 sum_loss += loss.data
                 sum_acc += acc.data
         print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')
+
+def main_AlexNet_predict(index):
+    testset = lijnn.datasets.CIFAR10(train=False)
+    model = AlexNet(10)
+    model.load_weights_epoch(name='default')
+
+    img, label = testset[index]
+    y = model.predict(img)
+    arg = np.argmax(model.predict(img))
+    print(testset.labels()[arg])

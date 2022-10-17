@@ -89,7 +89,6 @@ class VGG16(Model):
         result = [xp.array([isotropically_resize(224 + 32 * 1)(i) for i in x]),
                   xp.array([isotropically_resize(224 + 32 * 5)(i) for i in x]),
                   xp.array([isotropically_resize(224 + 32 * 9)(i) for i in x])]
-
         with no_grad(), test_mode():
             result = [F.softmax(self(i)).data for i in result]
         # list(scales), N, num_classes, H, W
@@ -103,14 +102,14 @@ class VGG16(Model):
 
 
 def main_VGG16(name='default'):
-    batch_size = 10
+    batch_size = 8
     epoch = 10
     mean = [125.30691805, 122.95039414, 113.86538318]
     std = [62.99321928, 62.08870764, 66.70489964]
     multi_scale_transform = compose(
         [random_isotropically_resize(256, 512), randomCrop(224), toFloat(), z_score_normalize(mean, std)])
     trainset = datasets.CIFAR10(train=True, x_transform=multi_scale_transform)
-    testset = datasets.CIFAR10(train=False, x_transform=multi_scale_transform)
+    testset = datasets.CIFAR10(train=False, x_transform=None)
     train_loader = iterators.iterator(trainset, batch_size, shuffle=True)
     test_loader = iterators.iterator(testset, batch_size, shuffle=False)
 
@@ -142,7 +141,7 @@ def main_VGG16(name='default'):
         with no_grad(), test_mode():
             for x, t in test_loader:
                 y = model.predict(x, mean, std)
-                loss = F.softmax_cross_entropy(y, t)
+                loss = F.categorical_cross_entropy(y, t)
                 acc = F.accuracy(y, t)
                 sum_loss += loss.data
                 sum_acc += acc.data

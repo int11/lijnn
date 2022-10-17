@@ -3,12 +3,15 @@ from lijnn import layers as L
 from lijnn import functions as F
 from lijnn.transforms import *
 
+"""
+"OverFeat: Integrated Recognition, Localization and Detection using Convolutional Networks"
+https://arxiv.org/abs/1312.6229
+2013.12.21, Pierre Sermanet, David Eigen, Xiang Zhang, Michael Mathieu, Rob Fergus, Yann LeCun
+
+"""
+
 
 class OverFeat_accuracy(Model):
-    """
-    2013.12.21
-    """
-
     def __init__(self, num_classes=1000):
         super().__init__()
         self.conv1 = L.Conv2d(96, kernel_size=7, stride=2, pad=0)
@@ -133,15 +136,15 @@ class OverFeat_fast(Model):
 
 
 def main_OverFeat(name='default'):
-    batch_size = 100
-    epoch = 10
+    batch_size = 64
+    epoch = 100
     trainset = datasets.VOCclassfication(train=True, x_transform=compose(
         [isotropically_resize(256), centerCrop(256), randomCrop(221), randomFlip(), toFloat()]))
 
     testset = datasets.VOCclassfication(train=False, x_transform=None)
 
     train_loader = iterators.iterator(trainset, batch_size, shuffle=True)
-    test_loader = iterators.iterator(testset, batch_size, shuffle=False)
+    test_loader = iterators.iterator(testset, 1, shuffle=False)
 
     model = OverFeat_accuracy(20)
     optimizer = optimizers.Adam(alpha=0.0001).setup(model)
@@ -175,4 +178,5 @@ def main_OverFeat(name='default'):
                 acc = F.accuracy(y, t)
                 sum_loss += loss.data
                 sum_acc += acc.data
+                print(f"loss : {loss.data} accuracy {acc.data}")
         print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')

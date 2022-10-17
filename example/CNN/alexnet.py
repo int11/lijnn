@@ -49,12 +49,7 @@ class AlexNet(Model):
         x = self.fc8(x)
         return x
 
-    def predict(self, x, mean=None, std=None):
-        if std is None:
-            std = [62.99321928, 62.08870764, 66.70489964]
-        if mean is None:
-            mean = [125.30691805, 122.95039414, 113.86538318]
-
+    def predict(self, x, mean=0, std=1):
         xp = cuda.get_array_module(x)
         if x.ndim == 3:
             x = x[np.newaxis]
@@ -74,7 +69,7 @@ class AlexNet(Model):
 
 
 def main_AlexNet(name='default'):
-    batch_size = 100
+    batch_size = 128
     epoch = 10
     mean = [125.30691805, 122.95039414, 113.86538318]
     std = [62.99321928, 62.08870764, 66.70489964]

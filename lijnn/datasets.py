@@ -223,7 +223,7 @@ class VOCDetection(Dataset):
         "2007": "http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtrainval_06-Nov-2007.tar",
         "2007test": "http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtest_06-Nov-2007.tar"}
 
-    def __init__(self, train=True, year=2007, x_transform=None, t_transform=None):
+    def __init__(self, train=True, year=2007, x_transform=None, t_transform=None, cut_index=None):
         assert 2007 <= year <= 2012
         super().__init__(train, x_transform, t_transform)
         self.year = str(year)
@@ -233,9 +233,11 @@ class VOCDetection(Dataset):
         filepath = get_file(url)
         self.revers_label = dict(map(reversed, self.labels().items()))
         self.file = tarfile.open(filepath, 'r')
-
         self.image_tarinfo = [i for i in self.file.getmembers() if '.jpg' in i.name]
         self.xml_tarinfo = [i for i in self.file.getmembers() if '.xml' in i.name]
+        if cut_index is not None:
+            self.image_tarinfo = self.image_tarinfo[cut_index[0]:cut_index[1]]
+            self.xml_tarinfo = self.xml_tarinfo[cut_index[0]:cut_index[1]]
 
     def __getitem__(self, index):
         assert np.isscalar(index)
@@ -272,7 +274,7 @@ class VOCDetection(Dataset):
 
 
 class VOCclassfication(VOCDetection):
-    def __init__(self, train=True, year=2007, x_transform=None, t_transform=None):
+    def __init__(self, train=True, year=2007, x_transform=None, t_transform=None, cut_index=None):
         super(VOCclassfication, self).__init__(train, year, x_transform, t_transform)
         self.count = []
         for a, b in enumerate(self.xml_tarinfo):
@@ -283,6 +285,8 @@ class VOCclassfication(VOCDetection):
                 budbox = i.find("bndbox")
                 self.count.append([a, [int(budbox.find(i).text) for i in ['xmin', 'ymin', 'xmax', 'ymax']],
                                    self.revers_label[i.find("name").text]])
+        if cut_index is not None:
+            self.count = self.count[cut_index[0]:cut_index[1]]
 
     def __getitem__(self, index):
         index, bbox, label = self.count[index]

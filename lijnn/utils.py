@@ -5,6 +5,7 @@ import numpy as np
 from lijnn import as_variable
 from lijnn import Variable
 from lijnn import cuda
+import cv2 as cv
 
 """
 if use colab, os.path.expanduser() function return "/root"
@@ -393,3 +394,65 @@ def pair(x):
 
 def printoptions(precision=6, threshold=np.inf, suppress=True):
     np.set_printoptions(precision=precision, threshold=threshold, suppress=suppress)
+
+
+def get_iou(x, t):
+    x_xmin, x_ymin, x_xmax, x_ymax = x[0], x[1], x[2], x[3]
+    t_xmin, t_ymin, t_xmax, t_ymax = t[0], t[1], t[2], t[3]
+    assert t_xmin < t_xmax
+    assert t_ymin < t_ymax
+    assert x_xmin < x_xmax
+    assert x_ymin < x_ymax
+
+    x_left = max(t_xmin, x_xmin)
+    y_top = max(t_ymin, x_ymin)
+    x_right = min(t_xmax, x_xmax)
+    y_bottom = min(t_ymax, x_ymax)
+
+    if x_right < x_left or y_bottom < y_top:
+        return 0.0
+
+    intersection_area = (x_right - x_left) * (y_bottom - y_top)
+
+    bb1_area = (t_xmax - t_xmin) * (t_ymax - t_ymin)
+    bb2_area = (x_xmax - x_xmin) * (x_ymax - x_ymin)
+
+    iou = intersection_area / float(bb1_area + bb2_area - intersection_area)
+    assert iou >= 0.0
+    assert iou <= 1.0
+    return iou
+
+
+def SelectiveSearch(img, labels, bboxs):
+    rbboxs, rlabels, riou = [], [], []
+    for label, bbox in zip(labels, bboxs):
+        rbboxs.append(bbox)
+        rlabels.append(label)
+        riou.append(1)
+
+    ss = cv.ximgproc.segmentation.createSelectiveSearchSegmentation()
+    ss.setBaseImage(img[::-1].transpose(1, 2, 0))
+    ss.switchToSelectiveSearchFast()
+    ssresults = ss.process()
+
+    for result in ssresults[:2000]:
+        x, y, w, h = result
+        xmin, ymin, xmax, ymax = x, y, x + w, y + h
+
+        bb_iou = [get_iou([xmin, ymin, xmax, ymax], bbox) for bbox in bboxs]
+
+        candidate_idx = bb_iou.index(max(bb_iou))
+        if bb_iou[candidate_idx] > 0.50:
+            rbboxs.append([x, y, w, h])
+            rlabels.append(labels[candidate_idx])
+            riou.append(bb_iou[candidate_idx])
+        else:
+            rbboxs.append([x, y, w, h])
+            rlabels.append(-1)
+            riou.append(bb_iou[candidate_idx])
+
+    rbboxs = np.array(rbboxs)
+    rlabels = np.array(rlabels)
+    riou = np.array(riou)
+
+    return rbboxs, rlabels, riou

@@ -7,50 +7,69 @@ import os
 from sklearn.preprocessing import LabelBinarizer
 import xml.etree.ElementTree as ET
 from lijnn import datasets, utils
-
-batch_size = 1
-epoch = 10
-trainset = datasets.VOCDetection()
-train_loader = lijnn.iterators.iterator(trainset, batch_size, shuffle=True)
-rect, labels, iou = utils.SelectiveSearch(*trainset[0])
+from lijnn.datasets import VOCDetection, VOCclassfication
 
 
-def RCNN_batch(imgfile, rect, labels, pos_neg_number, idx, obj_class):
-    train_images = []
-    train_labels = []
-    pos_lag = 0
-    neg_lag = 0
+def AroundContext(img, bbox, pad):
+    image_mean = np.mean(img, axis=(1, 2))
+    _, H, W = img.shape
 
-    img_path = 'JPEGImages'
+    padded_image = np.full((H + 2 * pad, W + 2 * pad, 3), image_mean, dtype=np.uint8).transpose(2, 0, 1)
+    padded_image[:, pad:(H + pad), pad:(W + pad)] = img
 
-    Label_binarized = LabelBinarizer()
-    Label_binarized.fit(obj_class)
+    return padded_image[:, bbox[1]:bbox[3] + 32, bbox[0]:bbox[2] + 32]
 
-    for i, filename in enumerate(reindexed_imgfile):
-        if (reindexed_labels[i] != 'background' and pos_lag < pos_neg_number[0]) or (
-                reindexed_labels[i] == 'background' and neg_lag < pos_neg_number[1]):
 
-            image = cv.imread(os.path.join(img_path, filename + '.jpg'))
-            x, y, w, h = reindexed_rect[i]
+class VOC_SelectiveSearch(VOCclassfication):
+    def __init__(self, train=True, year=2007, x_transform=None, t_transform=None, cut_index=None, around_context=True):
+        super(VOC_SelectiveSearch, self).__init__(train, year, None, None, cut_index)
+        self.x_transform_trick = x_transform
+        self.t_transform_trick = t_transform
+        if self.x_transform_trick is None:
+            self.x_transform_trick = lambda x: x
+        if self.t_transform_trick is None:
+            self.t_transform_trick = lambda x: x
+        self.around_context = around_context
+        self.ssbboxs = np.zeros((VOCDetection.__len__(self), 2000, 4), dtype=np.int32)
 
-            cropped_arround_img = around_context(image, x, y, w, h, 16)
-            cropped_arround_img = np.array(cropped_arround_img, dtype=np.uint8)
-            resized = cv.resize(cropped_arround_img, (224, 224), interpolation=cv.INTER_AREA)
+    def __getitem__(self, index):
+        if len(self) <= index:
+            raise IndexError
+        elif VOCclassfication.__len__(self) > index:
+            return VOCclassfication.__getitem__(self, index)
+        else:
+            index = index - VOCclassfication.__len__(self)
+            a, b = divmod(index, 2000)
+            img, labels, bboxs = VOCDetection.__getitem__(self, a)
 
-            train_images.append(resized)
-            train_labels.append(reindexed_labels[i])
+            if np.sum(self.ssbboxs[a]) == 0:
+                self.ssbboxs[a] = utils.SelectiveSearch(img)[:2000]
+            ssbbox = self.ssbboxs[a][b]
 
-            if reindexed_labels[i] == 'background':
-                neg_lag += 1
-            elif reindexed_labels[i] != 'background':
-                pos_lag += 1
+            img = AroundContext(img, ssbbox, 16) if self.around_context else img[:, ssbbox[1]:ssbbox[3], ssbbox[0]:ssbbox[2]]
 
-        if pos_lag >= pos_neg_number[0] and neg_lag >= pos_neg_number[1]:
-            pos_lag = 0
-            neg_lag = 0
-            sample_train_images = np.array(train_images)
-            sample_train_labels = Label_binarized.transform(train_labels)
-            train_images = []
-            train_labels = []
+            bb_iou = [utils.get_iou(ssbbox, bbox) for bbox in bboxs]
+            indexM = np.argmax(bb_iou)
+            label = labels[indexM] if bb_iou[indexM] > 0.50 else 21
 
-            yield (sample_train_images, sample_train_labels)
+            return self.x_transform_trick(img), self.t_transform_trick(label)
+
+    def __len__(self):
+        return VOCclassfication.__len__(self) + VOCDetection.__len__(self) * 2000
+
+    @staticmethod
+    def labels():
+        labels = VOCclassfication.labels()
+        labels[21] = 'backgound'
+        return labels
+
+
+
+class rcnniter(lijnn.iterators):
+    def __init__(self, dataset, batch_size, shuffle=True, gpu=False):
+        super(rcnniter, self).__init__(dataset, batch_size, shuffle, gpu)
+
+
+a = VOC_SelectiveSearch(around_context=False)
+a.show(15662 + 6 - 1)
+

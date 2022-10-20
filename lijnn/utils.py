@@ -423,36 +423,10 @@ def get_iou(x, t):
     return iou
 
 
-def SelectiveSearch(img, labels, bboxs):
-    rbboxs, rlabels, riou = [], [], []
-    for label, bbox in zip(labels, bboxs):
-        rbboxs.append(bbox)
-        rlabels.append(label)
-        riou.append(1)
-
+def SelectiveSearch(img):
     ss = cv.ximgproc.segmentation.createSelectiveSearchSegmentation()
     ss.setBaseImage(img[::-1].transpose(1, 2, 0))
     ss.switchToSelectiveSearchFast()
-    ssresults = ss.process()
-
-    for result in ssresults[:2000]:
-        x, y, w, h = result
-        xmin, ymin, xmax, ymax = x, y, x + w, y + h
-
-        bb_iou = [get_iou([xmin, ymin, xmax, ymax], bbox) for bbox in bboxs]
-
-        candidate_idx = bb_iou.index(max(bb_iou))
-        if bb_iou[candidate_idx] > 0.50:
-            rbboxs.append([x, y, w, h])
-            rlabels.append(labels[candidate_idx])
-            riou.append(bb_iou[candidate_idx])
-        else:
-            rbboxs.append([x, y, w, h])
-            rlabels.append(-1)
-            riou.append(bb_iou[candidate_idx])
-
-    rbboxs = np.array(rbboxs)
-    rlabels = np.array(rlabels)
-    riou = np.array(riou)
-
-    return rbboxs, rlabels, riou
+    ssbboxs = ss.process()
+    ssbboxs[:, 2:4] = ssbboxs[:, 0:2] + ssbboxs[:, 2:4]
+    return ssbboxs

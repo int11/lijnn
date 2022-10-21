@@ -276,20 +276,23 @@ class VOCDetection(Dataset):
 class VOCclassfication(VOCDetection):
     def __init__(self, train=True, year=2007, x_transform=None, t_transform=None, cut_index=None):
         super(VOCclassfication, self).__init__(train, year, x_transform, t_transform)
-        self.count = []
+        self.count = np.empty((1, 6), dtype=np.int32)
         for a, b in enumerate(self.xml_tarinfo):
             bytes = self.file.extractfile(b).read()
             annotation = ET.fromstring(bytes)
 
             for i in annotation.iter(tag="object"):
                 budbox = i.find("bndbox")
-                self.count.append([a, [int(budbox.find(i).text) for i in ['xmin', 'ymin', 'xmax', 'ymax']],
-                                   self.revers_label[i.find("name").text]])
+                item = [[a, *[int(budbox.find(i).text) for i in ['xmin', 'ymin', 'xmax', 'ymax']],
+                                   self.revers_label[i.find("name").text]]]
+                self.count = np.append(self.count, item, axis=0)
+        self.count = np.delete(self.count, [0, 0], axis=0)
         if cut_index is not None:
             self.count = self.count[cut_index[0]:cut_index[1]]
 
     def __getitem__(self, index):
-        index, bbox, label = self.count[index]
+        temp = self.count[index]
+        index, bbox, label = temp[0], temp[1:5], temp[5]
         bytes = self.file.extractfile(self.image_tarinfo[index]).read()
         na = np.frombuffer(bytes, dtype=np.uint8)
         im = cv.imdecode(na, cv.IMREAD_COLOR)

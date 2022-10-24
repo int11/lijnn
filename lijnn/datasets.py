@@ -137,7 +137,7 @@ class CIFAR10(Dataset):
             self.label = np.array(data_dict[b'labels'])
 
         self.data = self.data.reshape(-1, 3, 32, 32)
-        save_cache_npz(self.data, self.label, url, self.train)
+        save_cache_npz({'data': self.data, 'label': self.label}, url, self.train)
 
     def __getitem__(self, index):
         assert np.isscalar(index)
@@ -192,7 +192,7 @@ class CIFAR100(CIFAR10):
         elif self.label_type == 'coarse':
             self.label = np.array(data_dict[b'coarse_labels'])
         self.data = self.data.reshape(-1, 3, 32, 32)
-        save_cache_npz(self.data, self.label, url, self.train)
+        save_cache_npz({'data': self.data, 'label': self.label}, url, self.train)
 
     def __getitem__(self, index):
         assert np.isscalar(index)
@@ -276,7 +276,7 @@ class VOCDetection(Dataset):
 class VOCclassfication(VOCDetection):
     def __init__(self, train=True, year=2007, x_transform=None, t_transform=None, cut_index=None):
         super(VOCclassfication, self).__init__(train, year, x_transform, t_transform)
-        self.count = np.empty((1, 6), dtype=np.int32)
+        self.label = np.empty((1, 6), dtype=np.int32)
         for a, b in enumerate(self.xml_tarinfo):
             bytes = self.file.extractfile(b).read()
             annotation = ET.fromstring(bytes)
@@ -284,14 +284,14 @@ class VOCclassfication(VOCDetection):
             for i in annotation.iter(tag="object"):
                 budbox = i.find("bndbox")
                 item = [[a, *[int(budbox.find(i).text) for i in ['xmin', 'ymin', 'xmax', 'ymax']],
-                                   self.revers_label[i.find("name").text]]]
-                self.count = np.append(self.count, item, axis=0)
-        self.count = np.delete(self.count, [0, 0], axis=0)
+                         self.revers_label[i.find("name").text]]]
+                self.label = np.append(self.label, item, axis=0)
+        self.label = np.delete(self.label, [0, 0], axis=0)
         if cut_index is not None:
-            self.count = self.count[cut_index[0]:cut_index[1]]
+            self.label = self.label[cut_index[0]:cut_index[1]]
 
     def __getitem__(self, index):
-        temp = self.count[index]
+        temp = self.label[index]
         index, bbox, label = temp[0], temp[1:5], temp[5]
         bytes = self.file.extractfile(self.image_tarinfo[index]).read()
         na = np.frombuffer(bytes, dtype=np.uint8)
@@ -306,7 +306,7 @@ class VOCclassfication(VOCDetection):
         cv.waitKey(0)
 
     def __len__(self):
-        return len(self.count)
+        return len(self.label)
 
 
 class ImageNet(Dataset):
@@ -366,18 +366,18 @@ class Shakespear(Dataset):
 # =============================================================================
 # Utils
 # =============================================================================
-def load_cache_npz(filename, train=False, allow_pickle=False):
+def load_cache_npz(filename, train=False):
     filename = filename[filename.rfind('/') + 1:]
     prefix = '.train.npz' if train else '.test.npz'
     filepath = os.path.join(cache_dir, filename + prefix)
     if not os.path.exists(filepath):
-        return None, None
+        return None
 
-    loaded = np.load(filepath, allow_pickle=allow_pickle)
-    return loaded['data'], loaded['label']
+    loaded = np.load(filepath)
+    return [loaded[i] for i in loaded][0] if len(loaded) == 1 else (loaded[i] for i in loaded)
 
 
-def save_cache_npz(data, label, filename, train=False):
+def save_cache_npz(kwargs, filename, train=False):
     filename = filename[filename.rfind('/') + 1:]
     prefix = '.train.npz' if train else '.test.npz'
     filepath = os.path.join(cache_dir, filename + prefix)
@@ -386,7 +386,7 @@ def save_cache_npz(data, label, filename, train=False):
 
     print("Saving: " + filename + prefix)
     try:
-        np.savez_compressed(filepath, data=data, label=label)
+        np.savez_compressed(filepath, **kwargs)
     except (Exception, KeyboardInterrupt) as e:
         if os.path.exists(filepath):
             os.remove(filepath)

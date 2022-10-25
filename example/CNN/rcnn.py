@@ -74,8 +74,9 @@ class rcnniter(lijnn.iterator):
         x, t, pos_lag, neg_lag = [], [], 0, 0
 
         # test = []
-
+        print(self.sindex)
         for i, index in enumerate(self.index[self.sindex:]):
+
             batch = self.dataset[index]
             img, label = batch[0], batch[1]
             if (label != 21 and pos_lag < self.pos_neg_number[0]) or (label == 21 and neg_lag < self.pos_neg_number[1]):
@@ -91,7 +92,7 @@ class rcnniter(lijnn.iterator):
                 x = xp.array(x)
                 t = xp.array(t)
 
-                return x, t, # test
+                return x, t,  # test
 
         self.reset()
         raise StopIteration
@@ -153,3 +154,4 @@ def test():
             cv.imshow('1', img[::-1].transpose(1, 2, 0))
             print(label)
             cv.waitKey(0)
+

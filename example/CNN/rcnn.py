@@ -1,10 +1,9 @@
-import lijnn
-import numpy as np
-import cv2 as cv
-from lijnn import datasets, utils
+from lijnn import *
+from lijnn import layers as L
+from lijnn import functions as F
+from lijnn.transforms import *
 from lijnn.datasets import VOCDetection, VOCclassfication
-from lijnn import cuda
-from lijnn import transforms
+from example.CNN import VGG16
 
 
 def AroundContext(img, bbox, pad):
@@ -70,38 +69,68 @@ class rcnniter(lijnn.iterator):
         self.sindex = 0
 
     def __next__(self):
-        if self.iteration >= self.max_iter:
-            self.reset()
-            raise StopIteration
-        self.iteration += 1
         xp = cuda.cupy if self.gpu else np
 
         x, t, pos_lag, neg_lag = [], [], 0, 0
 
         for i, index in enumerate(self.index[self.sindex:]):
-            print(neg_lag, pos_lag)
             batch = self.dataset[index]
             img, label = batch[0], batch[1]
-
-            if pos_lag < self.pos_neg_number[0] or neg_lag < self.pos_neg_number[1]:
+            if (label != 21 and pos_lag < self.pos_neg_number[0]) or (label == 21 and neg_lag < self.pos_neg_number[1]):
                 x.append(img)
                 t.append(label)
 
                 if label == 21:
                     neg_lag += 1
-                elif label != 21:
+                else:
                     pos_lag += 1
-            else:
-                self.sindex = i
+            if pos_lag >= self.pos_neg_number[0] and neg_lag >= self.pos_neg_number[1]:
+                self.sindex += i + 1
                 x = xp.array(x)
                 t = xp.array(t)
 
                 return x, t
 
+        self.reset()
+        raise StopIteration
 
 
+class VGG16_RCNN(VGG16):
+    def __init__(self, num_classes=21):
+        super().__init__(num_classes=1000, imagenet_pretrained=True)
+        self.fc8 = L.Linear(num_classes)
+        self.conv8 = L.share_weight_conv2d(num_classes, kernel_size=1, stride=1, pad=0, target=self.fc8)
+        self._params.remove('conv8')
 
-dataset = VOC_SelectiveSearch(x_transform=transforms.resize(224), around_context=False)
-loader = rcnniter(dataset)
-for i in loader:
-    print(i[0].shape)
+
+def main_VGG16_RCNN(name='default'):
+    epoch = 10
+    trainset = VOC_SelectiveSearch(x_transform=transforms.resize(224), around_context=False)
+    train_loader = rcnniter(trainset)
+
+    model = VGG16_RCNN()
+    optimizer = optimizers.Adam(alpha=0.0001).setup(model)
+    start_epoch = model.load_weights_epoch(name=name)
+    if cuda.gpu_enable:
+        model.to_gpu()
+        train_loader.to_gpu()
+        # test_loader.to_gpu()
+
+    for i in range(start_epoch, epoch + 1):
+        sum_loss, sum_acc = 0, 0
+        for x, t in train_loader:
+            y = model(x)
+            loss = F.softmax_cross_entropy(y, t)
+            acc = F.accuracy(y, t)
+            model.cleargrads()
+            loss.backward()
+            optimizer.update()
+            sum_loss += loss.data
+            sum_acc += acc.data
+            print(f"loss : {loss.data} accuracy {acc.data}")
+        print(f"epoch {i + 1}")
+        print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
+        model.save_weights_epoch(i, name)
+
+
+main_VGG16_RCNN()

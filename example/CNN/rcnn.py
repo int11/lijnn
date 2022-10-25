@@ -131,6 +131,3 @@ def main_VGG16_RCNN(name='default'):
         print(f"epoch {i + 1}")
         print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
         model.save_weights_epoch(i, name)
-
-
-main_VGG16_RCNN()

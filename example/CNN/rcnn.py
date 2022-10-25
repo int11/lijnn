@@ -73,13 +73,15 @@ class rcnniter(lijnn.iterator):
 
         x, t, pos_lag, neg_lag = [], [], 0, 0
 
+        # test = []
+
         for i, index in enumerate(self.index[self.sindex:]):
             batch = self.dataset[index]
             img, label = batch[0], batch[1]
             if (label != 21 and pos_lag < self.pos_neg_number[0]) or (label == 21 and neg_lag < self.pos_neg_number[1]):
                 x.append(img)
                 t.append(label)
-
+                # test.append(self.dataset.label[index])
                 if label == 21:
                     neg_lag += 1
                 else:
@@ -89,7 +91,7 @@ class rcnniter(lijnn.iterator):
                 x = xp.array(x)
                 t = xp.array(t)
 
-                return x, t
+                return x, t, # test
 
         self.reset()
         raise StopIteration
@@ -104,12 +106,17 @@ class VGG16_RCNN(VGG16):
 
 
 def main_VGG16_RCNN(name='default'):
+    size = 3
+    batch_size = size * 4
     epoch = 10
-    trainset = VOC_SelectiveSearch(x_transform=transforms.resize(224), around_context=False)
-    train_loader = rcnniter(trainset)
+    mean = [103.939, 116.779, 123.68]
+
+    trainset = VOC_SelectiveSearch(
+        x_transform=compose([transforms.resize(224), toFloat(), z_score_normalize(mean, 1)]), around_context=False)
+    train_loader = rcnniter(trainset, pos_neg_number=(size, size * 3))
 
     model = VGG16_RCNN()
-    optimizer = optimizers.Adam(alpha=0.0001).setup(model)
+    optimizer = optimizers.Adam(alpha=0.00001).setup(model)
     start_epoch = model.load_weights_epoch(name=name)
     if cuda.gpu_enable:
         model.to_gpu()
@@ -131,3 +138,18 @@ def main_VGG16_RCNN(name='default'):
         print(f"epoch {i + 1}")
         print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
         model.save_weights_epoch(i, name)
+
+
+def test():
+    mean = [103.939, 116.779, 123.68]
+
+    trainset = VOC_SelectiveSearch(
+        x_transform=compose([transforms.resize(224)]), around_context=False)
+    testset = VOCDetection()
+    train_loader = rcnniter(trainset, pos_neg_number=(3, 3 * 3))
+    for x, t, tt in train_loader:
+        for img, label, ttt in zip(x, t, tt):
+            testset.show(ttt[0])
+            cv.imshow('1', img[::-1].transpose(1, 2, 0))
+            print(label)
+            cv.waitKey(0)

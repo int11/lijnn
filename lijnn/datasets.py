@@ -264,7 +264,6 @@ class VOCDetection(Dataset):
         for box in bboxes:
             cv.rectangle(img, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 1)
         cv.imshow('show', img)
-        cv.waitKey(0)
 
     @staticmethod
     def labels():
@@ -303,7 +302,6 @@ class VOCclassfication(VOCDetection):
         img, label = self[index]
         cv.imshow('1', img[::-1].transpose(1, 2, 0))
         print(self.labels()[label])
-        cv.waitKey(0)
 
     def __len__(self):
         return len(self.label)

@@ -76,7 +76,6 @@ class rcnniter(lijnn.iterator):
         # test = []
         print(self.sindex)
         for i, index in enumerate(self.index[self.sindex:]):
-
             batch = self.dataset[index]
             img, label = batch[0], batch[1]
             if (label != 21 and pos_lag < self.pos_neg_number[0]) or (label == 21 and neg_lag < self.pos_neg_number[1]):
@@ -113,7 +112,7 @@ def main_VGG16_RCNN(name='default'):
     mean = [103.939, 116.779, 123.68]
 
     trainset = VOC_SelectiveSearch(
-        x_transform=compose([transforms.resize(224), toFloat(), z_score_normalize(mean, 1)]), around_context=False)
+        x_transform=compose([transforms.resize(224), toFloat(), z_score_normalize(mean, 1)]))
     train_loader = rcnniter(trainset, pos_neg_number=(size, size * 3))
 
     model = VGG16_RCNN()
@@ -129,6 +128,8 @@ def main_VGG16_RCNN(name='default'):
         for x, t in train_loader:
             y = model(x)
             loss = F.softmax_cross_entropy(y, t)
+            print(y.data.argmax(axis=1).reshape(t.shape))
+            print(t)
             acc = F.accuracy(y, t)
             model.cleargrads()
             loss.backward()
@@ -154,4 +155,3 @@ def test():
             cv.imshow('1', img[::-1].transpose(1, 2, 0))
             print(label)
             cv.waitKey(0)
-

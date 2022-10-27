@@ -57,7 +57,7 @@ class VOC_SelectiveSearch(VOCclassfication):
     @staticmethod
     def labels():
         labels = VOCclassfication.labels()
-        labels[21] = 'backgound'
+        labels[21] = 'background'
         return labels
 
 

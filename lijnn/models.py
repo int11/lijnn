@@ -1,15 +1,15 @@
-import numpy as np
-from lijnn import Layer
+import time
+from lijnn import *
 import lijnn.functions as F
 import lijnn.layers as L
-from lijnn import utils
 import os
 
 
-# =============================================================================
-# Model / Sequential / MLP
-# =============================================================================
 class Model(Layer):
+    def __init__(self, autosave=True):
+        super(Model, self).__init__()
+        self.autosave = autosave
+
     def plot(self, *inputs, to_file='model.png'):
         y = self.forward(*inputs)
         return utils.plot_dot_graph(y, verbose=True, to_file=to_file)
@@ -23,40 +23,92 @@ class Model(Layer):
             else:
                 print(key, obj)
 
-    def save_weights_epoch(self, epoch, name='default'):
+    def save_weights_epoch(self, epoch, t=None, name='default'):
         model_dir = os.path.join(utils.cache_dir, self.__class__.__name__)
 
         if not os.path.exists(model_dir):
             os.mkdir(model_dir)
 
-        weight_dir = os.path.join(model_dir, f'{name}_{epoch}_epoch.npz')
-
-        self.save_weights(weight_dir)
+        weight_dir = os.path.join(model_dir, f'{name}_{epoch}_{t}_epoch.npz' if t else f'{name}_{epoch}_epoch.npz')
         print(f'model weight save : {weight_dir}')
+        self.save_weights(weight_dir)
+        print('Done')
 
-    def load_weights_epoch(self, epoch=None, name='default'):
+    def load_weights_epoch(self, epoch=None, t=None, name='default'):
         model_dir = os.path.join(utils.cache_dir, self.__class__.__name__)
         try:
             listdir = os.listdir(model_dir)
             if not os.path.exists(model_dir):
-                raise
+                raise FileNotFoundError
 
             name_listdir = [i for i in [i.split('_') for i in listdir] if i[0] == name]
 
             if len(name_listdir) == 0:
-                raise
+                raise FileNotFoundError
 
             if epoch is None:
                 epoch = max([int(i[1]) for i in name_listdir])
-            weight_dir = os.path.join(model_dir, f'{name}_{epoch}_epoch.npz')
-            print(f'\n model weight load : {weight_dir}\n')
+            if t is None:
+                temp = [i for i in name_listdir if int(i[1]) == epoch and len(i) == 3]
+                temp0 = [i for i in name_listdir if int(i[1]) == epoch and len(i) == 4]
+                t = None if temp else max([int(i[2]) for i in temp0])
+
+            weight_dir = os.path.join(model_dir, f'{name}_{epoch}_{t}_epoch.npz' if t else f'{name}_{epoch}_epoch.npz')
+            print(f'\nmodel weight load : {weight_dir}\n')
             self.load_weights(weight_dir)
-        except:
+        except FileNotFoundError:
             epoch = 0
-            print("\n Not found any weights file, model train from scratch.\n")
+            print("\nNot found any weights file, model train from scratch.\n")
 
         start_epoch = int(epoch) + 1
-        return start_epoch
+        return start_epoch, t
+
+    def fit(self, epoch, optimizer, train_loader, test_loader=None, name='default', iteration_print=False,
+            autosave=True, autosave_time=30):
+        optimizer = optimizer.setup(self)
+        start_epoch, t = self.load_weights_epoch(name=name)
+        if autosave and t is not None:
+            autosave_time += t
+
+        if cuda.gpu_enable:
+            self.to_gpu()
+            train_loader.to_gpu()
+            if test_loader:
+                test_loader.to_gpu()
+
+        for i in range(start_epoch, epoch + 1):
+            sum_loss, sum_acc = 0, 0
+            st = time.time()
+            for x, t in train_loader:
+                y = self(x)
+                loss = F.softmax_cross_entropy(y, t)
+                acc = F.accuracy(y, t)
+                self.cleargrads()
+                loss.backward()
+                optimizer.update()
+                sum_loss += loss.data
+                sum_acc += acc.data
+                if iteration_print:
+                    print(f"loss : {loss.data} accuracy {acc.data}")
+                if autosave and time.time() - st > autosave_time * 60:
+                    self.save_weights_epoch(i, name, autosave_time)
+                    autosave_time += autosave_time
+            print(f"epoch {i + 1}")
+            print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
+            self.save_weights_epoch(i, name)
+
+            sum_loss, sum_acc = 0, 0
+            if test_loader:
+                with no_grad(), test_mode():
+                    for x, t in test_loader:
+                        y = self(x)
+                        loss = F.softmax_cross_entropy(y, t)
+                        acc = F.accuracy(y, t)
+                        sum_loss += loss.data
+                        sum_acc += acc.data
+                        if iteration_print:
+                            print(f"loss : {loss.data} accuracy {acc.data}")
+                print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')
 
 
 class Sequential(Model):
@@ -90,9 +142,6 @@ class MLP(Model):
         return self.layers[-1](x)
 
 
-# =============================================================================
-# SqueezeNet
-# =============================================================================
 class SqueezeNet(Model):
     def __init__(self, pretrained=False):
         pass

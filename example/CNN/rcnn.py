@@ -1,3 +1,4 @@
+import lijnn.optimizers
 from lijnn import *
 from lijnn import layers as L
 from lijnn import functions as F
@@ -105,6 +106,18 @@ class VGG16_RCNN(VGG16):
 def main_VGG16_RCNN(name='default'):
     size = 3
     batch_size = size * 4
+    mean = [103.939, 116.779, 123.68]
+
+    trainset = VOC_SelectiveSearch(
+        x_transform=compose([transforms.resize(224), toFloat(), z_score_normalize(mean, 1)]))
+    train_loader = rcnniter(trainset, pos_neg_number=(size, size * 3))
+    model = VGG16_RCNN()
+    model.fit(10, lijnn.optimizers.Adam(alpha=0.00001), train_loader, name=name)
+
+
+def main_VGG16_RCNN1(name='default'):
+    size = 3
+    batch_size = size * 4
     epoch = 10
     mean = [103.939, 116.779, 123.68]
 
@@ -140,8 +153,7 @@ def main_VGG16_RCNN(name='default'):
 def test():
     mean = [103.939, 116.779, 123.68]
 
-    trainset = VOC_SelectiveSearch(
-        x_transform=compose([transforms.resize(224)]), around_context=False)
+    trainset = VOC_SelectiveSearch(x_transform=compose([transforms.resize(224)]), around_context=False)
     train_loader = rcnniter(trainset, pos_neg_number=(3, 3 * 3))
     for x, t in train_loader:
         for img, label in zip(x, t):

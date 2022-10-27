@@ -112,7 +112,7 @@ def main_VGG16_RCNN(name='default'):
         x_transform=compose([transforms.resize(224), toFloat(), z_score_normalize(mean, 1)]))
     train_loader = rcnniter(trainset, pos_neg_number=(size, size * 3))
     model = VGG16_RCNN()
-    model.fit(10, lijnn.optimizers.Adam(alpha=0.00001), train_loader, name=name)
+    model.fit(10, lijnn.optimizers.Adam(alpha=0.00001), train_loader, name=name, iteration_print=True)
 
 
 def main_VGG16_RCNN1(name='default'):

@@ -73,7 +73,6 @@ class rcnniter(lijnn.iterator):
 
         x, t, pos_lag, neg_lag = [], [], 0, 0
 
-        print(self.sindex)
         for i, index in enumerate(self.index[self.sindex:]):
             batch = self.dataset[index]
             img, label = batch[0], batch[1]
@@ -143,12 +142,9 @@ def test():
 
     trainset = VOC_SelectiveSearch(
         x_transform=compose([transforms.resize(224)]), around_context=False)
-    testset = VOCDetection()
     train_loader = rcnniter(trainset, pos_neg_number=(3, 3 * 3))
-    for x, t, tt in train_loader:
-        for img, label, ttt in zip(x, t, tt):
-            testset.show(ttt[0])
+    for x, t in train_loader:
+        for img, label in zip(x, t):
             cv.imshow('1', img[::-1].transpose(1, 2, 0))
             print(label)
             cv.waitKey(0)
-

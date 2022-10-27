@@ -32,7 +32,7 @@ class VOC_SelectiveSearch(VOCclassfication):
             for e, ssbbox in enumerate(ssbboxs):
                 bb_iou = [utils.get_iou(ssbbox, bbox) for bbox in bboxs]
                 indexM = np.argmax(bb_iou)
-                sslabels.append(labels[indexM] if bb_iou[indexM] > 0.50 else 21)
+                sslabels.append(labels[indexM] if bb_iou[indexM] > 0.50 else 20)
 
             label = np.append(ssbboxs, np.array(sslabels).reshape(-1, 1), axis=1)
             label = np.pad(label, ((0, 0), (1, 0)), mode='constant', constant_values=i)
@@ -57,7 +57,7 @@ class VOC_SelectiveSearch(VOCclassfication):
     @staticmethod
     def labels():
         labels = VOCclassfication.labels()
-        labels[21] = 'background'
+        labels[20] = 'background'
         return labels
 
 
@@ -73,16 +73,14 @@ class rcnniter(lijnn.iterator):
 
         x, t, pos_lag, neg_lag = [], [], 0, 0
 
-        # test = []
         print(self.sindex)
         for i, index in enumerate(self.index[self.sindex:]):
             batch = self.dataset[index]
             img, label = batch[0], batch[1]
-            if (label != 21 and pos_lag < self.pos_neg_number[0]) or (label == 21 and neg_lag < self.pos_neg_number[1]):
+            if (label != 20 and pos_lag < self.pos_neg_number[0]) or (label == 20 and neg_lag < self.pos_neg_number[1]):
                 x.append(img)
                 t.append(label)
-                # test.append(self.dataset.label[index])
-                if label == 21:
+                if label == 20:
                     neg_lag += 1
                 else:
                     pos_lag += 1
@@ -91,7 +89,7 @@ class rcnniter(lijnn.iterator):
                 x = xp.array(x)
                 t = xp.array(t)
 
-                return x, t,  # test
+                return x, t
 
         self.reset()
         raise StopIteration
@@ -128,8 +126,6 @@ def main_VGG16_RCNN(name='default'):
         for x, t in train_loader:
             y = model(x)
             loss = F.softmax_cross_entropy(y, t)
-            print(y.data.argmax(axis=1).reshape(t.shape))
-            print(t)
             acc = F.accuracy(y, t)
             model.cleargrads()
             loss.backward()
@@ -155,3 +151,4 @@ def test():
             cv.imshow('1', img[::-1].transpose(1, 2, 0))
             print(label)
             cv.waitKey(0)
+

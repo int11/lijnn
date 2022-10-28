@@ -115,41 +115,6 @@ def main_VGG16_RCNN(name='default'):
     model.fit(10, lijnn.optimizers.Adam(alpha=0.00001), train_loader, name=name, iteration_print=True)
 
 
-def main_VGG16_RCNN1(name='default'):
-    size = 3
-    batch_size = size * 4
-    epoch = 10
-    mean = [103.939, 116.779, 123.68]
-
-    trainset = VOC_SelectiveSearch(
-        x_transform=compose([transforms.resize(224), toFloat(), z_score_normalize(mean, 1)]))
-    train_loader = rcnniter(trainset, pos_neg_number=(size, size * 3))
-
-    model = VGG16_RCNN()
-    optimizer = optimizers.Adam(alpha=0.00001).setup(model)
-    start_epoch = model.load_weights_epoch(name=name)
-    if cuda.gpu_enable:
-        model.to_gpu()
-        train_loader.to_gpu()
-        # test_loader.to_gpu()
-
-    for i in range(start_epoch, epoch + 1):
-        sum_loss, sum_acc = 0, 0
-        for x, t in train_loader:
-            y = model(x)
-            loss = F.softmax_cross_entropy(y, t)
-            acc = F.accuracy(y, t)
-            model.cleargrads()
-            loss.backward()
-            optimizer.update()
-            sum_loss += loss.data
-            sum_acc += acc.data
-            print(f"loss : {loss.data} accuracy {acc.data}")
-        print(f"epoch {i + 1}")
-        print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
-        model.save_weights_epoch(i, name)
-
-
 def test():
     mean = [103.939, 116.779, 123.68]
 

@@ -91,11 +91,11 @@ class Model(Layer):
                 if iteration_print:
                     print(f"loss : {loss.data} accuracy {acc.data}")
                 if autosave and time.time() - st > autosave_time * 60:
-                    self.save_weights_epoch(i, name, autosave_time)
+                    self.save_weights_epoch(i, autosave_time, name)
                     autosave_time += autosave_time
             print(f"epoch {i + 1}")
             print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
-            self.save_weights_epoch(i, name)
+            self.save_weights_epoch(i, name=name)
 
             sum_loss, sum_acc = 0, 0
             if test_loader:

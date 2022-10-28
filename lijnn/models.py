@@ -34,7 +34,7 @@ class Model(Layer):
         self.save_weights(weight_dir)
         print('Done')
 
-    def load_weights_epoch(self, epoch=None, t=None, name='default'):
+    def load_weights_epoch(self, epoch=None, ti=0, name='default'):
         model_dir = os.path.join(utils.cache_dir, self.__class__.__name__)
         try:
             listdir = os.listdir(model_dir)
@@ -48,12 +48,12 @@ class Model(Layer):
 
             if epoch is None:
                 epoch = max([int(i[1]) for i in name_listdir])
-            if t is None:
+            if not ti:
                 temp = [i for i in name_listdir if int(i[1]) == epoch and len(i) == 3]
                 temp0 = [i for i in name_listdir if int(i[1]) == epoch and len(i) == 4]
-                t = None if temp else max([int(i[2]) for i in temp0])
+                ti = 0 if temp else max([int(i[2]) for i in temp0])
 
-            weight_dir = os.path.join(model_dir, f'{name}_{epoch}_{t}_epoch.npz' if t else f'{name}_{epoch}_epoch.npz')
+            weight_dir = os.path.join(model_dir, f'{name}_{epoch}_{ti}_epoch.npz' if ti else f'{name}_{epoch}_epoch.npz')
             print(f'\nmodel weight load : {weight_dir}\n')
             self.load_weights(weight_dir)
         except FileNotFoundError:
@@ -61,14 +61,12 @@ class Model(Layer):
             print("\nNot found any weights file, model train from scratch.\n")
 
         start_epoch = int(epoch) + 1
-        return start_epoch, t
+        return start_epoch, ti
 
     def fit(self, epoch, optimizer, train_loader, test_loader=None, name='default', iteration_print=False,
             autosave=True, autosave_time=30):
         optimizer = optimizer.setup(self)
-        start_epoch, t = self.load_weights_epoch(name=name)
-        if autosave and t is not None:
-            autosave_time += t
+        start_epoch, ti = self.load_weights_epoch(name=name)
 
         if cuda.gpu_enable:
             self.to_gpu()
@@ -91,7 +89,7 @@ class Model(Layer):
                 if iteration_print:
                     print(f"loss : {loss.data} accuracy {acc.data}")
                 if autosave and time.time() - st > autosave_time * 60:
-                    self.save_weights_epoch(i, autosave_time, name)
+                    self.save_weights_epoch(i, autosave_time+ti, name)
                     autosave_time += autosave_time
             print(f"epoch {i + 1}")
             print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')

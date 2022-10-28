@@ -13,11 +13,12 @@ from lijnn import initializers
 # =============================================================================
 class Layer:
     def __init__(self):
-        self._params = set()
+        self._params = []
 
     def __setattr__(self, name, value):
         if isinstance(value, (Parameter, Layer)):
-            self._params.add(name)
+            if name not in self._params:
+                self._params.append(name)
         super().__setattr__(name, value)
 
     def __call__(self, *inputs):
@@ -60,13 +61,13 @@ class Layer:
         for param in self.params():
             param.to_gpu()
 
-    def _params_dict(self, params_dict, parent_key=""):
+    def params_dict(self, params_dict, parent_key=""):
         for name in self._params:
             obj = self.__dict__[name]
             key = parent_key + '/' + name if parent_key else name
 
             if isinstance(obj, Layer):
-                obj._params_dict(params_dict, key)
+                obj.params_dict(params_dict, key)
             else:
                 params_dict[key] = obj
 
@@ -74,7 +75,7 @@ class Layer:
         self.to_cpu()
 
         params_dict = {}
-        self._params_dict(params_dict)
+        self.params_dict(params_dict)
         array_dict = {key: param.data for key, param in params_dict.items()
                       if param is not None}
         try:
@@ -90,7 +91,7 @@ class Layer:
     def load_weights(self, path):
         npz = np.load(path, allow_pickle=True)
         params_dict = {}
-        self._params_dict(params_dict)
+        self.params_dict(params_dict)
         for key, param in params_dict.items():
             param.data = npz[key]
 

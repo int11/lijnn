@@ -6,10 +6,6 @@ import os
 
 
 class Model(Layer):
-    def __init__(self, autosave=True):
-        super(Model, self).__init__()
-        self.autosave = autosave
-
     def plot(self, *inputs, to_file='model.png'):
         y = self.forward(*inputs)
         return utils.plot_dot_graph(y, verbose=True, to_file=to_file)
@@ -21,7 +17,12 @@ class Model(Layer):
             if isinstance(obj, Model):
                 obj.layers_info(key)
             else:
-                print(key, obj)
+                temp = {}
+                obj.params_dict(temp)
+                print(f'{key} ({type(obj)})', end=" ")
+                for key, value in temp.items():
+                    print(key, value.shape, end=" ")
+                print()
 
     def save_weights_epoch(self, epoch, t=None, name='default'):
         model_dir = os.path.join(utils.cache_dir, self.__class__.__name__)

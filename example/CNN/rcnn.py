@@ -18,7 +18,7 @@ def AroundContext(img, bbox, pad):
 
 
 class VOC_SelectiveSearch(VOCclassfication):
-    def __init__(self, train=True, year=2007, x_transform=None, t_transform=None, cut_index=None, around_context=True):
+    def __init__(self, train=True, year=2007, x_transform=None, t_transform=None, around_context=True):
         super(VOC_SelectiveSearch, self).__init__(train, year, x_transform, t_transform)
         self.around_context = around_context
         count = datasets.load_cache_npz('VOC_SelectiveSearch', train=train)
@@ -41,8 +41,6 @@ class VOC_SelectiveSearch(VOCclassfication):
             self.label = np.append(self.label, label, axis=0)
 
         datasets.save_cache_npz({'label': self.label}, 'VOC_SelectiveSearch', train=train)
-        if cut_index is not None:
-            self.label = self.label[cut_index[0]:cut_index[1]]
 
     def __getitem__(self, index):
         temp = self.label[index]
@@ -113,6 +111,16 @@ def main_VGG16_RCNN(name='default'):
     train_loader = rcnniter(trainset, pos_neg_number=(size, size * 3))
     model = VGG16_RCNN()
     model.fit(10, lijnn.optimizers.Adam(alpha=0.00001), train_loader, name=name, iteration_print=True)
+
+
+def main_SVM():
+    model = VGG16_RCNN()
+    model.load_weights_epoch()
+    model.layers_info()
+
+
+if __name__ == '__main__':
+    main_SVM()
 
 
 def test():

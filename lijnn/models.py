@@ -60,7 +60,7 @@ class Model(Layer):
             epoch = 0
             print("\nNot found any weights file, model train from scratch.\n")
 
-        start_epoch = int(epoch) + 1
+        start_epoch = int(epoch) if ti else int(epoch) + 1
         return start_epoch, ti
 
     def fit(self, epoch, optimizer, train_loader, test_loader=None, name='default', iteration_print=False,

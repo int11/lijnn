@@ -180,3 +180,6 @@ def main_OverFeat(name='default'):
                 sum_acc += acc.data
                 print(f"loss : {loss.data} accuracy {acc.data}")
         print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')
+
+
+#TODO Localization

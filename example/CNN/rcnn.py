@@ -113,15 +113,17 @@ def main_VGG16_RCNN(name='default'):
     model.fit(10, lijnn.optimizers.Adam(alpha=0.00001), train_loader, name=name, iteration_print=True)
 
 
-def main_SVM():
-    model = VGG16_RCNN()
-    model.load_weights_epoch()
-    model.layers_info()
+class Bounding_box_Regression(Model):
+    def __init__(self):
+        super().__init__()
+        self.W_x = Parameter(None, name='W_x')
+        self.W_y = Parameter(None, name='W_y')
+        self.W_w = Parameter(None, name='W_w')
+        self.W_h = Parameter(None, name='W_h')
 
 
-if __name__ == '__main__':
-    main_SVM()
-
+    def forward(self, pool5_feature):
+        t_x
 
 def test():
     mean = [103.939, 116.779, 123.68]

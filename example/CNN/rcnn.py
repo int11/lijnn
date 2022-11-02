@@ -30,7 +30,7 @@ class VOC_SelectiveSearch(VOCclassfication):
             img, labels, bboxs = VOCDetection.__getitem__(self, i)
             ssbboxs = utils.SelectiveSearch(img)
             sslabels = []
-            for e, ssbbox in enumerate(ssbboxs):
+            for ssbbox in ssbboxs:
                 bb_iou = [utils.get_iou(ssbbox, bbox) for bbox in bboxs]
                 indexM = np.argmax(bb_iou)
                 sslabels.append(labels[indexM] if bb_iou[indexM] > 0.50 else 20)
@@ -112,18 +112,39 @@ def main_VGG16_RCNN(name='default'):
     model = VGG16_RCNN()
     model.fit(10, lijnn.optimizers.Adam(alpha=0.00001), train_loader, name=name, iteration_print=True)
 
+class VOC_Bbr(VOC_SelectiveSearch):
+    def __init__(self, train=True, year=2007, x_transform=None, t_transform=None, around_context=True):
+        super(VOC_Bbr, self).__init__(train, year, x_transform, t_transform, around_context)
+        for i in self.label:
+            print(i[0])
+
+
 
 class Bounding_box_Regression(Model):
     def __init__(self):
         super().__init__()
-        self.W_x = Parameter(None, name='W_x')
-        self.W_y = Parameter(None, name='W_y')
-        self.W_w = Parameter(None, name='W_w')
-        self.W_h = Parameter(None, name='W_h')
+        self.W_x = L.Linear(1, nobias=True)
+        self.W_y = L.Linear(1, nobias=True)
+        self.W_w = L.Linear(1, nobias=True)
+        self.W_h = L.Linear(1, nobias=True)
 
+    def forward(self, x):
+        d_x = self.W_x(x)
+        d_y = self.W_y(x)
+        d_w = self.W_w(x)
+        d_h = self.W_h(x)
 
-    def forward(self, pool5_feature):
-        t_x
+        return d_x, d_y, d_w, d_h
+    def predict(self, x, ssbbox):
+        d_x, d_y, d_w, d_h = self(x)
+        p_x, p_y, p_w, p_h = (ssbbox[0] + ssbbox[2]) / 2, (ssbbox[1] + ssbbox[3]) / 2, ssbbox[2] - ssbbox[0], ssbbox[3] - ssbbox[1]
+        pred_x = p_w * d_x + p_x
+        pred_y = p_h * d_y + p_y
+        pred_w = p_w * np.exp(d_w)
+        pred_h = p_h * np.exp(d_h)
+
+        return pred_x, pred_y, pred_w, pred_h
+
 
 def test():
     mean = [103.939, 116.779, 123.68]

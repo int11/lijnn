@@ -49,11 +49,11 @@ class Spiral(Dataset):
                 t[ix] = j
         # Shuffle
         indices = np.random.permutation(num_data * num_class)
-        self.data, self.label = x[indices], t[indices]
+        self.data, self.labels = x[indices], t[indices]
 
     def __getitem__(self, index):
         assert np.isscalar(index)
-        return self.x_transform(self.data[index]), self.t_transform(self.label[index])
+        return self.x_transform(self.data[index]), self.t_transform(self.labels[index])
 
     def __len__(self):
         return len(self.data)
@@ -82,11 +82,11 @@ class MNIST(Dataset):
         self.data = data.reshape(-1, 1, 28, 28)
 
         with gzip.open(label_path, 'rb') as f:
-            self.label = np.frombuffer(f.read(), np.uint8, offset=8)
+            self.labels = np.frombuffer(f.read(), np.uint8, offset=8)
 
     def __getitem__(self, index):
         assert np.isscalar(index)
-        return self.x_transform(self.data[index]), self.t_transform(self.label[index])
+        return self.x_transform(self.data[index]), self.t_transform(self.labels[index])
 
     def __len__(self):
         return len(self.data)
@@ -116,7 +116,7 @@ class CIFAR10(Dataset):
         super().__init__(train, x_transform, t_transform)
 
         url = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
-        self.data, self.label = load_cache_npz(url, self.train)
+        self.data, self.labels = load_cache_npz(url, self.train)
         if self.data is not None:
             return
 
@@ -124,24 +124,24 @@ class CIFAR10(Dataset):
         file = tarfile.open(filepath, 'r:gz')
         if self.train:
             self.data = np.empty((50000, 3 * 32 * 32), dtype=np.uint8)
-            self.label = np.empty((50000), dtype=np.uint8)
+            self.labels = np.empty((50000), dtype=np.uint8)
             for i in range(5):
                 data_dict = pickle.load(file.extractfile(file.getmember(f'cifar-10-batches-py/data_batch_{i + 1}')),
                                         encoding='bytes')
                 self.data[i * 10000:(i + 1) * 10000] = data_dict[b'data']
-                self.label[i * 10000:(i + 1) * 10000] = np.array(data_dict[b'labels'])
+                self.labels[i * 10000:(i + 1) * 10000] = np.array(data_dict[b'labels'])
         else:
             data_dict = pickle.load(file.extractfile(file.getmember('cifar-10-batches-py/test_batch')),
                                     encoding='bytes')
             self.data = data_dict[b'data']
-            self.label = np.array(data_dict[b'labels'])
+            self.labels = np.array(data_dict[b'labels'])
 
         self.data = self.data.reshape(-1, 3, 32, 32)
-        save_cache_npz({'data': self.data, 'label': self.label}, url, self.train)
+        save_cache_npz({'data': self.data, 'label': self.labels}, url, self.train)
 
     def __getitem__(self, index):
         assert np.isscalar(index)
-        return self.x_transform(self.data[index]), self.t_transform(self.label[index])
+        return self.x_transform(self.data[index]), self.t_transform(self.labels[index])
 
     def __len__(self):
         return len(self.data)
@@ -175,7 +175,7 @@ class CIFAR100(CIFAR10):
         super().__init__(train, x_transform, t_transform)
 
         url = 'https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz'
-        self.data, self.label = load_cache_npz(url, self.train)
+        self.data, self.labels = load_cache_npz(url, self.train)
         if self.data is not None:
             return
 
@@ -188,15 +188,15 @@ class CIFAR100(CIFAR10):
 
         self.data = data_dict[b'data']
         if self.label_type == 'fine':
-            self.label = np.array(data_dict[b'fine_labels'])
+            self.labels = np.array(data_dict[b'fine_labels'])
         elif self.label_type == 'coarse':
-            self.label = np.array(data_dict[b'coarse_labels'])
+            self.labels = np.array(data_dict[b'coarse_labels'])
         self.data = self.data.reshape(-1, 3, 32, 32)
-        save_cache_npz({'data': self.data, 'label': self.label}, url, self.train)
+        save_cache_npz({'data': self.data, 'label': self.labels}, url, self.train)
 
     def __getitem__(self, index):
         assert np.isscalar(index)
-        return self.x_transform(self.data[index]), self.t_transform(self.label[index])
+        return self.x_transform(self.data[index]), self.t_transform(self.labels[index])
 
     def __len__(self):
         return len(self.data)
@@ -276,7 +276,7 @@ class VOCDetection(Dataset):
 class VOCclassfication(VOCDetection):
     def __init__(self, train=True, year=2007, x_transform=None, t_transform=None):
         super(VOCclassfication, self).__init__(train, year, x_transform, t_transform)
-        self.label = np.empty((1, 6), dtype=np.int32)
+        self.count = np.empty((1, 6), dtype=np.int32)
         for a, b in enumerate(self.xml_tarinfo):
             bytes = self.file.extractfile(b).read()
             annotation = ET.fromstring(bytes)
@@ -285,14 +285,14 @@ class VOCclassfication(VOCDetection):
                 budbox = i.find("bndbox")
                 item = [[a, *[int(budbox.find(i).text) for i in ['xmin', 'ymin', 'xmax', 'ymax']],
                          self.revers_label[i.find("name").text]]]
-                self.label = np.append(self.label, item, axis=0)
-        self.label = np.delete(self.label, [0, 0], axis=0)
+                self.count = np.append(self.count, item, axis=0)
+        self.count = np.delete(self.count, [0, 0], axis=0)
 
     def cut(self, index):
-        self.label = self.label[index[0]:index[1]]
+        self.count = self.count[index[0]:index[1]]
 
     def __getitem__(self, index):
-        temp = self.label[index]
+        temp = self.count[index]
         index, bbox, label = temp[0], temp[1:5], temp[5]
         bytes = self.file.extractfile(self.image_tarinfo[index]).read()
         na = np.frombuffer(bytes, dtype=np.uint8)
@@ -303,10 +303,10 @@ class VOCclassfication(VOCDetection):
     def show(self, index):
         img, label = self[index]
         cv.imshow('1', img[::-1].transpose(1, 2, 0))
-        print(self.labels()[label])
+        print(self.count()[label])
 
     def __len__(self):
-        return len(self.label)
+        return len(self.count)
 
 
 class ImageNet(Dataset):

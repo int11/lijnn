@@ -23,27 +23,27 @@ class VOC_SelectiveSearch(VOCclassfication):
         self.around_context = around_context
         count = datasets.load_cache_npz('VOC_SelectiveSearch', train=train)
         if count is not None:
-            self.label = count
+            self.count = count
             return
 
         for i in range(VOCDetection.__len__(self)):
             img, labels, bboxs = VOCDetection.__getitem__(self, i)
             ssbboxs = utils.SelectiveSearch(img)
-            sslabels = []
+            temp = []
             for ssbbox in ssbboxs:
                 bb_iou = [utils.get_iou(ssbbox, bbox) for bbox in bboxs]
                 indexM = np.argmax(bb_iou)
-                sslabels.append(labels[indexM] if bb_iou[indexM] > 0.50 else 20)
+                temp.append(labels[indexM] if bb_iou[indexM] > 0.5 else 20)
 
-            label = np.append(ssbboxs, np.array(sslabels).reshape(-1, 1), axis=1)
-            label = np.pad(label, ((0, 0), (1, 0)), mode='constant', constant_values=i)
-            label = label[:2000] if len(label) > 2000 else label
-            self.label = np.append(self.label, label, axis=0)
-
-        datasets.save_cache_npz({'label': self.label}, 'VOC_SelectiveSearch', train=train)
+            temp = np.append(ssbboxs, np.array(temp).reshape(-1, 1), axis=1)
+            temp = np.pad(temp, ((0, 0), (1, 0)), mode='constant', constant_values=i)
+            temp = temp[:2000] if len(temp) > 2000 else temp
+            self.count = np.append(self.count, temp, axis=0)
+        self.count = self.count[np.apply_along_axis(lambda x: x[0], axis=1, arr=self.count).argsort()]
+        datasets.save_cache_npz({'label': self.count}, 'VOC_SelectiveSearch', train=train)
 
     def __getitem__(self, index):
-        temp = self.label[index]
+        temp = self.count[index]
         index, bbox, label = temp[0], temp[1:5], temp[5]
         bytes = self.file.extractfile(self.image_tarinfo[index]).read()
         na = np.frombuffer(bytes, dtype=np.uint8)
@@ -112,13 +112,30 @@ def main_VGG16_RCNN(name='default'):
     model = VGG16_RCNN()
     model.fit(10, lijnn.optimizers.Adam(alpha=0.00001), train_loader, name=name, iteration_print=True)
 
+
+import xml.etree.ElementTree as ET
+
+
 class VOC_Bbr(VOC_SelectiveSearch):
     def __init__(self, train=True, year=2007, x_transform=None, t_transform=None, around_context=True):
         super(VOC_Bbr, self).__init__(train, year, x_transform, t_transform, around_context)
-        for i in self.label:
-            print(i[0])
+        count = self.count[np.where(self.count[:, 5] != 20)]
 
+        temp = []
+        for e in range(len(count)):
+            index = count[e][0]
+            bytes = self.file.extractfile(self.xml_tarinfo[index]).read()
+            annotation = ET.fromstring(bytes)
+            bboxes = []
+            for i in annotation.iter(tag="object"):
+                budbox = i.find("bndbox")
+                bboxes.append([int(budbox.find(i).text) for i in ['xmin', 'ymin', 'xmax', 'ymax']])
 
+            a = [utils.get_iou(count[e][1:5], bbox) for bbox in bboxes]
+            if np.max(a) > 0.6:
+                temp.append(e)
+        count = count[temp]
+        print(count)
 
 class Bounding_box_Regression(Model):
     def __init__(self):
@@ -135,15 +152,25 @@ class Bounding_box_Regression(Model):
         d_h = self.W_h(x)
 
         return d_x, d_y, d_w, d_h
+
     def predict(self, x, ssbbox):
         d_x, d_y, d_w, d_h = self(x)
-        p_x, p_y, p_w, p_h = (ssbbox[0] + ssbbox[2]) / 2, (ssbbox[1] + ssbbox[3]) / 2, ssbbox[2] - ssbbox[0], ssbbox[3] - ssbbox[1]
+        p_x, p_y, p_w, p_h = (ssbbox[0] + ssbbox[2]) / 2, (ssbbox[1] + ssbbox[3]) / 2 \
+            , ssbbox[2] - ssbbox[0], ssbbox[3] - ssbbox[1]
         pred_x = p_w * d_x + p_x
         pred_y = p_h * d_y + p_y
         pred_w = p_w * np.exp(d_w)
         pred_h = p_h * np.exp(d_h)
 
         return pred_x, pred_y, pred_w, pred_h
+
+
+def main_Bbr():
+    trainset = VOC_Bbr()
+
+
+if __name__ == '__main__':
+    main_Bbr()
 
 
 def test():

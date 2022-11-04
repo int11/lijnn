@@ -5,6 +5,7 @@ from lijnn import functions as F
 from lijnn.transforms import *
 from lijnn.datasets import VOCDetection, VOCclassfication
 from example.CNN import VGG16
+import xml.etree.ElementTree as ET
 
 
 def AroundContext(img, bbox, pad):
@@ -21,26 +22,25 @@ class VOC_SelectiveSearch(VOCclassfication):
     def __init__(self, train=True, year=2007, x_transform=None, t_transform=None, around_context=True):
         super(VOC_SelectiveSearch, self).__init__(train, year, x_transform, t_transform)
         self.around_context = around_context
-        count = datasets.load_cache_npz('VOC_SelectiveSearch', train=train)
-        if count is not None:
-            self.count = count
-            return
+        loaded = datasets.load_cache_npz('VOC_SelectiveSearch', train=train)
+        if loaded is not None:
+            self.count = loaded[0]
+        else:
+            for i in range(VOCDetection.__len__(self)):
+                img, labels, bboxs = VOCDetection.__getitem__(self, i)
+                ssbboxs = utils.SelectiveSearch(img)
+                temp = []
+                for ssbbox in ssbboxs:
+                    bb_iou = [utils.get_iou(ssbbox, bbox) for bbox in bboxs]
+                    indexM = np.argmax(bb_iou)
+                    temp.append(labels[indexM] if bb_iou[indexM] > 0.5 else 20)
 
-        for i in range(VOCDetection.__len__(self)):
-            img, labels, bboxs = VOCDetection.__getitem__(self, i)
-            ssbboxs = utils.SelectiveSearch(img)
-            temp = []
-            for ssbbox in ssbboxs:
-                bb_iou = [utils.get_iou(ssbbox, bbox) for bbox in bboxs]
-                indexM = np.argmax(bb_iou)
-                temp.append(labels[indexM] if bb_iou[indexM] > 0.5 else 20)
-
-            temp = np.append(ssbboxs, np.array(temp).reshape(-1, 1), axis=1)
-            temp = np.pad(temp, ((0, 0), (1, 0)), mode='constant', constant_values=i)
-            temp = temp[:2000] if len(temp) > 2000 else temp
-            self.count = np.append(self.count, temp, axis=0)
-        self.count = self.count[np.apply_along_axis(lambda x: x[0], axis=1, arr=self.count).argsort()]
-        datasets.save_cache_npz({'label': self.count}, 'VOC_SelectiveSearch', train=train)
+                temp = np.append(ssbboxs, np.array(temp).reshape(-1, 1), axis=1)
+                temp = np.pad(temp, ((0, 0), (1, 0)), mode='constant', constant_values=i)
+                temp = temp[:2000] if len(temp) > 2000 else temp
+                self.count = np.append(self.count, temp, axis=0)
+            self.count = self.count[np.apply_along_axis(lambda x: x[0], axis=1, arr=self.count).argsort()]
+            datasets.save_cache_npz({'label': self.count}, 'VOC_SelectiveSearch', train=train)
 
     def __getitem__(self, index):
         temp = self.count[index]
@@ -113,29 +113,47 @@ def main_VGG16_RCNN(name='default'):
     model.fit(10, lijnn.optimizers.Adam(alpha=0.00001), train_loader, name=name, iteration_print=True)
 
 
-import xml.etree.ElementTree as ET
-
-
 class VOC_Bbr(VOC_SelectiveSearch):
     def __init__(self, train=True, year=2007, x_transform=None, t_transform=None, around_context=True):
         super(VOC_Bbr, self).__init__(train, year, x_transform, t_transform, around_context)
-        count = self.count[np.where(self.count[:, 5] != 20)]
 
-        temp = []
-        for e in range(len(count)):
-            index = count[e][0]
-            bytes = self.file.extractfile(self.xml_tarinfo[index]).read()
-            annotation = ET.fromstring(bytes)
-            bboxes = []
-            for i in annotation.iter(tag="object"):
-                budbox = i.find("bndbox")
-                bboxes.append([int(budbox.find(i).text) for i in ['xmin', 'ymin', 'xmax', 'ymax']])
+        loaded = datasets.load_cache_npz('VOC_Bbr', train=train)
+        if loaded is not None:
+            self.p, self.g = loaded[0], loaded[1]
+        else:
+            self.count = self.count[np.where(self.count[:, 5] != 20)]
 
-            a = [utils.get_iou(count[e][1:5], bbox) for bbox in bboxes]
-            if np.max(a) > 0.6:
-                temp.append(e)
-        count = count[temp]
-        print(count)
+            index = []
+            self.g = np.empty((1, 4), np.int32)
+            for e in range(len(self.count)):
+                label, bboxes = self.get_label_bboxes(self.count[e][0])
+                bb_iou = [utils.get_iou(self.count[e][1:5], bbox) for bbox in bboxes]
+                indexM = np.argmax(bb_iou)
+                if bb_iou[indexM] > 0.6:
+                    index.append(e)
+                    self.g = np.vstack((self.g, bboxes[indexM]))
+            self.g = np.delete(self.g, [0, 0], axis=0)
+            self.p = self.count[:, 1:5][index]
+            datasets.save_cache_npz({'x': self.p, 't': self.g}, 'VOC_Bbr', train=train)
+
+        del self.count
+
+    def __getitem__(self, index):
+        p, g = self.p[index], self.g[index]
+
+        p_x, p_y, p_w, p_h = trans_coordinate(p)
+        g_x, g_y, g_w, g_h = trans_coordinate(g)
+        return
+
+    def __len__(self):
+        return len(self.p)
+
+
+def trans_coordinate(c):
+    xmin, ymin, xmax, ymax = c
+    x, y, w, h = (xmin + xmax) / 2, (ymin + ymax) / 2, xmax - xmin, ymax - ymin
+    return x, y, w, h
+
 
 class Bounding_box_Regression(Model):
     def __init__(self):
@@ -155,8 +173,7 @@ class Bounding_box_Regression(Model):
 
     def predict(self, x, ssbbox):
         d_x, d_y, d_w, d_h = self(x)
-        p_x, p_y, p_w, p_h = (ssbbox[0] + ssbbox[2]) / 2, (ssbbox[1] + ssbbox[3]) / 2 \
-            , ssbbox[2] - ssbbox[0], ssbbox[3] - ssbbox[1]
+        p_x, p_y, p_w, p_h = trans_coordinate(ssbbox)
         pred_x = p_w * d_x + p_x
         pred_y = p_h * d_y + p_y
         pred_w = p_w * np.exp(d_w)
@@ -167,19 +184,8 @@ class Bounding_box_Regression(Model):
 
 def main_Bbr():
     trainset = VOC_Bbr()
+    print(trainset[5])
 
 
 if __name__ == '__main__':
     main_Bbr()
-
-
-def test():
-    mean = [103.939, 116.779, 123.68]
-
-    trainset = VOC_SelectiveSearch(x_transform=compose([transforms.resize(224)]), around_context=False)
-    train_loader = rcnniter(trainset, pos_neg_number=(3, 3 * 3))
-    for x, t in train_loader:
-        for img, label in zip(x, t):
-            cv.imshow('1', img[::-1].transpose(1, 2, 0))
-            print(label)
-            cv.waitKey(0)

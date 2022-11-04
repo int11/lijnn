@@ -116,8 +116,9 @@ class CIFAR10(Dataset):
         super().__init__(train, x_transform, t_transform)
 
         url = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
-        self.data, self.labels = load_cache_npz(url, self.train)
-        if self.data is not None:
+        loaded = load_cache_npz(url, self.train)
+        if loaded is not None:
+            self.data, self.labels = loaded[0], loaded[1]
             return
 
         filepath = get_file(url)
@@ -175,8 +176,9 @@ class CIFAR100(CIFAR10):
         super().__init__(train, x_transform, t_transform)
 
         url = 'https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz'
-        self.data, self.labels = load_cache_npz(url, self.train)
-        if self.data is not None:
+        loaded = load_cache_npz(url, self.train)
+        if loaded is not None:
+            self.data, self.labels = loaded[0], loaded[1]
             return
 
         filepath = get_file(url)
@@ -242,6 +244,14 @@ class VOCDetection(Dataset):
 
     def __getitem__(self, index):
         assert np.isscalar(index)
+        label, bboxes = self.get_label_bboxes(index)
+        bytes = self.file.extractfile(self.image_tarinfo[index]).read()
+        na = np.frombuffer(bytes, dtype=np.uint8)
+        im = cv.imdecode(na, cv.IMREAD_COLOR)
+
+        return self.x_transform(im.transpose(2, 0, 1)[::-1]), self.t_transform(label), np.array(bboxes)
+
+    def get_label_bboxes(self, index):
         bytes = self.file.extractfile(self.xml_tarinfo[index]).read()
         annotation = ET.fromstring(bytes)
         bboxes, label = [], []
@@ -249,12 +259,7 @@ class VOCDetection(Dataset):
             budbox = i.find("bndbox")
             bboxes.append([int(budbox.find(i).text) for i in ['xmin', 'ymin', 'xmax', 'ymax']])
             label.append(self.revers_label[i.find("name").text])
-
-        bytes = self.file.extractfile(self.image_tarinfo[index]).read()
-        na = np.frombuffer(bytes, dtype=np.uint8)
-        im = cv.imdecode(na, cv.IMREAD_COLOR)
-
-        return self.x_transform(im.transpose(2, 0, 1)[::-1]), self.t_transform(label), np.array(bboxes)
+        return label, bboxes
 
     def __len__(self):
         return len(self.image_tarinfo)
@@ -374,7 +379,7 @@ def load_cache_npz(filename, train=False):
         return None
 
     loaded = np.load(filepath)
-    return [loaded[i] for i in loaded][0] if len(loaded) == 1 else (loaded[i] for i in loaded)
+    return [loaded[i] for i in loaded]
 
 
 def save_cache_npz(kwargs, filename, train=False):

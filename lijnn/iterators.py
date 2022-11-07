@@ -1,4 +1,5 @@
 import math
+
 pil_available = True
 import numpy as np
 from lijnn import cuda
@@ -35,11 +36,13 @@ class iterator:
         batch = [self.dataset[i] for i in batch_index]
 
         xp = cuda.cupy if self.gpu else np
-        x = xp.array([example[0] for example in batch])
-        t = xp.array([example[1] for example in batch])
+        result = []
+
+        for i in range(len(batch[0])):
+            result.append(xp.array([example[i] for example in batch]))
 
         self.iteration += 1
-        return x, t
+        return result
 
     def next(self):
         return self.__next__()

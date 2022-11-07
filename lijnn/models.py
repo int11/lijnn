@@ -35,8 +35,8 @@ class Model(Layer):
         self.save_weights(weight_dir)
         print('Done')
 
-    def load_weights_epoch(self, epoch=None, ti=0, name='default'):
-        model_dir = os.path.join(utils.cache_dir, self.__class__.__name__)
+    def load_weights_epoch(self, epoch=None, ti=0, name='default', classname=None):
+        model_dir = os.path.join(utils.cache_dir, classname) if classname else os.path.join(utils.cache_dir, self.__class__.__name__)
         try:
             listdir = os.listdir(model_dir)
             if not os.path.exists(model_dir):
@@ -64,7 +64,7 @@ class Model(Layer):
         start_epoch = int(epoch) if ti else int(epoch) + 1
         return start_epoch, ti
 
-    def fit(self, epoch, optimizer, train_loader, test_loader=None, name='default', iteration_print=False,
+    def fit(self, epoch, optimizer, train_loader, test_loader=None, lossf=F.softmax_cross_entropy, name='default', iteration_print=False,
             autosave=True, autosave_time=30):
         optimizer = optimizer.setup(self)
         start_epoch, ti = self.load_weights_epoch(name=name)
@@ -80,7 +80,7 @@ class Model(Layer):
             st = time.time()
             for x, t in train_loader:
                 y = self(x)
-                loss = F.softmax_cross_entropy(y, t)
+                loss = lossf(y, t)
                 acc = F.accuracy(y, t)
                 self.cleargrads()
                 loss.backward()

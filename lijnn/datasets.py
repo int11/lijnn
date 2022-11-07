@@ -244,14 +244,11 @@ class VOCDetection(Dataset):
 
     def __getitem__(self, index):
         assert np.isscalar(index)
-        label, bboxes = self.get_label_bboxes(index)
-        bytes = self.file.extractfile(self.image_tarinfo[index]).read()
-        na = np.frombuffer(bytes, dtype=np.uint8)
-        im = cv.imdecode(na, cv.IMREAD_COLOR)
+        label, bboxes = self._get_index_label_bboxes(index)
+        img = self._get_index_img(index)
+        return self.x_transform(img), self.t_transform(label), np.array(bboxes)
 
-        return self.x_transform(im.transpose(2, 0, 1)[::-1]), self.t_transform(label), np.array(bboxes)
-
-    def get_label_bboxes(self, index):
+    def _get_index_label_bboxes(self, index):
         bytes = self.file.extractfile(self.xml_tarinfo[index]).read()
         annotation = ET.fromstring(bytes)
         bboxes, label = [], []
@@ -260,6 +257,13 @@ class VOCDetection(Dataset):
             bboxes.append([int(budbox.find(i).text) for i in ['xmin', 'ymin', 'xmax', 'ymax']])
             label.append(self.revers_label[i.find("name").text])
         return label, bboxes
+
+    def _get_index_img(self, index):
+        bytes = self.file.extractfile(self.image_tarinfo[index]).read()
+        na = np.frombuffer(bytes, dtype=np.uint8)
+        img = cv.imdecode(na, cv.IMREAD_COLOR)
+        img = img.transpose(2, 0, 1)[::-1]
+        return img
 
     def __len__(self):
         return len(self.image_tarinfo)
@@ -299,11 +303,9 @@ class VOCclassfication(VOCDetection):
     def __getitem__(self, index):
         temp = self.count[index]
         index, bbox, label = temp[0], temp[1:5], temp[5]
-        bytes = self.file.extractfile(self.image_tarinfo[index]).read()
-        na = np.frombuffer(bytes, dtype=np.uint8)
-        im = cv.imdecode(na, cv.IMREAD_COLOR)
-        im = im[bbox[1]:bbox[3], bbox[0]:bbox[2]]
-        return self.x_transform(im.transpose(2, 0, 1)[::-1]), self.t_transform(label)
+        img = self._get_index_img(index)
+        img = img[:, bbox[1]:bbox[3], bbox[0]:bbox[2]]
+        return self.x_transform(img), self.t_transform(label)
 
     def show(self, index):
         img, label = self[index]

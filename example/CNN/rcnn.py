@@ -218,6 +218,7 @@ class Bounding_box_Regression(Model):
 
         if cuda.gpu_enable:
             self.to_gpu()
+            feature_model.to_gpu()
             train_loader.to_gpu()
             if test_loader:
                 test_loader.to_gpu()

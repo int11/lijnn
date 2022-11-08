@@ -211,8 +211,8 @@ class Bounding_box_Regression(Model):
 
         return pred_x, pred_y, pred_w, pred_h
 
-    def fit(self, feature_model, epoch, optimizer, train_loader, test_loader=None, lossf=F.mean_squared_error,
-            name='default', iteration_print=False, autosave=True, autosave_time=30):
+    def fit(self, feature_model, epoch, optimizer, train_loader, lossf=F.mean_squared_error, name='default',
+            iteration_print=False, autosave=True, autosave_time=30):
         optimizer = optimizer.setup(self)
         start_epoch, ti = self.load_weights_epoch(name=name)
 
@@ -220,8 +220,6 @@ class Bounding_box_Regression(Model):
             self.to_gpu()
             feature_model.to_gpu()
             train_loader.to_gpu()
-            if test_loader:
-                test_loader.to_gpu()
 
         for i in range(start_epoch, epoch + 1):
             sum_loss = 0
@@ -238,8 +236,8 @@ class Bounding_box_Regression(Model):
                 loss = [lossf(y[i], t[i]) for i in range(len(t))]
 
                 self.cleargrads()
-                for i in loss:
-                    i.backward()
+                for e in loss:
+                    e.backward()
                 optimizer.update()
                 sum_loss += sum([i.data for i in loss])
 
@@ -253,19 +251,6 @@ class Bounding_box_Regression(Model):
             print(f'train loss {sum_loss / train_loader.max_iter}')
             self.save_weights_epoch(i, name=name)
 
-            sum_loss, sum_acc = 0, 0
-            if test_loader:
-                with no_grad(), test_mode():
-                    for x, t in test_loader:
-                        y = self(x)
-                        loss = F.softmax_cross_entropy(y, t)
-                        acc = F.accuracy(y, t)
-                        sum_loss += loss.data
-                        sum_acc += acc.data
-                        if iteration_print:
-                            print(f"loss : {loss.data} accuracy {acc.data}")
-                print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')
-
 
 def main_Bbr(name='default'):
     batch_size = 8
@@ -276,6 +261,18 @@ def main_Bbr(name='default'):
     train_loader = iterators.iterator(trainset, batch_size, shuffle=True)
     model = Bounding_box_Regression()
     model.fit(vggrcnn, 10, lijnn.optimizers.Adam(alpha=0.0001), train_loader, name=name, iteration_print=True)
+
+
+class R_CNN(Model):
+    def __init__(self):
+        super(R_CNN, self).__init__()
+        vgg = VGG16_RCNN()
+        vgg.load_weights_epoch()
+        Bbr = Bounding_box_Regression()
+        Bbr.load_weights_epoch()
+
+    def forward(self, x):
+        ssbboxs = utils.SelectiveSearch(x)
 
 
 if __name__ == '__main__':

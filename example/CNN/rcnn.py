@@ -14,7 +14,7 @@ import time
 
 def AroundContext(img, bbox, pad):
     image_mean = np.mean(img, axis=(1, 2))
-    _, H, W = img.shape
+    C, H, W = img.shape
 
     padded_image = np.full((H + 2 * pad, W + 2 * pad, 3), image_mean, dtype=np.uint8).transpose(2, 0, 1)
     padded_image[:, pad:(H + pad), pad:(W + pad)] = img
@@ -273,6 +273,9 @@ class R_CNN(Model):
 
     def forward(self, x):
         ssbboxs = utils.SelectiveSearch(x)
+        for e, ssbbox in enumerate(ssbboxs):
+            if e < 500:
+                pass
 
 
 if __name__ == '__main__':

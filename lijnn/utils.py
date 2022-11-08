@@ -423,10 +423,11 @@ def get_iou(x, t):
     return iou
 
 
-def SelectiveSearch(img):
+def SelectiveSearch(img, xywh=False):
     ss = cv.ximgproc.segmentation.createSelectiveSearchSegmentation()
     ss.setBaseImage(img[::-1].transpose(1, 2, 0))
     ss.switchToSelectiveSearchFast()
     ssbboxs = ss.process()
-    ssbboxs[:, 2:4] = ssbboxs[:, 0:2] + ssbboxs[:, 2:4]
+    if not xywh:
+        ssbboxs[:, 2:4] = ssbboxs[:, 0:2] + ssbboxs[:, 2:4]
     return ssbboxs

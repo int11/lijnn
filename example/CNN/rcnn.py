@@ -224,7 +224,7 @@ class Bounding_box_Regression(Model):
                 test_loader.to_gpu()
 
         for i in range(start_epoch, epoch + 1):
-            sum_loss = [0,0,0,0]
+            sum_loss = 0
             st = time.time()
             for img, p, g in train_loader:
                 with no_grad():
@@ -241,17 +241,16 @@ class Bounding_box_Regression(Model):
                 for i in loss:
                     i.backward()
                 optimizer.update()
-                for i in range(len(loss)):
-                    sum_loss[i] = loss[i].data
+                sum_loss += sum([i.data for i in loss])
 
                 if iteration_print:
-                    print(f"loss : {loss}")
+                    print(f"loss : {sum([i.data for i in loss])}")
                 if autosave and time.time() - st > autosave_time * 60:
                     self.save_weights_epoch(i, autosave_time + ti, name)
                     autosave_time += autosave_time
 
             print(f"epoch {i + 1}")
-            # print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
+            print(f'train loss {sum_loss / train_loader.max_iter}')
             self.save_weights_epoch(i, name=name)
 
             sum_loss, sum_acc = 0, 0

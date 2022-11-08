@@ -223,26 +223,34 @@ class Bounding_box_Regression(Model):
                 test_loader.to_gpu()
 
         for i in range(start_epoch, epoch + 1):
-            sum_loss, sum_acc = 0, 0
+            sum_loss = [0,0,0,0]
             st = time.time()
             for img, p, g in train_loader:
                 with no_grad():
                     feature = feature_model(img)
                 y = self(feature)
-                loss = lossf(y, t)
-                acc = F.accuracy(y, t)
+
+                p = [as_variable(i.reshape(-1, 1)) for i in p.T]
+                g = [as_variable(i.reshape(-1, 1)) for i in g.T]
+                t = [(g[0] - p[0]) / p[2], (g[1] - p[1]) / p[3], F.log(g[2] / p[2]), F.log(g[3] / p[3])]
+
+                loss = [lossf(y[i], t[i]) for i in range(len(t))]
+
                 self.cleargrads()
-                loss.backward()
+                for i in loss:
+                    i.backward()
                 optimizer.update()
-                sum_loss += loss.data
-                sum_acc += acc.data
+                for i in range(len(loss)):
+                    sum_loss[i] = loss[i].data
+
                 if iteration_print:
-                    print(f"loss : {loss.data} accuracy {acc.data}")
+                    print(f"loss : {loss}")
                 if autosave and time.time() - st > autosave_time * 60:
                     self.save_weights_epoch(i, autosave_time + ti, name)
                     autosave_time += autosave_time
+
             print(f"epoch {i + 1}")
-            print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
+            # print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
             self.save_weights_epoch(i, name=name)
 
             sum_loss, sum_acc = 0, 0
@@ -267,7 +275,7 @@ def main_Bbr(name='default'):
     trainset = VOC_Bbr(img_transpose=compose([transforms.resize(224), toFloat(), z_score_normalize(mean, 1)]))
     train_loader = iterators.iterator(trainset, batch_size, shuffle=True)
     model = Bounding_box_Regression()
-    model.fit(vggrcnn, 10, lijnn.optimizers.Adam(alpha=0.001), train_loader, name=name, iteration_print=True)
+    model.fit(vggrcnn, 10, lijnn.optimizers.Adam(alpha=0.0001), train_loader, name=name, iteration_print=True)
 
 
 if __name__ == '__main__':

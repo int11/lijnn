@@ -13,10 +13,11 @@ import time
 
 
 def AroundContext(img, bbox, pad):
-    image_mean = np.mean(img, axis=(1, 2))
+    xp = cuda.get_array_module(img)
+    image_mean = xp.mean(img, axis=(1, 2))
     C, H, W = img.shape
 
-    padded_image = np.full((H + 2 * pad, W + 2 * pad, 3), image_mean, dtype=np.uint8).transpose(2, 0, 1)
+    padded_image = xp.full((H + 2 * pad, W + 2 * pad, 3), image_mean, dtype=np.uint8).transpose(2, 0, 1)
     padded_image[:, pad:(H + pad), pad:(W + pad)] = img
 
     return padded_image[:, bbox[1]:bbox[3] + pad * 2, bbox[0]:bbox[2] + pad * 2]
@@ -272,6 +273,7 @@ class R_CNN(Model):
         self.Bbr.load_weights_epoch()
 
     def forward(self, x):
+        xp = cuda.get_array_module(x)
         ssbboxs = utils.SelectiveSearch(x)
         trans_resize = resize(224)
         pred_score = []
@@ -279,7 +281,7 @@ class R_CNN(Model):
             if e < 500:
                 img = AroundContext(x, ssbbox, 16)
                 img = trans_resize(img)
-                img = np.expand_dims(img, axis=0)
+                img = xp.expand_dims(img, axis=0)
                 print(e)
                 pred_score.append(self.vgg(img))
 
@@ -288,8 +290,13 @@ if __name__ == '__main__':
     dataset = VOCDetection()
     model = R_CNN()
 
+    img, labels, bboxs = dataset[0]
+
     if cuda.gpu_enable:
         model.to_gpu()
+        model(cuda.as_cupy(img))
+    else:
+        model(img)
 
-    img, labels, bboxs = dataset[0]
-    model(cuda.as_cupy(img))
+
+

@@ -19,7 +19,7 @@ def AroundContext(img, bbox, pad):
     padded_image = np.full((H + 2 * pad, W + 2 * pad, 3), image_mean, dtype=np.uint8).transpose(2, 0, 1)
     padded_image[:, pad:(H + pad), pad:(W + pad)] = img
 
-    return padded_image[:, bbox[1]:bbox[3] + 32, bbox[0]:bbox[2] + 32]
+    return padded_image[:, bbox[1]:bbox[3] + pad * 2, bbox[0]:bbox[2] + pad * 2]
 
 
 class VOC_SelectiveSearch(VOCclassfication):
@@ -257,7 +257,7 @@ def main_Bbr(name='default'):
     mean = [103.939, 116.779, 123.68]
     vggrcnn = VGG16_pool5()
 
-    trainset = VOC_Bbr(img_transpose=compose([transforms.resize(224), toFloat(), z_score_normalize(mean, 1)]))
+    trainset = VOC_Bbr(img_transpose=compose([resize(224), toFloat(), z_score_normalize(mean, 1)]))
     train_loader = iterators.iterator(trainset, batch_size, shuffle=True)
     model = Bounding_box_Regression()
     model.fit(vggrcnn, 10, lijnn.optimizers.Adam(alpha=0.0001), train_loader, name=name, iteration_print=True)
@@ -266,17 +266,30 @@ def main_Bbr(name='default'):
 class R_CNN(Model):
     def __init__(self):
         super(R_CNN, self).__init__()
-        vgg = VGG16_RCNN()
-        vgg.load_weights_epoch()
-        Bbr = Bounding_box_Regression()
-        Bbr.load_weights_epoch()
+        self.vgg = VGG16_RCNN()
+        self.vgg.load_weights_epoch()
+        self.Bbr = Bounding_box_Regression()
+        self.Bbr.load_weights_epoch()
 
     def forward(self, x):
         ssbboxs = utils.SelectiveSearch(x)
+        trans_resize = resize(224)
+        pred_score = []
         for e, ssbbox in enumerate(ssbboxs):
             if e < 500:
-                pass
+                img = AroundContext(x, ssbbox, 16)
+                img = trans_resize(img)
+                img = np.expand_dims(img, axis=0)
+                print(e)
+                pred_score.append(self.vgg(img))
 
 
 if __name__ == '__main__':
-    main_Bbr()
+    dataset = VOCDetection()
+    model = R_CNN()
+
+    if cuda.gpu_enable:
+        model.to_gpu()
+
+    img, labels, bboxs = dataset[0]
+    model(cuda.as_cupy(img))

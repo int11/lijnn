@@ -424,6 +424,8 @@ def get_iou(x, t):
 
 
 def SelectiveSearch(img, xywh=False):
+    img = cuda.as_numpy(img)
+
     ss = cv.ximgproc.segmentation.createSelectiveSearchSegmentation()
     ss.setBaseImage(img[::-1].transpose(1, 2, 0))
     ss.switchToSelectiveSearchFast()

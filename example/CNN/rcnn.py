@@ -276,27 +276,33 @@ class R_CNN(Model):
         xp = cuda.get_array_module(x)
         ssbboxs = utils.SelectiveSearch(x)
         trans_resize = resize(224)
-        pred_score = []
+        probs = []
         for e, ssbbox in enumerate(ssbboxs):
             if e < 500:
                 img = AroundContext(x, ssbbox, 16)
                 img = trans_resize(img)
                 img = xp.expand_dims(img, axis=0)
-                print(e)
-                pred_score.append(self.vgg(img))
+                softmax = F.softmax(self.vgg(img).data)
+                probs.append(softmax)
+        probs = xp.array(probs)
+        NMS_idx = NMS(ssbboxs, probs, iou_threshold=0.5)
+
+
+def NMS(boxes, probs, iou_threshold=0.5):
+    xp = cuda.get_array_module(probs)
+    probs = xp.max(probs, axis=1)
+    probs = probs.argsort()[::-1]
 
 
 if __name__ == '__main__':
+    utils.printoptions()
     dataset = VOCDetection()
     model = R_CNN()
 
     img, labels, bboxs = dataset[0]
-
-    if cuda.gpu_enable:
-        model.to_gpu()
-        model(cuda.as_cupy(img))
-    else:
-        model(img)
-
-
-
+    with no_grad():
+        if cuda.gpu_enable:
+            model.to_gpu()
+            model(cuda.as_cupy(img))
+        else:
+            model(img)

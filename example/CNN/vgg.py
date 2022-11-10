@@ -16,8 +16,9 @@ class VGG16(Model):
     """
     WEIGHTS_PATH = 'https://github.com/koki0702/dezero-models/releases/download/v0.1/vgg16.npz'
 
-    def __init__(self, num_classes=1000, imagenet_pretrained=False):
+    def __init__(self, num_classes=1000, imagenet_pretrained=False, dense_evaluate=False):
         super().__init__()
+        self.dense_evaluate = dense_evaluate
         self.conv1_1 = L.Conv2d(64, kernel_size=3, stride=1, pad=1)
         self.conv1_2 = L.Conv2d(64, kernel_size=3, stride=1, pad=1)
         self.conv2_1 = L.Conv2d(128, kernel_size=3, stride=1, pad=1)
@@ -66,15 +67,15 @@ class VGG16(Model):
         x = F.relu(self.conv5_3(x))
         x = F.max_pooling(x, 2, 2)
         # x.shape = (10, 512, 7, 7)
-        if Config.train:
+        if self.dense_evaluate:
+            x = F.relu(self.conv6(x))
+            x = F.relu(self.conv7(x))
+            x = self.conv8(x)
+        else:
             x = F.reshape(x, (x.shape[0], -1))
             x = F.dropout(F.relu(self.fc6(x)))
             x = F.dropout(F.relu(self.fc7(x)))
             x = self.fc8(x)
-        else:
-            x = F.relu(self.conv6(x))
-            x = F.relu(self.conv7(x))
-            x = self.conv8(x)
         return x
 
     # TODO: multi-crop & dense evaluation
@@ -90,7 +91,10 @@ class VGG16(Model):
                   xp.array([isotropically_resize(224 + 32 * 5)(i) for i in x]),
                   xp.array([isotropically_resize(224 + 32 * 9)(i) for i in x])]
         with no_grad(), test_mode():
+            temp = self.dense_evaluate
+            self.dense_evaluate = True
             result = [F.softmax(self(i)).data for i in result]
+            self.dense_evaluate = temp
         # list(scales), N, num_classes, H, W
         result = xp.array([np.mean(i, (2, 3)) for i in result])
         # scales, N, num_classes

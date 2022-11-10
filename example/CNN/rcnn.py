@@ -1,4 +1,4 @@
-import cv2
+import cv2 as cv
 import numpy as np
 
 import lijnn.optimizers
@@ -96,11 +96,46 @@ class rcnniter(lijnn.iterator):
 
 
 class VGG16_RCNN(VGG16):
-    def __init__(self, num_classes=21):
-        super().__init__(num_classes=1000, imagenet_pretrained=True)
+    def __init__(self, num_classes=21, pool5_feature=False):
+        super().__init__(num_classes=1000, imagenet_pretrained=True, dense_evaluate=False)
+        self.pool5_feature = pool5_feature
         self.fc8 = L.Linear(num_classes)
         self.conv8 = L.share_weight_conv2d(num_classes, kernel_size=1, stride=1, pad=0, target=self.fc8)
         self._params.remove('conv8')
+
+    def forward(self, x):
+        x = F.relu(self.conv1_1(x))
+        x = F.relu(self.conv1_2(x))
+        x = F.max_pooling(x, 2, 2)
+        x = F.relu(self.conv2_1(x))
+        x = F.relu(self.conv2_2(x))
+        x = F.max_pooling(x, 2, 2)
+        x = F.relu(self.conv3_1(x))
+        x = F.relu(self.conv3_2(x))
+        x = F.relu(self.conv3_3(x))
+        x = F.max_pooling(x, 2, 2)
+        x = F.relu(self.conv4_1(x))
+        x = F.relu(self.conv4_2(x))
+        x = F.relu(self.conv4_3(x))
+        x = F.max_pooling(x, 2, 2)
+        x = F.relu(self.conv5_1(x))
+        x = F.relu(self.conv5_2(x))
+        x = F.relu(self.conv5_3(x))
+        x = F.max_pooling(x, 2, 2)
+        if self.pool5_feature:
+            x = F.reshape(x, (x.shape[0], -1))
+            return x
+        # x.shape = (10, 512, 7, 7)
+        if self.dense_evaluate:
+            x = F.relu(self.conv6(x))
+            x = F.relu(self.conv7(x))
+            x = self.conv8(x)
+        else:
+            x = F.reshape(x, (x.shape[0], -1))
+            x = F.dropout(F.relu(self.fc6(x)))
+            x = F.dropout(F.relu(self.fc7(x)))
+            x = self.fc8(x)
+        return x
 
 
 def main_VGG16_RCNN(name='default'):
@@ -157,34 +192,6 @@ class VOC_Bbr(VOC_SelectiveSearch):
         return len(self.p)
 
 
-class VGG16_pool5(VGG16_RCNN):
-    def __init__(self, num_classes=21):
-        super().__init__(num_classes)
-        self.load_weights_epoch(classname="VGG16_RCNN")
-
-    def forward(self, x):
-        x = F.relu(self.conv1_1(x))
-        x = F.relu(self.conv1_2(x))
-        x = F.max_pooling(x, 2, 2)
-        x = F.relu(self.conv2_1(x))
-        x = F.relu(self.conv2_2(x))
-        x = F.max_pooling(x, 2, 2)
-        x = F.relu(self.conv3_1(x))
-        x = F.relu(self.conv3_2(x))
-        x = F.relu(self.conv3_3(x))
-        x = F.max_pooling(x, 2, 2)
-        x = F.relu(self.conv4_1(x))
-        x = F.relu(self.conv4_2(x))
-        x = F.relu(self.conv4_3(x))
-        x = F.max_pooling(x, 2, 2)
-        x = F.relu(self.conv5_1(x))
-        x = F.relu(self.conv5_2(x))
-        x = F.relu(self.conv5_3(x))
-        x = F.max_pooling(x, 2, 2)
-        x = F.reshape(x, (x.shape[0], -1))
-        return x
-
-
 class Bounding_box_Regression(Model):
     def __init__(self):
         super().__init__()
@@ -201,15 +208,17 @@ class Bounding_box_Regression(Model):
 
         return d_x, d_y, d_w, d_h
 
-    def predict(self, x, ssbbox):
-        d_x, d_y, d_w, d_h = self(x)
+    def predict(self, pool5_feature, ssbbox):
+        xp = cuda.get_array_module(pool5_feature)
+        d_x, d_y, d_w, d_h = [i.data for i in self(pool5_feature)]
         p_x, p_y, p_w, p_h = trans_coordinate(ssbbox)
-        pred_x = p_w * d_x + p_x
-        pred_y = p_h * d_y + p_y
-        pred_w = p_w * np.exp(d_w)
-        pred_h = p_h * np.exp(d_h)
+        x = p_w * d_x + p_x
+        y = p_h * d_y + p_y
+        w = p_w * xp.exp(d_w)
+        h = p_h * xp.exp(d_h)
 
-        return pred_x, pred_y, pred_w, pred_h
+        return int(x - w / 2), int(y - h / 2), int(x + w / 2), int(y + h / 2)
+
 
     def fit(self, feature_model, epoch, optimizer, train_loader, lossf=F.mean_squared_error, name='default',
             iteration_print=False, autosave=True, autosave_time=30):
@@ -225,7 +234,7 @@ class Bounding_box_Regression(Model):
             sum_loss = 0
             st = time.time()
             for img, p, g in train_loader:
-                with no_grad():
+                with no_grad(), test_mode():
                     feature = feature_model(img)
                 y = self(feature)
 
@@ -255,12 +264,12 @@ class Bounding_box_Regression(Model):
 def main_Bbr(name='default'):
     batch_size = 8
     mean = [103.939, 116.779, 123.68]
-    vggrcnn = VGG16_pool5()
+    vgg = VGG16_RCNN(pool5_feature=True)
 
     trainset = VOC_Bbr(img_transpose=compose([resize(224), toFloat(), z_score_normalize(mean, 1)]))
     train_loader = iterators.iterator(trainset, batch_size, shuffle=True)
     model = Bounding_box_Regression()
-    model.fit(vggrcnn, 10, lijnn.optimizers.Adam(alpha=0.0001), train_loader, name=name, iteration_print=True)
+    model.fit(vgg, 10, lijnn.optimizers.Adam(alpha=0.0001), train_loader, name=name, iteration_print=True)
 
 
 class R_CNN(Model):
@@ -273,43 +282,68 @@ class R_CNN(Model):
 
     def forward(self, x):
         xp = cuda.get_array_module(x)
-        ssbboxs = utils.SelectiveSearch(x)
+        ssbboxs = utils.SelectiveSearch(x)[:500]
+
         trans_resize = resize(224)
         probs = xp.empty((0, 21))
-        for ssbbox in ssbboxs[:5]:
+        for ssbbox in ssbboxs:
             img = AroundContext(x, ssbbox, 16)
             img = trans_resize(img)
             img = xp.expand_dims(img, axis=0)
             softmax = F.softmax(self.vgg(img))
             probs = xp.append(probs, softmax.data, axis=0)
-        NMS_idx = NMS(ssbboxs, probs, iou_threshold=0.5)
-        print()
+
+        except_background = xp.argmax(probs, axis=1) != 20
+        ssbboxs, probs = ssbboxs[except_background], probs[except_background]
+
+        index = NMS(ssbboxs, probs, iou_threshold=0.5)
+        if len(index) != 0:
+            ssbboxs, probs = ssbboxs[index], probs[index]
+
+        self.vgg.pool5_feature = True
+        for i, ssbbox in enumerate(ssbboxs):
+            img = AroundContext(x, ssbbox, 16)
+            img = trans_resize(img)
+            img = xp.expand_dims(img, axis=0)
+            pool5_feature = self.vgg(img)
+            ssbboxs[i] = xp.array(self.Bbr.predict(pool5_feature, ssbbox)).ravel()
+        self.vgg.pool5_feature = False
+        return ssbboxs, xp.argmax(probs, axis=1)
 
 
-def NMS(boxes, probs, iou_threshold=0.5):
+def NMS(bboxs, probs, iou_threshold=0.5):
     xp = cuda.get_array_module(probs)
     order = xp.max(probs, axis=1)
     order = order.argsort()[::-1]
 
-    keep = [True] * len(order)
+    index = xp.array([True] * len(order))
 
     for i in range(len(order) - 1):
-        ovps = utils.batch_iou(boxes[order[i]], boxes[order[i + 1:]])
+        ovps = utils.batch_iou(bboxs[order[i]], bboxs[order[i + 1:]])
         for j, ov in enumerate(ovps):
             if ov > iou_threshold:
-                keep[order[j + i + 1]] = False
-    return keep
+                index[order[j + i + 1]] = False
+
+    return index
 
 
 if __name__ == '__main__':
     utils.printoptions()
     dataset = VOCDetection()
+    loader = iterator(dataset, 1, shuffle=False)
     model = R_CNN()
+    if cuda.gpu_enable:
+        model.to_gpu()
+        loader.to_gpu()
 
-    img, labels, bboxs = dataset[0]
-    with no_grad():
-        if cuda.gpu_enable:
-            model.to_gpu()
-            model(cuda.as_cupy(img))
-        else:
-            model(img)
+    with no_grad(), test_mode():
+        for img, labels, bboxs in loader:
+            img = img[0]
+            result = model(img)
+
+            bboxs, label = result
+            img = cuda.as_numpy(img[::-1].transpose(1, 2, 0).copy())
+            for i in bboxs:
+                img = cv.rectangle(img, i[:2], i[2:], (255, 0, 0), 2)
+            cv.imshow('result', img)
+            cv.waitKey()

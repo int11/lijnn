@@ -115,13 +115,3 @@ def main_AlexNet(name='default'):
                 sum_loss += loss.data
                 sum_acc += acc.data
         print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')
-
-def main_AlexNet_predict(index):
-    testset = lijnn.datasets.CIFAR10(train=False)
-    model = AlexNet(10)
-    model.load_weights_epoch(name='default')
-
-    img, label = testset[index]
-    y = model.predict(img)
-    arg = np.argmax(model.predict(img))
-    print(testset.labels()[arg])

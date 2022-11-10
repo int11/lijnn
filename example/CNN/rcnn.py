@@ -36,13 +36,13 @@ class VOC_SelectiveSearch(VOCclassfication):
                 ssbboxs = utils.SelectiveSearch(img)
                 temp = []
                 for ssbbox in ssbboxs:
-                    bb_iou = [utils.get_iou(ssbbox, bbox) for bbox in bboxs]
+                    bb_iou = [utils.iou(ssbbox, bbox) for bbox in bboxs]
                     indexM = np.argmax(bb_iou)
                     temp.append(labels[indexM] if bb_iou[indexM] > 0.5 else 20)
 
                 temp = np.append(ssbboxs, np.array(temp).reshape(-1, 1), axis=1)
                 temp = np.pad(temp, ((0, 0), (1, 0)), mode='constant', constant_values=i)
-                temp = temp[:2000] if len(temp) > 2000 else temp
+                temp = temp[:2000]
                 self.count = np.append(self.count, temp, axis=0)
             self.count = self.count[np.apply_along_axis(lambda x: x[0], axis=1, arr=self.count).argsort()]
             datasets.save_cache_npz({'label': self.count}, 'VOC_SelectiveSearch', train=train)
@@ -133,15 +133,14 @@ class VOC_Bbr(VOC_SelectiveSearch):
             self.count = self.count[np.where(self.count[:, 5] != 20)]
 
             index = []
-            self.g = np.empty((1, 4), np.int32)
+            self.g = np.empty((0, 4), np.int32)
             for e in range(len(self.count)):
                 label, bboxes = self._get_index_label_bboxes(self.count[e][0])
-                bb_iou = [utils.get_iou(self.count[e][1:5], bbox) for bbox in bboxes]
+                bb_iou = [utils.iou(self.count[e][1:5], bbox) for bbox in bboxes]
                 indexM = np.argmax(bb_iou)
                 if bb_iou[indexM] > 0.6:
                     index.append(e)
                     self.g = np.vstack((self.g, bboxes[indexM]))
-            self.g = np.delete(self.g, [0, 0], axis=0)
             self.p = self.count[:, :5][index]
             datasets.save_cache_npz({'x': self.p, 't': self.g}, 'VOC_Bbr', train=train)
 
@@ -276,22 +275,31 @@ class R_CNN(Model):
         xp = cuda.get_array_module(x)
         ssbboxs = utils.SelectiveSearch(x)
         trans_resize = resize(224)
-        probs = []
-        for e, ssbbox in enumerate(ssbboxs):
-            if e < 500:
-                img = AroundContext(x, ssbbox, 16)
-                img = trans_resize(img)
-                img = xp.expand_dims(img, axis=0)
-                softmax = F.softmax(self.vgg(img).data)
-                probs.append(softmax)
-        probs = xp.array(probs)
+        probs = xp.empty((0, 21))
+        for ssbbox in ssbboxs[:5]:
+            img = AroundContext(x, ssbbox, 16)
+            img = trans_resize(img)
+            img = xp.expand_dims(img, axis=0)
+            softmax = F.softmax(self.vgg(img))
+            probs = xp.append(probs, softmax.data, axis=0)
         NMS_idx = NMS(ssbboxs, probs, iou_threshold=0.5)
+        print()
 
 
 def NMS(boxes, probs, iou_threshold=0.5):
     xp = cuda.get_array_module(probs)
-    probs = xp.max(probs, axis=1)
-    probs = probs.argsort()[::-1]
+    order = xp.max(probs, axis=1)
+    order = order.argsort()[::-1]
+
+    keep = [True] * len(order)
+
+    for i in range(len(order) - 1):
+        ovps = utils.batch_iou(boxes[order[i]], boxes[order[i + 1:]])
+        for j, ov in enumerate(ovps):
+            if ov > iou_threshold:
+                # IOU가 특정 threshold 이상인 box를 False로 세팅
+                keep[order[j + i + 1]] = False
+    return keep
 
 
 if __name__ == '__main__':

@@ -396,30 +396,31 @@ def printoptions(precision=6, threshold=np.inf, suppress=True):
     np.set_printoptions(precision=precision, threshold=threshold, suppress=suppress)
 
 
-def get_iou(x, t):
-    x_xmin, x_ymin, x_xmax, x_ymax = x[0], x[1], x[2], x[3]
-    t_xmin, t_ymin, t_xmax, t_ymax = t[0], t[1], t[2], t[3]
-    assert t_xmin < t_xmax
-    assert t_ymin < t_ymax
-    assert x_xmin < x_xmax
-    assert x_ymin < x_ymax
-
-    x_left = max(t_xmin, x_xmin)
-    y_top = max(t_ymin, x_ymin)
-    x_right = min(t_xmax, x_xmax)
-    y_bottom = min(t_ymax, x_ymax)
-
-    if x_right < x_left or y_bottom < y_top:
+def iou(bbox1, bbox2):
+    p0 = np.maximum(bbox1[:2], bbox2[:2])
+    p1 = np.minimum(bbox1[2:], bbox2[2:])
+    if p1[0] < p0[0] or p1[1] < p0[1]:
         return 0.0
+    Overlap = (p0[0] - p1[0]) * (p0[1] - p1[1])
 
-    intersection_area = (x_right - x_left) * (y_bottom - y_top)
+    bb1_area = (bbox1[2] - bbox1[0]) * (bbox1[3] - bbox1[1])
+    bb2_area = (bbox2[2] - bbox2[0]) * (bbox2[3] - bbox2[1])
+    Union = bb1_area + bb2_area - Overlap
 
-    bb1_area = (t_xmax - t_xmin) * (t_ymax - t_ymin)
-    bb2_area = (x_xmax - x_xmin) * (x_ymax - x_ymin)
+    return Overlap / Union
 
-    iou = intersection_area / float(bb1_area + bb2_area - intersection_area)
-    assert iou >= 0.0
-    assert iou <= 1.0
+
+def batch_iou(bbox, bboxs):
+    p0 = np.maximum(bboxs[:, :2], bbox[:2])
+    p1 = np.minimum(bboxs[:, 2:], bbox[2:])
+    Overlap = (p0[:, 0] - p1[:, 0]) * (p0[:, 1] - p1[:, 1])
+
+    bb1_area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
+    bb2_area = (bboxs[:, 2] - bboxs[:, 0]) * (bboxs[:, 3] - bboxs[:, 1])
+    Union = bb1_area + bb2_area - Overlap
+    iou = Overlap / Union
+
+    iou[np.bitwise_or(iou < 0, iou > 1)] = 0
     return iou
 
 

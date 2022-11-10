@@ -285,7 +285,7 @@ class VOCDetection(Dataset):
 class VOCclassfication(VOCDetection):
     def __init__(self, train=True, year=2007, x_transform=None, t_transform=None):
         super(VOCclassfication, self).__init__(train, year, x_transform, t_transform)
-        self.count = np.empty((1, 6), dtype=np.int32)
+        self.count = np.empty((0, 6), dtype=np.int32)
         for a, b in enumerate(self.xml_tarinfo):
             bytes = self.file.extractfile(b).read()
             annotation = ET.fromstring(bytes)
@@ -295,7 +295,6 @@ class VOCclassfication(VOCDetection):
                 item = [[a, *[int(budbox.find(i).text) for i in ['xmin', 'ymin', 'xmax', 'ymax']],
                          self.revers_label[i.find("name").text]]]
                 self.count = np.append(self.count, item, axis=0)
-        self.count = np.delete(self.count, [0, 0], axis=0)
 
     def cut(self, index):
         self.count = self.count[index[0]:index[1]]

@@ -272,21 +272,23 @@ class R_CNN(Model):
         self.Bbr.load_weights_epoch()
 
     def forward(self, x):
+        xp = cuda.get_array_module(x)
         ssbboxs = utils.SelectiveSearch(x)
         trans_resize = resize(224)
-        probs = np.empty((0, 21))
+        probs = xp.empty((0, 21))
         for ssbbox in ssbboxs[:5]:
             img = AroundContext(x, ssbbox, 16)
             img = trans_resize(img)
-            img = np.expand_dims(img, axis=0)
+            img = xp.expand_dims(img, axis=0)
             softmax = F.softmax(self.vgg(img))
-            probs = np.append(probs, cuda.as_numpy(softmax.data), axis=0)
+            probs = xp.append(probs, softmax.data, axis=0)
         NMS_idx = NMS(ssbboxs, probs, iou_threshold=0.5)
         print()
 
 
 def NMS(boxes, probs, iou_threshold=0.5):
-    order = np.max(probs, axis=1)
+    xp = cuda.get_array_module(probs)
+    order = xp.max(probs, axis=1)
     order = order.argsort()[::-1]
 
     keep = [True] * len(order)

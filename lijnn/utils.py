@@ -397,8 +397,9 @@ def printoptions(precision=6, threshold=np.inf, suppress=True):
 
 
 def iou(bbox1, bbox2):
-    p0 = np.maximum(bbox1[:2], bbox2[:2])
-    p1 = np.minimum(bbox1[2:], bbox2[2:])
+    xp = cuda.get_array_module(bbox1)
+    p0 = xp.maximum(bbox1[:2], bbox2[:2])
+    p1 = xp.minimum(bbox1[2:], bbox2[2:])
     if p1[0] < p0[0] or p1[1] < p0[1]:
         return 0.0
     Overlap = (p0[0] - p1[0]) * (p0[1] - p1[1])
@@ -411,8 +412,9 @@ def iou(bbox1, bbox2):
 
 
 def batch_iou(bbox, bboxs):
-    p0 = np.maximum(bboxs[:, :2], bbox[:2])
-    p1 = np.minimum(bboxs[:, 2:], bbox[2:])
+    xp = cuda.get_array_module(bboxs)
+    p0 = xp.maximum(bboxs[:, :2], bbox[:2])
+    p1 = xp.minimum(bboxs[:, 2:], bbox[2:])
     Overlap = (p0[:, 0] - p1[:, 0]) * (p0[:, 1] - p1[:, 1])
 
     bb1_area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
@@ -420,11 +422,12 @@ def batch_iou(bbox, bboxs):
     Union = bb1_area + bb2_area - Overlap
     iou = Overlap / Union
 
-    iou[np.bitwise_or(iou < 0, iou > 1)] = 0
+    iou[xp.bitwise_or(iou < 0, iou > 1)] = 0
     return iou
 
 
 def SelectiveSearch(img, xywh=False):
+    xp = cuda.get_array_module(img)
     img = cuda.as_numpy(img)
 
     ss = cv.ximgproc.segmentation.createSelectiveSearchSegmentation()
@@ -433,4 +436,4 @@ def SelectiveSearch(img, xywh=False):
     ssbboxs = ss.process()
     if not xywh:
         ssbboxs[:, 2:4] = ssbboxs[:, 0:2] + ssbboxs[:, 2:4]
-    return ssbboxs
+    return xp.array(ssbboxs)

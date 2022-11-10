@@ -296,7 +296,7 @@ class R_CNN(Model):
         except_background = xp.argmax(probs, axis=1) != 20
         ssbboxs, probs = ssbboxs[except_background], probs[except_background]
 
-        index = NMS(ssbboxs, probs, iou_threshold=0.5)
+        index = NMS(ssbboxs, probs, iou_threshold=0.1)
         if len(index) != 0:
             ssbboxs, probs = ssbboxs[index], probs[index]
 
@@ -343,6 +343,7 @@ if __name__ == '__main__':
 
             bboxs, label = result
             img = cuda.as_numpy(img[::-1].transpose(1, 2, 0).copy())
+            bboxs = cuda.as_numpy(bboxs)
             for i in bboxs:
                 img = cv.rectangle(img, i[:2], i[2:], (255, 0, 0), 2)
             cv.imshow('result', img)

@@ -272,23 +272,21 @@ class R_CNN(Model):
         self.Bbr.load_weights_epoch()
 
     def forward(self, x):
-        xp = cuda.get_array_module(x)
         ssbboxs = utils.SelectiveSearch(x)
         trans_resize = resize(224)
-        probs = xp.empty((0, 21))
+        probs = np.empty((0, 21))
         for ssbbox in ssbboxs[:5]:
             img = AroundContext(x, ssbbox, 16)
             img = trans_resize(img)
-            img = xp.expand_dims(img, axis=0)
+            img = np.expand_dims(img, axis=0)
             softmax = F.softmax(self.vgg(img))
-            probs = xp.append(probs, softmax.data, axis=0)
+            probs = np.append(probs, cuda.as_numpy(softmax.data), axis=0)
         NMS_idx = NMS(ssbboxs, probs, iou_threshold=0.5)
         print()
 
 
 def NMS(boxes, probs, iou_threshold=0.5):
-    xp = cuda.get_array_module(probs)
-    order = xp.max(probs, axis=1)
+    order = np.max(probs, axis=1)
     order = order.argsort()[::-1]
 
     keep = [True] * len(order)
@@ -297,7 +295,6 @@ def NMS(boxes, probs, iou_threshold=0.5):
         ovps = utils.batch_iou(boxes[order[i]], boxes[order[i + 1:]])
         for j, ov in enumerate(ovps):
             if ov > iou_threshold:
-                # IOU가 특정 threshold 이상인 box를 False로 세팅
                 keep[order[j + i + 1]] = False
     return keep
 

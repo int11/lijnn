@@ -36,7 +36,8 @@ class Model(Layer):
         print('Done')
 
     def load_weights_epoch(self, epoch=None, ti=0, name='default', classname=None):
-        model_dir = os.path.join(utils.cache_dir, classname) if classname else os.path.join(utils.cache_dir, self.__class__.__name__)
+        model_dir = os.path.join(utils.cache_dir, classname) if classname else os.path.join(utils.cache_dir,
+                                                                                self.__class__.__name__)
         try:
             listdir = os.listdir(model_dir)
             if not os.path.exists(model_dir):
@@ -54,7 +55,8 @@ class Model(Layer):
                 temp0 = [i for i in name_listdir if int(i[1]) == epoch and len(i) == 4]
                 ti = 0 if temp else max([int(i[2]) for i in temp0])
 
-            weight_dir = os.path.join(model_dir, f'{name}_{epoch}_{ti}_epoch.npz' if ti else f'{name}_{epoch}_epoch.npz')
+            weight_dir = os.path.join(model_dir,
+                                      f'{name}_{epoch}_{ti}_epoch.npz' if ti else f'{name}_{epoch}_epoch.npz')
             print(f'\nmodel weight load : {weight_dir}\n')
             self.load_weights(weight_dir)
         except FileNotFoundError:
@@ -64,8 +66,8 @@ class Model(Layer):
         start_epoch = int(epoch) if ti else int(epoch) + 1
         return start_epoch, ti
 
-    def fit(self, epoch, optimizer, train_loader, test_loader=None, lossf=F.softmax_cross_entropy, name='default', iteration_print=False,
-            autosave=True, autosave_time=30):
+    def fit(self, epoch, optimizer, train_loader, test_loader=None, f_loss=F.softmax_cross_entropy,
+            f_accuracy=F.accuracy, name='default', iteration_print=False, autosave=True, autosave_time=30):
         optimizer = optimizer.setup(self)
         start_epoch, ti = self.load_weights_epoch(name=name)
 
@@ -80,17 +82,20 @@ class Model(Layer):
             st = time.time()
             for x, t in train_loader:
                 y = self(x)
-                loss = lossf(y, t)
-                acc = F.accuracy(y, t)
+                loss = f_loss(y, t)
+                acc = f_accuracy(y, t).data if f_accuracy else 0
                 self.cleargrads()
                 loss.backward()
                 optimizer.update()
                 sum_loss += loss.data
-                sum_acc += acc.data
+                sum_acc += acc
                 if iteration_print:
-                    print(f"loss : {loss.data} accuracy {acc.data}")
+                    s = f"loss : {loss.data}"
+                    if f_accuracy:
+                        s += f"accuracy {acc}"
+                    print(s)
                 if autosave and time.time() - st > autosave_time * 60:
-                    self.save_weights_epoch(i, autosave_time+ti, name)
+                    self.save_weights_epoch(i, autosave_time + ti, name)
                     autosave_time += autosave_time
             print(f"epoch {i + 1}")
             print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
@@ -101,12 +106,15 @@ class Model(Layer):
                 with no_grad(), test_mode():
                     for x, t in test_loader:
                         y = self(x)
-                        loss = F.softmax_cross_entropy(y, t)
-                        acc = F.accuracy(y, t)
+                        loss = f_loss(y, t)
+                        acc = f_accuracy(y, t).data if f_accuracy else 0
                         sum_loss += loss.data
-                        sum_acc += acc.data
+                        sum_acc += acc
                         if iteration_print:
-                            print(f"loss : {loss.data} accuracy {acc.data}")
+                            s = f"loss : {loss.data}"
+                            if f_accuracy:
+                                s += f"accuracy {acc}"
+                            print(s)
                 print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')
 
 

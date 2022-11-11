@@ -660,9 +660,10 @@ class Concatenate(Function):
         return xp.concatenate(x, self.axis)
 
     def backward(self, gx):
+        xp = cuda.get_array_module(gx)
         if len(self.inputs) == 1:
             return gx
-        sizes = np.array([v.shape[self.axis] for v in self.inputs[:-1]]).cumsum()
+        sizes = xp.array([v.shape[self.axis] for v in self.inputs[:-1]]).cumsum()
         return tuple(split_axis(gx, sizes, self.axis))
 
 
@@ -687,9 +688,7 @@ class SplitAxis(Function):
     def backward(self, gx):
         xp = cuda.get_array_module(gx)
         dtype = self.inputs[0].dtype
-        grads = [
-            xp.zeros(shape, dtype=dtype) if gy is None else gy
-            for gy, shape in zip(gx, self._shapes)]
+        grads = [xp.zeros(shape, dtype=dtype) if gy is None else gy for gy, shape in zip(gx, self._shapes)]
         return concatenate(grads, self.axis)
 
 

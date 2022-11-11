@@ -153,7 +153,7 @@ def main_VGG16_RCNN(name='default'):
 def trans_coordinate(c):
     xmin, ymin, xmax, ymax = c
     x, y, w, h = (xmin + xmax) / 2, (ymin + ymax) / 2, xmax - xmin, ymax - ymin
-    return x, y, w, h
+    return np.array([x, y, w, h])
 
 
 class VOC_Bbr(VOC_SelectiveSearch):
@@ -186,27 +186,35 @@ class VOC_Bbr(VOC_SelectiveSearch):
         index, p = p[0], p[1:]
         img = self._get_index_img(index)
         img = AroundContext(img, p, 16) if self.around_context else img[:, p[1]:p[3], p[0]:p[2]]
-        return self.img_transpose(img), trans_coordinate(p), trans_coordinate(g)
+
+        p, g = trans_coordinate(p), trans_coordinate(g)
+        t = np.array([(g[0] - p[0]) / p[2], (g[1] - p[1]) / p[3], np.log(g[2] / p[2]), np.log(g[3] / p[3])])
+        return self.img_transpose(img), t
 
     def __len__(self):
         return len(self.p)
 
 
 class Bounding_box_Regression(Model):
-    def __init__(self):
+    def __init__(self, feature_model=None):
         super().__init__()
+        self.feature_model = feature_model
+        if self.feature_model:
+            self._params.remove('feature_model')
         self.W_x = L.Linear(1, nobias=True)
         self.W_y = L.Linear(1, nobias=True)
         self.W_w = L.Linear(1, nobias=True)
         self.W_h = L.Linear(1, nobias=True)
 
     def forward(self, x):
+        if self.feature_model:
+            x = self.feature_model(x)
         d_x = self.W_x(x)
         d_y = self.W_y(x)
         d_w = self.W_w(x)
         d_h = self.W_h(x)
-
-        return d_x, d_y, d_w, d_h
+        xywh = F.concatenate((d_x, d_y, d_w, d_h), axis=1)
+        return xywh
 
     def predict(self, pool5_feature, ssbbox):
         xp = cuda.get_array_module(pool5_feature)
@@ -220,56 +228,17 @@ class Bounding_box_Regression(Model):
         return int(x - w / 2), int(y - h / 2), int(x + w / 2), int(y + h / 2)
 
 
-    def fit(self, feature_model, epoch, optimizer, train_loader, lossf=F.mean_squared_error, name='default',
-            iteration_print=False, autosave=True, autosave_time=30):
-        optimizer = optimizer.setup(self)
-        start_epoch, ti = self.load_weights_epoch(name=name)
-
-        if cuda.gpu_enable:
-            self.to_gpu()
-            feature_model.to_gpu()
-            train_loader.to_gpu()
-
-        for i in range(start_epoch, epoch + 1):
-            sum_loss = 0
-            st = time.time()
-            for img, p, g in train_loader:
-                with no_grad(), test_mode():
-                    feature = feature_model(img)
-                y = self(feature)
-
-                p = [as_variable(i.reshape(-1, 1)) for i in p.T]
-                g = [as_variable(i.reshape(-1, 1)) for i in g.T]
-                t = [(g[0] - p[0]) / p[2], (g[1] - p[1]) / p[3], F.log(g[2] / p[2]), F.log(g[3] / p[3])]
-
-                loss = [lossf(y[i], t[i]) for i in range(len(t))]
-
-                self.cleargrads()
-                for e in loss:
-                    e.backward()
-                optimizer.update()
-                sum_loss += sum([i.data for i in loss])
-
-                if iteration_print:
-                    print(f"loss : {sum([i.data for i in loss])}")
-                if autosave and time.time() - st > autosave_time * 60:
-                    self.save_weights_epoch(i, autosave_time + ti, name)
-                    autosave_time += autosave_time
-
-            print(f"epoch {i + 1}")
-            print(f'train loss {sum_loss / train_loader.max_iter}')
-            self.save_weights_epoch(i, name=name)
-
-
 def main_Bbr(name='default'):
     batch_size = 8
     mean = [103.939, 116.779, 123.68]
     vgg = VGG16_RCNN(pool5_feature=True)
+    vgg.load_weights_epoch()
 
     trainset = VOC_Bbr(img_transpose=compose([resize(224), toFloat(), z_score_normalize(mean, 1)]))
     train_loader = iterators.iterator(trainset, batch_size, shuffle=True)
-    model = Bounding_box_Regression()
-    model.fit(vgg, 10, lijnn.optimizers.Adam(alpha=0.0001), train_loader, name=name, iteration_print=True)
+    model = Bounding_box_Regression(feature_model=vgg)
+    model.fit(10, lijnn.optimizers.Adam(alpha=0.0001), train_loader, f_loss=F.mean_squared_error, f_accuracy=None,
+              name=name, iteration_print=True)
 
 
 class R_CNN(Model):

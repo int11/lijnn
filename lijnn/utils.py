@@ -437,3 +437,20 @@ def SelectiveSearch(img, xywh=False):
     if not xywh:
         ssbboxs[:, 2:4] = ssbboxs[:, 0:2] + ssbboxs[:, 2:4]
     return xp.array(ssbboxs)
+
+
+def NMS(bboxs, probs, iou_threshold=0.5):
+    """Non-maximum Suppression"""
+    xp = cuda.get_array_module(probs)
+    order = xp.max(probs, axis=1)
+    order = order.argsort()[::-1]
+
+    index = xp.array([True] * len(order))
+
+    for i in range(len(order) - 1):
+        ovps = batch_iou(bboxs[order[i]], bboxs[order[i + 1:]])
+        for j, ov in enumerate(ovps):
+            if ov > iou_threshold:
+                index[order[j + i + 1]] = False
+
+    return index

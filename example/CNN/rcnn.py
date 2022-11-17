@@ -1,6 +1,3 @@
-import cv2 as cv
-import numpy as np
-
 import lijnn.optimizers
 from lijnn import *
 from lijnn import layers as L
@@ -8,8 +5,6 @@ from lijnn import functions as F
 from lijnn.transforms import *
 from lijnn.datasets import VOCDetection, VOCclassfication
 from example.CNN import VGG16
-import xml.etree.ElementTree as ET
-import time
 
 
 def AroundContext(img, bbox, pad):
@@ -216,16 +211,14 @@ class Bounding_box_Regression(Model):
         xywh = F.concatenate((d_x, d_y, d_w, d_h), axis=1)
         return xywh
 
-    def predict(self, pool5_feature, ssbbox):
+    def predict(self, pool5_feature, ssbboxs):
         xp = cuda.get_array_module(pool5_feature)
-        d_x, d_y, d_w, d_h = [i.data for i in self(pool5_feature)]
-        p_x, p_y, p_w, p_h = trans_coordinate(ssbbox)
-        x = p_w * d_x + p_x
-        y = p_h * d_y + p_y
-        w = p_w * xp.exp(d_w)
-        h = p_h * xp.exp(d_h)
+        d = self(pool5_feature).data
+        p = xp.array([trans_coordinate(ssbbox) for ssbbox in ssbboxs])
+        x, y, w, h = p[:, 2] * d[:, 0] + p[:, 0], p[:, 3] * d[:, 1] + p[:, 1], \
+                     p[:, 2] * xp.exp(d[:, 2]), p[:, 3] * xp.exp(d[:, 3])
 
-        return int(x - w / 2), int(y - h / 2), int(x + w / 2), int(y + h / 2)
+        return xp.array([x - w / 2, y - h / 2, x + w / 2, y + h / 2], dtype=np.int32).T
 
 
 def main_Bbr(name='default'):
@@ -233,6 +226,8 @@ def main_Bbr(name='default'):
     mean = [103.939, 116.779, 123.68]
     vgg = VGG16_RCNN(pool5_feature=True)
     vgg.load_weights_epoch()
+    if cuda.gpu_enable:
+        vgg.to_gpu()
 
     trainset = VOC_Bbr(img_transpose=compose([resize(224), toFloat(), z_score_normalize(mean, 1)]))
     train_loader = iterators.iterator(trainset, batch_size, shuffle=True)
@@ -255,6 +250,8 @@ class R_CNN(Model):
 
         trans_resize = resize(224)
         probs = xp.empty((0, 21))
+
+        # batch memory issue
         for ssbbox in ssbboxs:
             img = AroundContext(x, ssbbox, 16)
             img = trans_resize(img)
@@ -265,35 +262,17 @@ class R_CNN(Model):
         except_background = xp.argmax(probs, axis=1) != 20
         ssbboxs, probs = ssbboxs[except_background], probs[except_background]
 
-        index = NMS(ssbboxs, probs, iou_threshold=0.1)
+        index = utils.NMS(ssbboxs, probs, iou_threshold=0.1)
         if len(index) != 0:
             ssbboxs, probs = ssbboxs[index], probs[index]
 
         self.vgg.pool5_feature = True
-        for i, ssbbox in enumerate(ssbboxs):
-            img = AroundContext(x, ssbbox, 16)
-            img = trans_resize(img)
-            img = xp.expand_dims(img, axis=0)
-            pool5_feature = self.vgg(img)
-            ssbboxs[i] = xp.array(self.Bbr.predict(pool5_feature, ssbbox)).ravel()
+        img = xp.array([trans_resize(AroundContext(x, ssbbox, 16)) for ssbbox in ssbboxs])
+
+        pool5_feature = self.vgg(img)
+        ssbboxs = self.Bbr.predict(pool5_feature, ssbboxs)
         self.vgg.pool5_feature = False
         return ssbboxs, xp.argmax(probs, axis=1)
-
-
-def NMS(bboxs, probs, iou_threshold=0.5):
-    xp = cuda.get_array_module(probs)
-    order = xp.max(probs, axis=1)
-    order = order.argsort()[::-1]
-
-    index = xp.array([True] * len(order))
-
-    for i in range(len(order) - 1):
-        ovps = utils.batch_iou(bboxs[order[i]], bboxs[order[i + 1:]])
-        for j, ov in enumerate(ovps):
-            if ov > iou_threshold:
-                index[order[j + i + 1]] = False
-
-    return index
 
 
 if __name__ == '__main__':

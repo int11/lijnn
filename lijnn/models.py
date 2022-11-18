@@ -10,19 +10,18 @@ class Model(Layer):
         y = self.forward(*inputs)
         return utils.plot_dot_graph(y, verbose=True, to_file=to_file)
 
-    def layers_info(self, parent_key=""):
+    def layers(self, parent_key=""):
         for name in self._params:
             obj = self.__dict__[name]
             key = parent_key + '/' + name if parent_key else name
             if isinstance(obj, Model):
-                obj.layers_info(key)
+                obj.layers(key)
             else:
-                temp = {}
-                obj.params_dict(temp)
                 print(f'{key} ({type(obj)})', end=" ")
-                for key, value in temp.items():
+                for key, value in obj.params_dict().items():
                     print(key, value.shape, end=" ")
                 print()
+
 
     def save_weights_epoch(self, epoch, t=None, name='default'):
         model_dir = os.path.join(utils.cache_dir, self.__class__.__name__)
@@ -37,7 +36,7 @@ class Model(Layer):
 
     def load_weights_epoch(self, epoch=None, ti=0, name='default', classname=None):
         model_dir = os.path.join(utils.cache_dir, classname) if classname else os.path.join(utils.cache_dir,
-                                                                                self.__class__.__name__)
+                                                                                            self.__class__.__name__)
         try:
             listdir = os.listdir(model_dir)
             if not os.path.exists(model_dir):

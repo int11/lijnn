@@ -55,7 +55,10 @@ class OverFeat_accuracy(Model):
             x = F.dropout(F.relu(self.fc8(x)))
             x = self.fc9(x)
         else:
+            # subsampling ratio = 12
             x = F.find_pooling(x, 3)
+            # receptive field = 77
+            # subsampling ratio = 36
             x = F.relu(self.conv7(x))
             x = F.relu(self.conv8(x))
             x = self.conv9(x)

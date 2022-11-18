@@ -61,21 +61,24 @@ class Layer:
         for param in self.params():
             param.to_gpu()
 
-    def params_dict(self, params_dict, parent_key=""):
-        for name in self._params:
-            obj = self.__dict__[name]
-            key = parent_key + '/' + name if parent_key else name
+    def params_dict(self):
+        def loop(self, parent_key=""):
+            for name in self._params:
+                obj = self.__dict__[name]
+                key = parent_key + '/' + name if parent_key else name
 
-            if isinstance(obj, Layer):
-                obj.params_dict(params_dict, key)
-            else:
-                params_dict[key] = obj
+                if isinstance(obj, Layer):
+                    loop(obj, key)
+                else:
+                    dict[key] = obj
+        dict = {}
+        loop(self)
+        return dict
 
     def save_weights(self, path):
         self.to_cpu()
 
-        params_dict = {}
-        self.params_dict(params_dict)
+        params_dict = self.params_dict()
         array_dict = {key: param.data for key, param in params_dict.items()
                       if param is not None}
         try:
@@ -90,9 +93,8 @@ class Layer:
 
     def load_weights(self, path):
         npz = np.load(path, allow_pickle=True)
-        params_dict = {}
-        self.params_dict(params_dict)
-        for key, param in params_dict.items():
+        dict = self.params_dict()
+        for key, param in dict.items():
             param.data = npz[key]
 
 

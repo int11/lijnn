@@ -92,7 +92,7 @@ class rcnniter(lijnn.iterator):
 
 class VGG16_RCNN(VGG16):
     def __init__(self, num_classes=21, pool5_feature=False):
-        super().__init__(num_classes=1000, imagenet_pretrained=True, dense_evaluate=False)
+        super().__init__(imagenet_pretrained=True)
         self.pool5_feature = pool5_feature
         self.fc8 = L.Linear(num_classes)
         self.conv8 = L.share_weight_conv2d(num_classes, kernel_size=1, stride=1, pad=0, target=self.fc8)

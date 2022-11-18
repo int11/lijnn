@@ -267,7 +267,6 @@ def average_pooling(x, kernel_size, stride=1, pad=0):
 
 class FinePooling(Function):
     def __init__(self, kernel_size, to_batch):
-        super().__init__()
         self.kernel_size = kernel_size
         self.to_batch = to_batch
 
@@ -281,10 +280,10 @@ class FinePooling(Function):
         xp = cuda.get_array_module(x)
 
         strides = x.strides
-        col = xp.lib.stride_tricks.as_strided(x, (3, 3, N, C,  KH, KW, OH, OW),
+        col = xp.lib.stride_tricks.as_strided(x, (3, 3, N, C, KH, KW, OH, OW),
                                               (strides[2], strides[3], strides[0], strides[1], strides[2], strides[3],
                                                strides[2] * SH, strides[3] * SW))
-        col = col.reshape(3, 3, N, C,  KH * KW, OH, OW)
+        col = col.reshape(3, 3, N, C, KH * KW, OH, OW)
         self.indexes = col.argmax(axis=4)
         y = col.max(axis=4)
         return y.reshape(3 * 3 * N, C, OH, OW) if self.to_batch else y
@@ -338,6 +337,20 @@ class FinePoolingGrad(Function):
 
 def find_pooling(x, kernel_size, to_batch=True):
     return FinePooling(kernel_size, to_batch)(x)
+
+
+class RoIPooling:
+    def __init__(self, output_size, bboxs):
+        super(self).__init__()
+        self.output_size = output_size
+        self.bboxs = bboxs
+
+    def forward(self, x):
+        return x
+
+
+def roi_pooling(x, output_size, bboxs):
+    return RoIPooling(output_size, bboxs)(x)
 
 
 # =============================================================================

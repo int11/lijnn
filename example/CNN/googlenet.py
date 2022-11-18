@@ -22,7 +22,7 @@ class GoogleNet(Model):
             def forward(self, x):
                 return F.relu(self.conv(x))
 
-        class Inception(Layer):
+        class Inception(Model):
             def __init__(self, out1, proj3, out3, proj5, out5, proj_pool):
                 super().__init__()
                 self.conv1 = Conv2d_Relu(out1, kernel_size=1)

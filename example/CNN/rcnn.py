@@ -196,20 +196,13 @@ class Bounding_box_Regression(Model):
         self.feature_model = feature_model
         if self.feature_model:
             self._params.remove('feature_model')
-        self.W_x = L.Linear(1, nobias=True)
-        self.W_y = L.Linear(1, nobias=True)
-        self.W_w = L.Linear(1, nobias=True)
-        self.W_h = L.Linear(1, nobias=True)
+        self.fc = L.Linear(4, nobias=True)
 
     def forward(self, x):
         if self.feature_model:
             x = self.feature_model(x)
-        d_x = self.W_x(x)
-        d_y = self.W_y(x)
-        d_w = self.W_w(x)
-        d_h = self.W_h(x)
-        xywh = F.concatenate((d_x, d_y, d_w, d_h), axis=1)
-        return xywh
+        x = self.fc(x)
+        return x
 
     def predict(self, pool5_feature, ssbboxs):
         xp = cuda.get_array_module(pool5_feature)

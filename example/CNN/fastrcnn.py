@@ -10,7 +10,8 @@ class Fast_R_CNN(VGG16):
         super().__init__(imagenet_pretrained=True)
 
     def forward(self, x):
-        ssbboxs = utils.SelectiveSearch(x)
+        xp = cuda.get_array_module(x)
+        ssbboxs = [utils.SelectiveSearch(i) for i in x]
         x = F.relu(self.conv1_1(x))
         x = F.relu(self.conv1_2(x))
         x = F.max_pooling(x, 2, 2)
@@ -28,15 +29,12 @@ class Fast_R_CNN(VGG16):
         x = F.relu(self.conv5_1(x))
         x = F.relu(self.conv5_2(x))
         x = F.relu(self.conv5_3(x))
+        # receptive field = 16
+        # subsampling ratio = 16
         x = F.roi_pooling(x, 7, ssbboxs)
-        # x.shape = (10, 512, 7, 7)
-        if self.dense_evaluate:
-            x = F.relu(self.conv6(x))
-            x = F.relu(self.conv7(x))
-            x = self.conv8(x)
-        else:
-            x = F.reshape(x, (x.shape[0], -1))
-            x = F.dropout(F.relu(self.fc6(x)))
-            x = F.dropout(F.relu(self.fc7(x)))
-            x = self.fc8(x)
+        # x.shape = (N, 512, 7, 7)
+        x = F.reshape(x, (x.shape[0], -1))
+        x = F.dropout(F.relu(self.fc6(x)))
+        x = F.dropout(F.relu(self.fc7(x)))
+        x = self.fc8(x)
         return x

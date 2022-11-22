@@ -119,38 +119,8 @@ def main_VGG16(name='default'):
 
     model = VGG16(num_classes=10)
     optimizer = optimizers.Adam(alpha=0.0001).setup(model)
-    start_epoch = model.load_weights_epoch(name=name)
-    if cuda.gpu_enable:
-        model.to_gpu()
-        train_loader.to_gpu()
-        test_loader.to_gpu()
+    model.fit(epoch, optimizer, train_loader, test_loader)
 
-    for i in range(start_epoch, epoch + 1):
-        sum_loss, sum_acc = 0, 0
-        for x, t in train_loader:
-            y = model(x)
-            loss = F.softmax_cross_entropy(y, t)
-            acc = F.accuracy(y, t)
-            model.cleargrads()
-            loss.backward()
-            optimizer.update()
-            sum_loss += loss.data
-            sum_acc += acc.data
-            print(f"loss : {loss.data} accuracy {acc.data}")
-        print(f"epoch {i + 1}")
-        print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
-        model.save_weights_epoch(i, name)
-
-        sum_loss, sum_acc = 0, 0
-        with no_grad(), test_mode():
-            for x, t in test_loader:
-                y = model.predict(x, mean, std)
-                loss = F.categorical_cross_entropy(y, t)
-                acc = F.accuracy(y, t)
-                sum_loss += loss.data
-                sum_acc += acc.data
-                print(f"loss : {loss.data} accuracy {acc.data}")
-        print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')
 
 
 """

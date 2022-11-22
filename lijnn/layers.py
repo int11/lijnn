@@ -230,6 +230,11 @@ class Deconv2d(Layer):
         return y
 
 
+class RoIPooling(Layer):
+    def forward(self, x, output_size, bboxs):
+        return x
+
+
 class share_weight_conv2d(Conv2d):
     def __init__(self, out_channels, kernel_size, stride, pad, target):
         super(share_weight_conv2d, self).__init__(out_channels, kernel_size, stride, pad, False, np.float32,

@@ -339,19 +339,6 @@ def find_pooling(x, kernel_size, to_batch=True):
     return FinePooling(kernel_size, to_batch)(x)
 
 
-class RoIPooling(Function):
-    def __init__(self, output_size, bboxs):
-        super().__init__()
-        self.output_size = output_size
-        self.bboxs = bboxs
-
-    def forward(self, x):
-        return x
-
-
-def roi_pooling(x, output_size, bboxs):
-    return RoIPooling(output_size, bboxs)(x)
-
 
 # =============================================================================
 #  im2col / col2im

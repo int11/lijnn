@@ -339,7 +339,6 @@ def find_pooling(x, kernel_size, to_batch=True):
     return FinePooling(kernel_size, to_batch)(x)
 
 
-
 # =============================================================================
 #  im2col / col2im
 # =============================================================================
@@ -434,7 +433,6 @@ def im2col_array(img, kernel_size, stride, pad, to_matrix=True):
     if xp != np:
         col = _im2col_gpu(img, kernel_size, stride, pad)
     else:
-
         img = np.pad(img,
                      ((0, 0), (0, 0), (PH, PH + SH - 1), (PW, PW + SW - 1)),
                      mode='constant', constant_values=(0,))

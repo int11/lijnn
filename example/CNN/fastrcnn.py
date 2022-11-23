@@ -8,11 +8,12 @@ from example.CNN import VGG16
 class Fast_R_CNN(VGG16):
     def __init__(self):
         super().__init__(imagenet_pretrained=True)
+        self.roipool = L.RoIPooling(7, 1 / 16)
 
     def forward(self, x):
         xp = cuda.get_array_module(x)
-        ssbboxs = [utils.SelectiveSearch(i) for i in x]
-
+        ssbboxs = xp.concatenate([np.pad(utils.SelectiveSearch(i),  ((0, 0), (1, 0)), mode='constant', constant_values=e)
+                            for e, i in enumerate(x)])
         x = F.relu(self.conv1_1(x))
         x = F.relu(self.conv1_2(x))
         x = F.max_pooling(x, 2, 2)
@@ -31,10 +32,9 @@ class Fast_R_CNN(VGG16):
         x = F.relu(self.conv5_2(x))
         x = F.relu(self.conv5_3(x))
         # receptive field = 16
-        subsampling_ratio = 16
-        ssbboxs = [xp.around(i/subsampling_ratio) for i in ssbboxs]
+        # subsampling_ratio = 16
 
-        x = F.roi_pooling(x, 7, ssbboxs)
+        x = self.roipool(x, ssbboxs)
         # x.shape = (N, 512, 7, 7)
         x = F.reshape(x, (x.shape[0], -1))
         x = F.dropout(F.relu(self.fc6(x)))

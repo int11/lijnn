@@ -71,6 +71,7 @@ class Layer:
                     loop(obj, key)
                 else:
                     dict[key] = obj
+
         dict = {}
         loop(self)
         return dict
@@ -231,7 +232,19 @@ class Deconv2d(Layer):
 
 
 class RoIPooling(Layer):
-    def forward(self, x, output_size, bboxs):
+    def __init__(self, output_size, spatial_scale):
+        super(RoIPooling, self).__init__()
+        self.output_size = output_size
+        self.spatial_scale = spatial_scale
+
+    def forward(self, x, bboxs):
+        xp = cuda.get_array_module(x)
+        bboxs[:, 1:] = bboxs[:, 1:] * self.spatial_scale
+        for i in bboxs:
+            index,x1,y1,x2,y2 = i[0]
+            x = x[index][y1:y2,x1:x2]
+        print(x.shape)
+
         return x
 
 

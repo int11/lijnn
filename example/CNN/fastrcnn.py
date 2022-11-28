@@ -8,7 +8,6 @@ from example.CNN import VGG16
 class Fast_R_CNN(VGG16):
     def __init__(self):
         super().__init__(imagenet_pretrained=True)
-        self.roipool = L.RoIPooling(7, 1 / 16)
 
     def forward(self, x):
         xp = cuda.get_array_module(x)
@@ -34,7 +33,7 @@ class Fast_R_CNN(VGG16):
         # receptive field = 16
         # subsampling_ratio = 16
 
-        x = self.roipool(x, ssbboxs)
+        x = self.roipool(x, ssbboxs, 1/16)
         # x.shape = (N, 512, 7, 7)
         x = F.reshape(x, (x.shape[0], -1))
         x = F.dropout(F.relu(self.fc6(x)))

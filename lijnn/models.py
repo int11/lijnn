@@ -1,27 +1,101 @@
 import time
+import numpy as np
 from lijnn import *
 import lijnn.functions as F
 import lijnn.layers as L
 import os
+import lijnn.functions_conv as Fc
 
 
 class Model(Layer):
+    exceptli = [core.Add, core.Mul, core.Sub, core.Div, core.Pow, F.ReLU, Fc.LocalResponseNormalization]
+
     def plot(self, *inputs, to_file='model.png'):
         y = self.forward(*inputs)
         return utils.plot_dot_graph(y, verbose=True, to_file=to_file)
 
-    def layers(self, parent_key=""):
-        for name in self._params:
-            obj = self.__dict__[name]
-            key = parent_key + '/' + name if parent_key else name
-            if isinstance(obj, Model):
-                obj.layers(key)
-            else:
-                print(f'{key} ({type(obj)})', end=" ")
-                for key, value in obj.params_dict().items():
-                    print(key, value.shape, end=" ")
-                print()
+    def layers_dict(self):
+        def loop(self, parent_key=""):
+            for name in self._params:
+                obj = self.__dict__[name]
+                key = parent_key + '/' + name if parent_key else name
+                if isinstance(obj, Model):
+                    loop(obj, key)
+                else:
+                    dict[key] = obj
+        dict = {}
+        loop(self)
+        return dict
 
+    def info(self, shape):
+        with using_config('enable_backprop', True):
+            y = self(np.zeros(shape))
+
+        functions = []
+        temp_funcs = []
+        seen_set = set()
+
+        def add_func(f):
+            if f not in seen_set:
+                temp_funcs.append(f)
+                seen_set.add(f)
+                temp_funcs.sort(key=lambda x: x.generation)
+
+        if isinstance(y, tuple):
+            for i in y:
+                add_func(i.creator)
+        else:
+            add_func(y.creator)
+
+        while temp_funcs:
+            f = temp_funcs.pop()
+            functions.append(f)
+
+            for x in f.inputs:
+                if x.creator is not None:
+                    add_func(x.creator)
+
+        # generate text
+        params_layers = self.layers_dict()
+
+        def getLayerAndname_FromParam(Params):
+            for param in Params:
+                for name, obj in params_layers.items():
+                    if id(param) in [id(i) for i in obj.params()]:
+                        return name, obj
+            return None, None
+
+        text = []
+        total_params = 0
+        for i in functions[::-1]:
+            if type(i) not in Model.exceptli:
+                temp_li = []
+                params = [input for input in i.inputs if isinstance(input, Parameter)]
+                name, obj = getLayerAndname_FromParam(params)
+
+                temp_li.append(f"{name} ({i.__class__.__name__})")
+
+                temp = ''
+                for output in i.outputs:
+                    temp += f'{str(output().shape)}'
+                temp_li.append(temp)
+
+                size = obj.params_size if obj else 0
+                temp_li.append(f'{size}')
+                total_params += size
+
+                text.append(temp_li)
+        # print text with sort
+        space = np.max([[len(e) for e in i] for i in text], axis=0)
+
+        print(f"\n{self.__class__.__name__:=^{np.sum(space) + 15}}")
+        print(f'{"Layer (type)":<{space[0] + 5}}{"Output Shape":<{space[1] + 5}}Param')
+        print('=' * (np.sum(space) + 15))
+        for i in text:
+            for e0, e1 in zip(i, space):
+                print(f'{e0:<{e1+5}}', end='')
+            print()
+        print(f"Total_params: {total_params:,}\n")
 
     def save_weights_epoch(self, epoch, t=None, name='default'):
         model_dir = os.path.join(utils.cache_dir, self.__class__.__name__)

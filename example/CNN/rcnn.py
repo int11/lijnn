@@ -95,7 +95,7 @@ class VGG16_RCNN(VGG16):
         super().__init__(imagenet_pretrained=True)
         self.pool5_feature = pool5_feature
         self.fc8 = L.Linear(num_classes)
-        self.conv8 = L.share_weight_conv2d(num_classes, kernel_size=1, stride=1, pad=0, target=self.fc8)
+        self.conv8 = L.Conv2d_share_weight(num_classes, kernel_size=1, stride=1, pad=0, target=self.fc8)
         self._params.remove('conv8')
 
     def forward(self, x):

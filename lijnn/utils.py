@@ -6,6 +6,8 @@ from lijnn import as_variable
 from lijnn import Variable
 from lijnn import cuda
 import cv2 as cv
+import sys
+import time
 
 """
 if use colab, os.path.expanduser() function return "/root"
@@ -454,3 +456,19 @@ def NMS(bboxs, probs, iou_threshold=0.5):
                 index[order[j + i + 1]] = False
 
     return index
+
+
+class Timer:
+    def __init__(self, func_name: str = 'this func'):
+        self.func_name: str = func_name
+        self.time_start: float = 0.0
+
+    def __enter__(self):
+        sys.stdout.flush()
+        self.time_start = time.perf_counter()
+        return self
+
+    def __exit__(self, *args):
+        time_end = time.perf_counter()
+        interval = time_end - self.time_start
+        print(f'{self.func_name}: {interval} sec')

@@ -231,26 +231,9 @@ class Deconv2d(Layer):
         return y
 
 
-class RoIPooling(Layer):
-    def __init__(self, output_size, spatial_scale):
-        super(RoIPooling, self).__init__()
-        self.output_size = output_size
-        self.spatial_scale = spatial_scale
-
-    def forward(self, x, bboxs):
-        xp = cuda.get_array_module(x)
-        bboxs[:, 1:] = bboxs[:, 1:] * self.spatial_scale
-        for i in bboxs:
-            index,x1,y1,x2,y2 = i[0]
-            x = x[index][y1:y2,x1:x2]
-        print(x.shape)
-
-        return x
-
-
-class share_weight_conv2d(Conv2d):
+class Conv2d_share_weight(Conv2d):
     def __init__(self, out_channels, kernel_size, stride, pad, target):
-        super(share_weight_conv2d, self).__init__(out_channels, kernel_size, stride, pad, False, np.float32,
+        super(Conv2d_share_weight, self).__init__(out_channels, kernel_size, stride, pad, False, np.float32,
                                                   None, initializers.He)
         self.target = target
 

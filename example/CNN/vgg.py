@@ -36,9 +36,9 @@ class VGG16(Model):
         self.fc7 = L.Linear(4096)
         self.fc8 = L.Linear(num_classes)
 
-        self.conv6 = L.share_weight_conv2d(4096, kernel_size=7, stride=1, pad=0, target=self.fc6)
-        self.conv7 = L.share_weight_conv2d(4096, kernel_size=1, stride=1, pad=0, target=self.fc7)
-        self.conv8 = L.share_weight_conv2d(num_classes, kernel_size=1, stride=1, pad=0, target=self.fc8)
+        self.conv6 = L.Conv2d_share_weight(4096, kernel_size=7, stride=1, pad=0, target=self.fc6)
+        self.conv7 = L.Conv2d_share_weight(4096, kernel_size=1, stride=1, pad=0, target=self.fc7)
+        self.conv8 = L.Conv2d_share_weight(num_classes, kernel_size=1, stride=1, pad=0, target=self.fc8)
         self._params.remove('conv6')
         self._params.remove('conv7')
         self._params.remove('conv8')

@@ -339,6 +339,32 @@ def find_pooling(x, kernel_size, to_batch=True):
     return FinePooling(kernel_size, to_batch)(x)
 
 
+class RoIPooling(Function):
+    def __init__(self, bboxs, output_size, spatial_scale):
+        super(RoIPooling, self).__init__()
+        self.bboxs = bboxs
+        self.output_size = output_size
+        self.spatial_scale = spatial_scale
+
+    def forward(self, x):
+        xp = cuda.get_array_module(x)
+        self.bboxs[:, 1:] = self.bboxs[:, 1:] * self.spatial_scale
+        a = []
+        for i in self.bboxs:
+            index, x1, y1, x2, y2 = i
+            a.append(x[index][y1:y2, x1:x2])
+        print(x.shape)
+
+        return x
+
+    def backward(self, gy):
+        return gy
+
+
+def roi_pooling(x, bboxs, output_size, spatial_scale):
+    return RoIPooling(bboxs, output_size, spatial_scale)(x)
+
+
 # =============================================================================
 #  im2col / col2im
 # =============================================================================
@@ -421,7 +447,7 @@ def col2im(x, input_shape, kernel_size, stride=1, pad=0, to_matrix=True):
 #  numpy im2col
 # =============================================================================
 
-def im2col_array(img, kernel_size, stride, pad, to_matrix=True):
+def im2col_array(img, kernel_size, stride, pad, to_matrix=False):
     N, C, H, W = img.shape
     KH, KW = pair(kernel_size)
     SH, SW = pair(stride)
@@ -430,22 +456,11 @@ def im2col_array(img, kernel_size, stride, pad, to_matrix=True):
     OW = get_conv_outsize(W, KW, SW, PW)
 
     xp = cuda.get_array_module(img)
-    if xp != np:
-        col = _im2col_gpu(img, kernel_size, stride, pad)
-    else:
-        img = np.pad(img,
-                     ((0, 0), (0, 0), (PH, PH + SH - 1), (PW, PW + SW - 1)),
-                     mode='constant', constant_values=(0,))
-        # col = np.ndarray((N, C, KH, KW, OH, OW), dtype=img.dtype)
-        # for j in range(KH):
-        #     j_lim = j + SH * OH
-        #     for i in range(KW):
-        #         i_lim = i + SW * OW
-        #         col[:, :, j, i, :, :] = img[:, :, j:j_lim:SH, i:i_lim:SW]
+    img = xp.pad(img, ((0, 0), (0, 0), (PH, PH + SH - 1), (PW, PW + SW - 1)), mode='constant', constant_values=(0,))
 
-        strides = img.strides
-        col = xp.lib.stride_tricks.as_strided(img, (N, C, KH, KW, OH, OW), (
-            strides[0], strides[1], strides[2], strides[3], strides[2] * SH, strides[3] * SW))
+    strides = img.strides
+    col = xp.lib.stride_tricks.as_strided(img, (N, C, KH, KW, OH, OW), (
+        strides[0], strides[1], strides[2], strides[3], strides[2] * SH, strides[3] * SW))
 
     if to_matrix:
         col = col.transpose((0, 4, 5, 1, 2, 3)).reshape((N * OH * OW, -1))
@@ -477,46 +492,6 @@ def col2im_array(col, img_shape, kernel_size, stride, pad, to_matrix=True):
                 i_lim = i + SW * OW
                 img[:, :, j:j_lim:SH, i:i_lim:SW] += col[:, :, j, i, :, :]
         return img[:, :, PH:H + PH, PW:W + PW]
-
-
-def _im2col_gpu(img, kernel_size, stride, pad):
-    """im2col function for GPU.
-    This code is ported from Chainer:
-    https://github.com/chainer/chainer/blob/v6.4.0/chainer/utils/conv.py
-    """
-    n, c, h, w = img.shape
-    kh, kw = pair(kernel_size)
-    sy, sx = pair(stride)
-    ph, pw = pair(pad)
-    out_h = get_conv_outsize(h, kh, sy, ph)
-    out_w = get_conv_outsize(w, kw, sx, pw)
-    dy, dx = 1, 1
-    col = cuda.cupy.empty((n, c, kh, kw, out_h, out_w), dtype=img.dtype)
-
-    cuda.cupy.ElementwiseKernel(
-        'raw T img, int32 h, int32 w, int32 out_h, int32 out_w,'
-        'int32 kh, int32 kw, int32 sy, int32 sx, int32 ph, int32 pw,'
-        'int32 dy, int32 dx',
-        'T col',
-        '''
-           int c0 = i / (kh * kw * out_h * out_w);
-           int ky = i / (kw * out_h * out_w) % kh;
-           int kx = i / (out_h * out_w) % kw;
-           int out_y = i / out_w % out_h;
-           int out_x = i % out_w;
-           int in_y = ky * dy + out_y * sy - ph;
-           int in_x = kx * dx + out_x * sx - pw;
-           if (in_y >= 0 && in_y < h && in_x >= 0 && in_x < w) {
-             col = img[in_x + w * (in_y + h * c0)];
-           } else {
-             col = 0;
-           }
-        ''',
-        'im2col')(img.reduced_view(), h, w, out_h, out_w,
-                  kh, kw, sy, sx, ph, pw,
-                  dy, dx, col)
-
-    return col
 
 
 def _col2im_gpu(col, sy, sx, ph, pw, h, w):

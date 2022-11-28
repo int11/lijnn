@@ -700,18 +700,8 @@ def split_axis(x, indices_or_sections, axis):
 # =============================================================================
 # conv2d / col2im / im2col / basic_math
 # =============================================================================
-from lijnn.functions_conv import conv2d
-from lijnn.functions_conv import deconv2d
-from lijnn.functions_conv import im2col
-from lijnn.functions_conv import col2im
-from lijnn.functions_conv import max_pooling
-from lijnn.functions_conv import average_pooling
+from lijnn.functions_conv import conv2d, deconv2d
+from lijnn.functions_conv import im2col, col2im
+from lijnn.functions_conv import max_pooling, average_pooling, find_pooling, roi_pooling, roi_pooling1
 from lijnn.functions_conv import local_response_normalization
-from lijnn.functions_conv import find_pooling
-from lijnn.core import add
-from lijnn.core import sub
-from lijnn.core import rsub
-from lijnn.core import mul
-from lijnn.core import div
-from lijnn.core import neg
-from lijnn.core import pow
+from lijnn.core import add, sub, rsub, mul, div, neg, pow

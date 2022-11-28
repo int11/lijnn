@@ -32,8 +32,9 @@ class Fast_R_CNN(VGG16):
         x = F.relu(self.conv5_3(x))
         # receptive field = 16
         # subsampling_ratio = 16
-
-        x = self.roipool(x, ssbboxs, 1/16)
+        print(x.shape, ssbboxs.shape)
+        x1 = F.roi_pooling1(x, ssbboxs, 7, 1/16)
+        x = F.roi_pooling(x, ssbboxs, 7, 1/16)
         # x.shape = (N, 512, 7, 7)
         x = F.reshape(x, (x.shape[0], -1))
         x = F.dropout(F.relu(self.fc6(x)))

@@ -339,116 +339,65 @@ def find_pooling(x, kernel_size, to_batch=True):
     return FinePooling(kernel_size, to_batch)(x)
 
 
-class RoIPooling(Function):
-    def __init__(self, output_size, spatial_scale):
-        super(RoIPooling, self).__init__()
-        self.output_size = output_size
-        self.spatial_scale = spatial_scale
-
-    def forward(self, x, bboxs):
-        xp = cuda.get_array_module(x)
-        _, C, H, W = x.shape
-        OH, OW = pair(self.output_size)
-        N, _ = bboxs.shape
-
-        bboxs[:, 1:] = bboxs[:, 1:] * self.spatial_scale
-        y = np.zeros((N, C, OH, OW), dtype=x.dtype)
-        for i, bbox in enumerate(bboxs):
-            index, x1, y1, x2, y2 = bbox
-            temp = x[index, :, y1:y2, x1:x2]
-            print()
-        print(x.shape)
-
-        return x
-
-    def backward(self, gy):
-        return gy
-
-
-def roi_pooling(x, bboxs, output_size, spatial_scale):
-    return RoIPooling(output_size, spatial_scale)(x, bboxs)
-
-
-def _roi_pooling_slice(size, stride, max_size, roi_offset):
-    start = int(np.floor(size * stride))
-    end = int(np.ceil((size + 1) * stride))
-
-    start = min(max(start + roi_offset, 0), max_size)
-    end = min(max(end + roi_offset, 0), max_size)
-
-    return slice(start, end), end - start
-
-
 class ROIPooling2D(Function):
     def __init__(self, output_size, spatial_scale):
         self.output_size = output_size
         self.spatial_scale = spatial_scale
 
     def forward(self, x, bboxs):
-        outh, outw = pair(self.output_size)
-        channels, height, width = x.shape[1:]
-        n_rois = bboxs.shape[0]
-        # `numpy.zeros` needs to be used because the arrays can be
-        # returned without having some of its values updated.
-        top_data = np.zeros((n_rois, channels, outh, outw),
-                            dtype=x.dtype)
-        self.argmax_data = np.zeros(top_data.shape, np.int32)
+        bboxs[:, 1:] *= self.spatial_scale
+        self._bottom_data_shape = x.shape
+        _, C, H, W = x.shape
+        OH, OW = pair(self.output_size)
+        N, _ = bboxs.shape
 
-        for i_roi in range(n_rois):
+        y = np.zeros((N, C, OH, OW), dtype=x.dtype)
+        self.argmax_data = np.zeros(y.shape, np.int32)
+
+        for i_roi in range(N):
             idx, xmin, ymin, xmax, ymax = bboxs[i_roi]
-            xmin = int(round(xmin * self.spatial_scale))
-            xmax = int(round(xmax * self.spatial_scale))
-            ymin = int(round(ymin * self.spatial_scale))
-            ymax = int(round(ymax * self.spatial_scale))
-            print(x[idx][:, ymin:ymax, xmin:xmax])
-            roi_width = max(xmax - xmin + 1, 1)
-            roi_height = max(ymax - ymin + 1, 1)
-            strideh = 1. * roi_height / outh
-            stridew = 1. * roi_width / outw
+            roi_width, roi_height = max(xmax - xmin, 1), max(ymax - ymin, 1)
+            strideh, stridew = roi_height / OH, roi_width / OW
+            for _outh in range(OH):
+                sliceh = slice(int(np.floor(_outh * strideh)) + ymin, int(np.ceil((_outh + 1) * strideh)) + ymin)
+                lenh = sliceh.stop - sliceh.start
 
-            for _outh in range(outh):
-                sliceh, lenh = _roi_pooling_slice(_outh, strideh, height, ymin)
-                if sliceh.stop <= sliceh.start:
-                    continue
-                for _outw in range(outw):
-                    slicew, lenw = _roi_pooling_slice(_outw, stridew, width, xmin)
-                    if slicew.stop <= slicew.start:
-                        continue
-                    roi_data = x[int(idx), :, sliceh, slicew].reshape(channels, -1)
-                    top_data[i_roi, :, _outh, _outw] = np.max(roi_data, axis=1)
+                for _outw in range(OW):
+                    slicew = slice(int(np.floor(_outw * stridew)) + xmin, int(np.ceil((_outw + 1) * stridew)) + xmin)
+                    lenw = slicew.stop - slicew.start
+
+                    roi_data = x[int(idx), :, sliceh, slicew].reshape(C, -1)
+                    y[i_roi, :, _outh, _outw] = np.max(roi_data, axis=1)
 
                     # get the max idx respect to feature_maps coordinates
-                    max_idx_slice = np.unravel_index(
-                        np.argmax(roi_data, axis=1), (lenh, lenw))
+                    max_idx_slice = np.unravel_index(np.argmax(roi_data, axis=1), (lenh, lenw))
                     max_idx_slice_h = max_idx_slice[0] + sliceh.start
                     max_idx_slice_w = max_idx_slice[1] + slicew.start
-                    max_idx_slice = max_idx_slice_h * width + max_idx_slice_w
+                    max_idx_slice = max_idx_slice_h * W + max_idx_slice_w
                     self.argmax_data[i_roi, :, _outh, _outw] = max_idx_slice
-        return top_data
+        return y
 
-    def forward_gpu(self, inputs):
-        self.retain_inputs((1,))
-        self._bottom_data_shape = inputs[0].shape
-        outh, outw = pair(self.output_size)
-        x, bboxs = inputs
-        channels, height, width = x.shape[1:]
-        n_rois = bboxs.shape[0]
-        top_data = cuda.cupy.empty((n_rois, channels, outh,
-                                    outw), dtype=x.dtype)
-        self.argmax_data = cuda.cupy.empty(top_data.shape, np.int32)
-        cuda.elementwise(
+    def forward_gpu(self, x, bboxs):
+        self._bottom_data_shape = x.shape
+        OH, OW = pair(self.output_size)
+
+        _, C, H, W = x.shape
+        N, _ = bboxs
+        y = cuda.cupy.empty((N, C, OH, OW), dtype=x.dtype)
+        self.argmax_data = cuda.cupy.empty(y.shape, np.int32)
+        cuda.cupy.ElementwiseKernel(
             '''
-            raw T x, T spatial_scale, int32 channels,
-            int32 height, int32 width, int32 pooled_height, int32 pooled_width,
+            raw T x, T spatial_scale, int32 C,
+            int32 H, int32 W, int32 pooled_height, int32 pooled_width,
             raw T bboxs
             ''',
-            'T top_data, int32 argmax_data',
+            'T y, int32 argmax_data',
             '''
             // pos in output filter
             int pw = i % pooled_width;
             int ph = (i / pooled_width) % pooled_height;
-            int c = (i / pooled_width / pooled_height) % channels;
-            int num = i / pooled_width / pooled_height / channels;
+            int c = (i / pooled_width / pooled_height) % C;
+            int num = i / pooled_width / pooled_height / C;
 
             int roi_batch_ind = bboxs[num * 5 + 0];
             int roi_start_w = round(bboxs[num * 5 + 1] * spatial_scale);
@@ -474,73 +423,65 @@ class ROIPooling2D(Function):
                                         * bin_size_w));
 
             // Add roi offsets and clip to input boundaries
-            hstart = min(max(hstart + roi_start_h, 0), height);
-            hend = min(max(hend + roi_start_h, 0), height);
-            wstart = min(max(wstart + roi_start_w, 0), width);
-            wend = min(max(wend + roi_start_w, 0), width);
+            hstart = min(max(hstart + roi_start_h, 0), H);
+            hend = min(max(hend + roi_start_h, 0), H);
+            wstart = min(max(wstart + roi_start_w, 0), W);
+            wend = min(max(wend + roi_start_w, 0), W);
             bool is_empty = (hend <= hstart) || (wend <= wstart);
 
             // Define an empty pooling region to be zero
             float maxval = is_empty ? 0 : -1E+37;
             // If nothing is pooled, argmax=-1 causes nothing to be backprop'd
             int maxidx = -1;
-            int data_offset = (roi_batch_ind * channels + c) * height * width;
+            int data_offset = (roi_batch_ind * C + c) * H * W;
             for (int h = hstart; h < hend; ++h) {
                 for (int w = wstart; w < wend; ++w) {
-                    int bottom_index = h * width + w;
+                    int bottom_index = h * W + w;
                     if (x[data_offset + bottom_index] > maxval) {
                         maxval = x[data_offset + bottom_index];
                         maxidx = bottom_index;
                     }
                 }
             }
-            top_data = maxval;
+            y = maxval;
             argmax_data = maxidx;
             ''', 'roi_pooling_2d_fwd'
-        )(x, self.spatial_scale, channels, height, width,
-          outh, outw, bboxs, top_data,
+        )(x, self.spatial_scale, C, H, W,
+          OH, OW, bboxs, y,
           self.argmax_data)
 
-        return top_data
+        return y
 
-    def backward(self, indexes, grad_outputs):
-        bottom_rois, = self.get_retained_inputs()
-        gtop_data, = grad_outputs
-
-        f = ROIPooling2DGrad(self.output_size, self.spatial_scale,
-                             self._bottom_data_shape, self.argmax_data)
-        return f.apply((bottom_rois, gtop_data))
+    def backward(self, gy):
+        x, bboxs = self.inputs
+        gx, gbboxs = ROIPooling2DGrad(self.output_size, self.spatial_scale, self._bottom_data_shape, self.argmax_data)(
+            gy, bboxs)
+        return gx, gbboxs
 
 
 class ROIPooling2DGrad(Function):
-
-    def __init__(self, output_size, spatial_scale, bottom_data_shape,
-                 argmax_data):
+    def __init__(self, output_size, spatial_scale, bottom_data_shape, argmax_data):
         self.output_size = output_size
         self.spatial_scale = spatial_scale
         self._bottom_data_shape = bottom_data_shape
         self.argmax_data = argmax_data
 
-    def forward_cpu(self, inputs):
-        outh, outw = pair(self.output_size)
+    def forward(self, gy, bboxs):
+        bboxs[:, 1:] *= self.spatial_scale
+        OH, OW = pair(self.output_size)
+        _, C, H, W = self._bottom_data_shape
+        N, _ = bboxs.shape
 
-        bottom_rois, gtop_data = inputs
-        channels, height, width = self._bottom_data_shape[1:]
-        n_rois = bottom_rois.shape[0]
-        bottom_delta = np.zeros(self._bottom_data_shape, bottom_rois.dtype)
+        bottom_delta = np.zeros(self._bottom_data_shape, bboxs.dtype)
 
-        for i_roi in range(n_rois):
-            idx, xmin, ymin, xmax, ymax = bottom_rois[i_roi]
+        for i_roi in range(N):
+            idx, xmin, ymin, xmax, ymax = bboxs[i_roi]
             idx = int(idx)
-            xmin = int(round(xmin * self.spatial_scale))
-            xmax = int(round(xmax * self.spatial_scale))
-            ymin = int(round(ymin * self.spatial_scale))
-            ymax = int(round(ymax * self.spatial_scale))
             roi_width = max(xmax - xmin + 1, 1)
             roi_height = max(ymax - ymin + 1, 1)
 
-            strideh = float(roi_height) / float(outh)
-            stridew = float(roi_width) / float(outw)
+            strideh = float(roi_height) / float(OH)
+            stridew = float(roi_width) / float(OW)
 
             # iterate all the w, h (from feature map) that fall into this ROIs
             for w in range(xmin, xmax + 1):
@@ -550,54 +491,54 @@ class ROIPooling2DGrad(Function):
                     pwstart = int(np.floor(float(w - xmin) / stridew))
                     pwend = int(np.ceil(float(w - xmin + 1) / stridew))
 
-                    phstart = min(max(phstart, 0), outh)
-                    phend = min(max(phend, 0), outh)
-                    pwstart = min(max(pwstart, 0), outw)
-                    pwend = min(max(pwend, 0), outw)
+                    phstart = min(max(phstart, 0), OH)
+                    phend = min(max(phend, 0), OH)
+                    pwstart = min(max(pwstart, 0), OW)
+                    pwend = min(max(pwend, 0), OW)
 
                     for ph in range(phstart, phend):
                         for pw in range(pwstart, pwend):
                             max_idx_tmp = self.argmax_data[i_roi, :, ph, pw]
-                            for c in range(channels):
-                                if max_idx_tmp[c] == (h * width + w):
+                            for c in range(C):
+                                if max_idx_tmp[c] == (h * W + w):
+                                    print(idx, c, h, w)
                                     bottom_delta[idx, c, h, w] += \
-                                        gtop_data[i_roi, c, ph, pw]
+                                        gy[i_roi, c, ph, pw]
         return bottom_delta, None
 
-    def forward_gpu(self, inputs):
-        bottom_rois, gtop_data = inputs
-        channels, height, width = self._bottom_data_shape[1:]
-        bottom_diff = cuda.cupy.zeros(
-            self._bottom_data_shape, bottom_rois.dtype)
+    def forward_gpu(self, gy, bboxs):
+        OH, OW = pair(self.output_size)
+        _, C, H, W = self._bottom_data_shape
+        gx = cuda.cupy.zeros(self._bottom_data_shape, bboxs.dtype)
 
-        cuda.elementwise(
+        cuda.cupy.ElementwiseKernel(
             '''
             raw T top_diff, raw int32 argmax_data, int32 num_rois,
-            T spatial_scale, int32 channels, int32 height, int32 width,
-            int32 pooled_height, int32 pooled_width, raw T bottom_rois
+            T spatial_scale, int32 C, int32 H, int32 W,
+            int32 pooled_height, int32 pooled_width, raw T bboxs
             ''',
-            'T bottom_diff',
+            'T gx',
             '''
-            int w = i % width;
-            int h = (i / width) % height;
-            int c = (i / (width * height)) % channels;
-            int num = i / (width * height * channels);
+            int w = i % W;
+            int h = (i / W) % H;
+            int c = (i / (W * H)) % C;
+            int num = i / (W * H * C);
 
             float gradient = 0;
             // Accumulate gradient over all ROIs that pooled this element
             for (int roi_n = 0; roi_n < num_rois; ++roi_n) {
                 // Skip if ROI's batch index doesn't match num
-                if (num != static_cast<int>(bottom_rois[roi_n * 5])) {
+                if (num != static_cast<int>(bboxs[roi_n * 5])) {
                     continue;
                 }
 
-                int roi_start_w = round(bottom_rois[roi_n * 5 + 1]
+                int roi_start_w = round(bboxs[roi_n * 5 + 1]
                                         * spatial_scale);
-                int roi_start_h = round(bottom_rois[roi_n * 5 + 2]
+                int roi_start_h = round(bboxs[roi_n * 5 + 2]
                                         * spatial_scale);
-                int roi_end_w = round(bottom_rois[roi_n * 5 + 3]
+                int roi_end_w = round(bboxs[roi_n * 5 + 3]
                                       * spatial_scale);
-                int roi_end_h = round(bottom_rois[roi_n * 5 + 4]
+                int roi_end_h = round(bboxs[roi_n * 5 + 4]
                                       * spatial_scale);
 
                 // Skip if ROI doesn't include (h, w)
@@ -607,7 +548,7 @@ class ROIPooling2DGrad(Function):
                     continue;
                 }
 
-                int offset = (roi_n * channels + c) * pooled_height
+                int offset = (roi_n * C + c) * pooled_height
                              * pooled_width;
 
                 // Compute feasible set of pooled units that could have pooled
@@ -639,26 +580,26 @@ class ROIPooling2DGrad(Function):
                 for (int ph = phstart; ph < phend; ++ph) {
                     for (int pw = pwstart; pw < pwend; ++pw) {
                         int index_ = ph * pooled_width + pw + offset;
-                        if (argmax_data[index_] == (h * width + w)) {
+                        if (argmax_data[index_] == (h * W + w)) {
                             gradient += top_diff[index_];
                         }
                     }
                 }
             }
-            bottom_diff = gradient;
+            gx = gradient;
             ''', 'roi_pooling_2d_bwd'
-        )(gtop_data, self.argmax_data, bottom_rois.shape[0],
-          self.spatial_scale, channels, height, width, self.outh, self.outw,
-          bottom_rois, bottom_diff)
+        )(gy, self.argmax_data, bboxs.shape[0],
+          self.spatial_scale, C, H, W, OH, OW,
+          bboxs, gx)
 
-        return bottom_diff, None
+        return gx, None
 
     def backward(self, indexes, grad_outputs):
         # No trivial way to implement double-backward for this function.
         raise NotImplementedError
 
 
-def roi_pooling1(x, rois, output_size, spatial_scale):
+def roi_pooling(x, rois, output_size, spatial_scale):
     return ROIPooling2D(output_size, spatial_scale)(x, rois)
 
 

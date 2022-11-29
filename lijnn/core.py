@@ -199,9 +199,23 @@ class Function:
         return outputs if len(outputs) > 1 else outputs[0]
 
     def forward(self, xs):
+        """
+        Args:
+            xs (ndarray): Input type must be ndarray.
+
+        Returns:
+            `numpy.ndarray`: Output type must be ndarray
+        """
         raise NotImplementedError()
 
     def backward(self, gys):
+        """
+        Args:
+            gys (`dezero.Variable`): Input type must be dezero.Variable
+
+        Returns:
+            `tuple(dezero.Variable)`: Output type must be tuple(dezero.Variable)
+        """
         raise NotImplementedError()
 
 

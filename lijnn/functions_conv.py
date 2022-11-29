@@ -501,7 +501,6 @@ class ROIPooling2DGrad(Function):
                             max_idx_tmp = self.argmax_data[i_roi, :, ph, pw]
                             for c in range(C):
                                 if max_idx_tmp[c] == (h * W + w):
-                                    print(idx, c, h, w)
                                     bottom_delta[idx, c, h, w] += \
                                         gy[i_roi, c, ph, pw]
         return bottom_delta, None

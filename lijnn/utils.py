@@ -410,7 +410,7 @@ def IOU(bbox1, bbox2):
     bb2_area = (bbox2[2] - bbox2[0]) * (bbox2[3] - bbox2[1])
     Union = bb1_area + bb2_area - Overlap
 
-    return Overlap / Union
+    return float(Overlap / Union)
 
 
 def SelectiveSearch(img, xywh=False):

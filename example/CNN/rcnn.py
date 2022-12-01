@@ -146,9 +146,10 @@ def main_VGG16_RCNN(name='default'):
 
 
 def trans_coordinate(c):
+    xp = cuda.get_array_module(c)
     xmin, ymin, xmax, ymax = c
     x, y, w, h = (xmin + xmax) / 2, (ymin + ymax) / 2, xmax - xmin, ymax - ymin
-    return np.array([x, y, w, h])
+    return xp.array([x, y, w, h])
 
 
 class VOC_Bbr(VOC_SelectiveSearch):
@@ -255,8 +256,6 @@ class R_CNN(Model):
         ssbboxs, probs = ssbboxs[except_background], probs[except_background]
 
         index = utils.NMS(ssbboxs, probs, iou_threshold=0.1)
-        index1 = utils.NMS1(ssbboxs, probs, iou_threshold=0.1)
-
         if len(index) != 0:
             ssbboxs, probs = ssbboxs[index], probs[index]
 

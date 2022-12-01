@@ -7,5 +7,5 @@ from example.CNN.googlenet import GoogleNet, main_GoogleNet
 from example.CNN.resnet import resnet18, resnet34, resnet50, resnet101, resnet152, main_ResNet
 from example.CNN.preact_resnet import preact_resnet18, preact_resnet34, preact_resnet50, preact_resnet101, \
     preact_resnet152, preact_resnet164, preact_resnet1001
-from example.CNN.rcnn import VGG16_RCNN, main_VGG16_RCNN, VOC_SelectiveSearch, rcnniter
+from example.CNN import rcnn
 from example.CNN.fastrcnn import Fast_R_CNN

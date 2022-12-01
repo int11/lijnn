@@ -398,7 +398,7 @@ def printoptions(precision=6, threshold=np.inf, suppress=True):
     np.set_printoptions(precision=precision, threshold=threshold, suppress=suppress)
 
 
-def iou(bbox1, bbox2):
+def IOU(bbox1, bbox2):
     xp = cuda.get_array_module(bbox1)
     p0 = xp.maximum(bbox1[:2], bbox2[:2])
     p1 = xp.minimum(bbox1[2:], bbox2[2:])
@@ -411,21 +411,6 @@ def iou(bbox1, bbox2):
     Union = bb1_area + bb2_area - Overlap
 
     return Overlap / Union
-
-
-def batch_iou(bbox, bboxs):
-    xp = cuda.get_array_module(bboxs)
-    p0 = xp.maximum(bboxs[:, :2], bbox[:2])
-    p1 = xp.minimum(bboxs[:, 2:], bbox[2:])
-    Overlap = (p0[:, 0] - p1[:, 0]) * (p0[:, 1] - p1[:, 1])
-
-    bb1_area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
-    bb2_area = (bboxs[:, 2] - bboxs[:, 0]) * (bboxs[:, 3] - bboxs[:, 1])
-    Union = bb1_area + bb2_area - Overlap
-    iou = Overlap / Union
-
-    iou[xp.bitwise_or(iou < 0, iou > 1)] = 0
-    return iou
 
 
 def SelectiveSearch(img, xywh=False):
@@ -442,20 +427,41 @@ def SelectiveSearch(img, xywh=False):
 
 
 def NMS(bboxs, probs, iou_threshold=0.5):
-    """Non-maximum Suppression"""
-    xp = cuda.get_array_module(probs)
-    order = xp.max(probs, axis=1)
-    order = order.argsort()[::-1]
+    # xp = cuda.get_array_module(bboxs)
+    # scores = xp.max(probs, axis=1)
+    # order = scores.argsort()[::-1]
+    #
+    # keep = []
+    # while order.size > 0:
+    #     target, order = order[0], order[1:]
+    #     keep.append(target)
+    #     iou = xp.array([IOU(bboxs[target], i) for i in bboxs[order]])
+    #     order = order[xp.where(iou <= iou_threshold)]
+    #
+    # return keep
 
-    index = xp.array([True] * len(order))
+    xp = cuda.get_array_module(bboxs)
+    scores = xp.max(probs, axis=1)
 
-    for i in range(len(order) - 1):
-        ovps = batch_iou(bboxs[order[i]], bboxs[order[i + 1:]])
-        for j, ov in enumerate(ovps):
-            if ov > iou_threshold:
-                index[order[j + i + 1]] = False
+    areas = (bboxs[:, 2] - bboxs[:, 0]) * (bboxs[:, 3] - bboxs[:, 1])
+    order = scores.argsort()[::-1]
 
-    return index
+    keep = []
+    while order.size > 0:
+        target, order = order[0], order[1:]
+        keep.append(target)
+
+        xy1 = xp.maximum(bboxs[target][:2], bboxs[order][:, :2])
+        xy2 = xp.minimum(bboxs[target][2:], bboxs[order][:, 2:])
+
+        Overlap = (xy1[:, 0] - xy2[:, 0]) * (xy1[:, 1] - xy2[:, 1])
+        Union = areas[target] + areas[order] - Overlap
+        iou = Overlap / Union
+        iou[xp.bitwise_or(iou < 0, iou > 1)] = 0
+
+        order = order[xp.where(iou <= iou_threshold)]
+
+    return keep
 
 
 class Timer:

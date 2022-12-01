@@ -124,17 +124,19 @@ class Model(Layer):
             if epoch is None:
                 epoch = max([int(i[1]) for i in name_listdir])
             if not ti:
+                # ex) default_1_epoch, default_5_epoch, default_9_epoch
                 temp = [i for i in name_listdir if int(i[1]) == epoch and len(i) == 3]
+                # ex) default_1_120_epoch, default_1_250_epoch, default_4_90_epoch
                 temp0 = [i for i in name_listdir if int(i[1]) == epoch and len(i) == 4]
                 ti = 0 if temp else max([int(i[2]) for i in temp0])
 
             weight_dir = os.path.join(model_dir,
                                       f'{name}_{epoch}_{ti}_epoch.npz' if ti else f'{name}_{epoch}_epoch.npz')
-            print(f'\nmodel weight load : {weight_dir}\n')
+            print(f'\n{self.__class__.__name__} Model weight load : {weight_dir}\n')
             self.load_weights(weight_dir)
         except FileNotFoundError:
             epoch = 0
-            print("\nNot found any weights file.\n")
+            print(f"\n{self.__class__.__name__} Model weight load Failed\n")
 
         start_epoch = int(epoch) if ti else int(epoch) + 1
         return start_epoch, ti

@@ -345,8 +345,9 @@ class ROIPooling2D(Function):
         self.spatial_scale = spatial_scale
 
     def forward(self, x, bboxs):
-        bboxs[:, 1:] *= self.spatial_scale
+        bboxs[:, 1:] = bboxs[:, 1:] * self.spatial_scale
         self._bottom_data_shape = x.shape
+
         _, C, H, W = x.shape
         OH, OW = pair(self.output_size)
         N, _ = bboxs.shape
@@ -379,10 +380,11 @@ class ROIPooling2D(Function):
 
     def forward_gpu(self, x, bboxs):
         self._bottom_data_shape = x.shape
-        OH, OW = pair(self.output_size)
 
+        OH, OW = pair(self.output_size)
         _, C, H, W = x.shape
         N, _ = bboxs
+
         y = cuda.cupy.empty((N, C, OH, OW), dtype=x.dtype)
         self.argmax_data = cuda.cupy.empty(y.shape, np.int32)
         cuda.cupy.ElementwiseKernel(
@@ -593,7 +595,7 @@ class ROIPooling2DGrad(Function):
 
         return gx, None
 
-    def backward(self, indexes, grad_outputs):
+    def backward(self, ggx, ggbboxs):
         # No trivial way to implement double-backward for this function.
         raise NotImplementedError
 

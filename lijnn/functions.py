@@ -140,8 +140,7 @@ class GetItem(Function):
 
     def backward(self, gy):
         x, = self.inputs
-        f = GetItemGrad(self.slices, x.shape)
-        return f(gy)
+        return GetItemGrad(self.slices, x.shape)(gy)
 
 
 class GetItemGrad(Function):

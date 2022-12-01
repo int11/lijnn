@@ -31,7 +31,7 @@ class VOC_SelectiveSearch(VOCclassfication):
                 ssbboxs = utils.SelectiveSearch(img)
                 temp = []
                 for ssbbox in ssbboxs:
-                    bb_iou = [utils.iou(ssbbox, bbox) for bbox in bboxs]
+                    bb_iou = [utils.IOU(ssbbox, bbox) for bbox in bboxs]
                     indexM = np.argmax(bb_iou)
                     temp.append(labels[indexM] if bb_iou[indexM] > 0.5 else 20)
 
@@ -166,7 +166,7 @@ class VOC_Bbr(VOC_SelectiveSearch):
             self.g = np.empty((0, 4), np.int32)
             for e in range(len(self.count)):
                 label, bboxes = self._get_index_label_bboxes(self.count[e][0])
-                bb_iou = [utils.iou(self.count[e][1:5], bbox) for bbox in bboxes]
+                bb_iou = [utils.IOU(self.count[e][1:5], bbox) for bbox in bboxes]
                 indexM = np.argmax(bb_iou)
                 if bb_iou[indexM] > 0.6:
                     index.append(e)
@@ -240,7 +240,6 @@ class R_CNN(Model):
     def forward(self, x):
         xp = cuda.get_array_module(x)
         ssbboxs = utils.SelectiveSearch(x)[:500]
-
         trans_resize = resize(224)
         probs = xp.empty((0, 21))
 
@@ -256,16 +255,19 @@ class R_CNN(Model):
         ssbboxs, probs = ssbboxs[except_background], probs[except_background]
 
         index = utils.NMS(ssbboxs, probs, iou_threshold=0.1)
+        index1 = utils.NMS1(ssbboxs, probs, iou_threshold=0.1)
+
         if len(index) != 0:
             ssbboxs, probs = ssbboxs[index], probs[index]
 
+        test = ssbboxs.copy()
         self.vgg.pool5_feature = True
         img = xp.array([trans_resize(AroundContext(x, ssbbox, 16)) for ssbbox in ssbboxs])
 
         pool5_feature = self.vgg(img)
         ssbboxs = self.Bbr.predict(pool5_feature, ssbboxs)
         self.vgg.pool5_feature = False
-        return ssbboxs, xp.argmax(probs, axis=1)
+        return ssbboxs, xp.argmax(probs, axis=1), test
 
 
 if __name__ == '__main__':
@@ -282,10 +284,12 @@ if __name__ == '__main__':
             img = img[0]
             result = model(img)
 
-            bboxs, label = result
+            bboxs, label, test = result
             img = cuda.as_numpy(img[::-1].transpose(1, 2, 0).copy())
             bboxs = cuda.as_numpy(bboxs)
             for i in bboxs:
                 img = cv.rectangle(img, i[:2], i[2:], (255, 0, 0), 2)
+            for i in test:
+                img = cv.rectangle(img, i[:2], i[2:], (0, 255, 0), 2)
             cv.imshow('result', img)
             cv.waitKey()

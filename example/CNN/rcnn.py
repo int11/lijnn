@@ -202,6 +202,7 @@ class Bounding_box_Regression(Model):
     def forward(self, x):
         if self.feature_model:
             x = self.feature_model(x)
+
         x = self.fc(x)
         return x
 
@@ -211,7 +212,6 @@ class Bounding_box_Regression(Model):
         p = xp.array([trans_coordinate(ssbbox) for ssbbox in ssbboxs])
         x, y, w, h = p[:, 2] * d[:, 0] + p[:, 0], p[:, 3] * d[:, 1] + p[:, 1], \
                      p[:, 2] * xp.exp(d[:, 2]), p[:, 3] * xp.exp(d[:, 3])
-
         return xp.array([x - w / 2, y - h / 2, x + w / 2, y + h / 2], dtype=np.int32).T
 
 
@@ -238,18 +238,17 @@ class R_CNN(Model):
         self.Bbr = Bounding_box_Regression()
         self.Bbr.load_weights_epoch()
 
+        self.trans_resize = compose([resize(224), toFloat(), z_score_normalize([103.939, 116.779, 123.68], 1)])
     def forward(self, x):
         xp = cuda.get_array_module(x)
-        ssbboxs = utils.SelectiveSearch(x)[:500]
-        trans_resize = resize(224)
+        ssbboxs = utils.SelectiveSearch(x)[:50]
         probs = xp.empty((0, 21))
 
         # batch memory issue
         for ssbbox in ssbboxs:
             img = AroundContext(x, ssbbox, 16)
-            img = trans_resize(img)
-            img = xp.expand_dims(img, axis=0)
-            softmax = F.softmax(self.vgg(img))
+            img = self.trans_resize(img)
+            softmax = F.softmax(self.vgg(img[None]))
             probs = xp.append(probs, softmax.data, axis=0)
 
         except_background = xp.argmax(probs, axis=1) != 20
@@ -261,11 +260,15 @@ class R_CNN(Model):
 
         test = ssbboxs.copy()
         self.vgg.pool5_feature = True
-        img = xp.array([trans_resize(AroundContext(x, ssbbox, 16)) for ssbbox in ssbboxs])
-
+        img = xp.array([self.trans_resize(AroundContext(x, ssbbox, 16)) for ssbbox in ssbboxs])
         pool5_feature = self.vgg(img)
         ssbboxs = self.Bbr.predict(pool5_feature, ssbboxs)
         self.vgg.pool5_feature = False
+
+        ssbboxs[:, 0] = xp.maximum(0, ssbboxs[:, 0])
+        ssbboxs[:, 1] = xp.maximum(0, ssbboxs[:, 1])
+        ssbboxs[:, 2] = xp.minimum(x.shape[2], ssbboxs[:, 2])
+        ssbboxs[:, 3] = xp.minimum(x.shape[1], ssbboxs[:, 3])
         return ssbboxs, xp.argmax(probs, axis=1), test
 
 

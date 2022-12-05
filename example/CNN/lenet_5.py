@@ -54,4 +54,4 @@ def main_LeNet_5(name='default'):
 
     model = LeNet_5()
     optimizer = optimizers.Adam().setup(model)
-    model.fit(epoch, optimizer, train_loader, test_loader)
+    model.fit(epoch, optimizer, train_loader, test_loader, name=name)

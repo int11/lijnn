@@ -136,13 +136,13 @@ class VGG16_RCNN(VGG16):
 def main_VGG16_RCNN(name='default'):
     size = 3
     batch_size = size * 4
-    mean = [103.939, 116.779, 123.68]
-
-    trainset = VOC_SelectiveSearch(
-        x_transform=compose([transforms.resize(224), toFloat(), z_score_normalize(mean, 1)]))
-    train_loader = rcnniter(trainset, pos_neg_number=(size, size * 3))
+    epoch = 10
     model = VGG16_RCNN()
-    model.fit(10, lijnn.optimizers.Adam(alpha=0.00001), train_loader, name=name, iteration_print=True)
+    trainset = VOC_SelectiveSearch(
+        x_transform=compose([transforms.resize(224), toFloat(), z_score_normalize(model.mean, 1)]))
+    train_loader = rcnniter(trainset, pos_neg_number=(size, size * 3))
+
+    model.fit(epoch, lijnn.optimizers.Adam(alpha=0.00001), train_loader, name=name, iteration_print=True)
 
 
 def trans_coordinate(c):
@@ -178,12 +178,14 @@ class VOC_Bbr(VOC_SelectiveSearch):
         del self.count
 
     def __getitem__(self, index):
+        # xy1xy2
         p, g = self.p[index], self.g[index]
         index, p = p[0], p[1:]
         img = self._get_index_img(index)
         img = AroundContext(img, p, 16) if self.around_context else img[:, p[1]:p[3], p[0]:p[2]]
-
+        # xywh
         p, g = trans_coordinate(p), trans_coordinate(g)
+        # xywh
         t = np.array([(g[0] - p[0]) / p[2], (g[1] - p[1]) / p[3], np.log(g[2] / p[2]), np.log(g[3] / p[3])])
         return self.img_transpose(img), t
 
@@ -202,31 +204,35 @@ class Bounding_box_Regression(Model):
     def forward(self, x):
         if self.feature_model:
             x = self.feature_model(x)
-
+        # xywh
         x = self.fc(x)
         return x
 
     def predict(self, pool5_feature, ssbboxs):
         xp = cuda.get_array_module(pool5_feature)
+        # xywh
         d = self(pool5_feature).data
+        # xywh
         p = xp.array([trans_coordinate(ssbbox) for ssbbox in ssbboxs])
+        # xywh
         x, y, w, h = p[:, 2] * d[:, 0] + p[:, 0], p[:, 3] * d[:, 1] + p[:, 1], \
                      p[:, 2] * xp.exp(d[:, 2]), p[:, 3] * xp.exp(d[:, 3])
+        # xy1xy2
         return xp.array([x - w / 2, y - h / 2, x + w / 2, y + h / 2], dtype=np.int32).T
 
 
 def main_Bbr(name='default'):
     batch_size = 8
-    mean = [103.939, 116.779, 123.68]
+    epoch = 10
     vgg = VGG16_RCNN(pool5_feature=True)
     vgg.load_weights_epoch()
     if cuda.gpu_enable:
         vgg.to_gpu()
 
-    trainset = VOC_Bbr(img_transpose=compose([resize(224), toFloat(), z_score_normalize(mean, 1)]))
+    trainset = VOC_Bbr(img_transpose=compose([resize(224), toFloat(), z_score_normalize(vgg.mean, 1)]))
     train_loader = iterators.iterator(trainset, batch_size, shuffle=True)
     model = Bounding_box_Regression(feature_model=vgg)
-    model.fit(10, lijnn.optimizers.Adam(alpha=0.0001), train_loader, f_loss=F.mean_squared_error, f_accuracy=None,
+    model.fit(epoch, lijnn.optimizers.Adam(alpha=0.0001), train_loader, f_loss=F.mean_squared_error, f_accuracy=None,
               name=name, iteration_print=True)
 
 
@@ -238,7 +244,8 @@ class R_CNN(Model):
         self.Bbr = Bounding_box_Regression()
         self.Bbr.load_weights_epoch()
 
-        self.trans_resize = compose([resize(224), toFloat(), z_score_normalize([103.939, 116.779, 123.68], 1)])
+        self.trans_resize = compose([resize(224), toFloat(), z_score_normalize(self.vgg.mean, 1)])
+
     def forward(self, x):
         xp = cuda.get_array_module(x)
         ssbboxs = utils.SelectiveSearch(x)[:50]
@@ -272,8 +279,7 @@ class R_CNN(Model):
         return ssbboxs, xp.argmax(probs, axis=1), test
 
 
-if __name__ == '__main__':
-    utils.printoptions()
+def main_R_CNN():
     dataset = VOCDetection()
     loader = iterator(dataset, 1, shuffle=False)
     model = R_CNN()

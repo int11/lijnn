@@ -151,6 +151,6 @@ def main_OverFeat(name='default'):
 
     model = OverFeat_accuracy(20)
     optimizer = optimizers.Adam(alpha=0.0001).setup(model)
-    model.fit(epoch, optimizer, train_loader, test_loader)
+    model.fit(epoch, optimizer, train_loader, test_loader, name=name)
 
 # TODO Localization

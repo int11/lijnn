@@ -17,6 +17,7 @@ class VGG16(Model):
     WEIGHTS_PATH = 'https://github.com/koki0702/dezero-models/releases/download/v0.1/vgg16.npz'
 
     def __init__(self, num_classes=1000, imagenet_pretrained=False, dense_evaluate=False):
+        assert imagenet_pretrained and num_classes != 1000
         super().__init__()
         self.dense_evaluate = dense_evaluate
         self.conv1_1 = L.Conv2d(64, kernel_size=3, stride=1, pad=1)
@@ -78,6 +79,10 @@ class VGG16(Model):
             x = self.fc8(x)
         return x
 
+    @property
+    def mean(self):
+        return [103.939, 116.779, 123.68]
+
     # TODO: multi-crop & dense evaluation
     def predict(self, x, mean, std):
         xp = cuda.get_array_module(x)
@@ -102,7 +107,7 @@ class VGG16(Model):
 
     def predict_imagenet(self, x):
         # imagenet pretrain model train by BGR
-        return self.predict(x[::-1], [103.939, 116.779, 123.68], 1)
+        return self.predict(x[::-1], self.mean, 1)
 
 
 def main_VGG16(name='default'):
@@ -119,8 +124,7 @@ def main_VGG16(name='default'):
 
     model = VGG16(num_classes=10)
     optimizer = optimizers.Adam(alpha=0.0001).setup(model)
-    model.fit(epoch, optimizer, train_loader, test_loader)
-
+    model.fit(epoch, optimizer, train_loader, test_loader, name=name)
 
 
 """

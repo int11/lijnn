@@ -85,7 +85,7 @@ class GoogleNet(Model):
         if Config.train:
             aux1 = F.average_pooling(x, kernel_size=5, stride=3)
             aux1 = self.loss1_conv(aux1)
-            aux1 = F.reshape(aux1, (x.shape[0], -1))
+            aux1 = F.flatten(aux1)
             aux1 = F.relu(self.loss1_fc1(aux1))
             aux1 = F.dropout(aux1, 0.7)
             aux1 = self.loss1_fc2(aux1)
@@ -95,7 +95,7 @@ class GoogleNet(Model):
         if Config.train:
             aux2 = F.average_pooling(x, kernel_size=5, stride=3)
             aux2 = self.loss2_conv(aux2)
-            aux2 = F.reshape(aux2, (x.shape[0], -1))
+            aux2 = F.flatten(aux2)
             aux2 = F.relu(self.loss2_fc1(aux2))
             aux2 = F.dropout(aux2, 0.7)
             aux2 = self.loss2_fc2(aux2)
@@ -108,7 +108,7 @@ class GoogleNet(Model):
         x = F.average_pooling(x, kernel_size=7, stride=1)
 
         x = F.dropout(x, 0.4)
-        x = F.reshape(x, (x.shape[0], -1))
+        x = F.flatten(x)
         x = self.loss3_fc(x)
         if Config.train:
             return aux1, aux2, x

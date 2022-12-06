@@ -38,7 +38,7 @@ class Fast_R_CNN(VGG16):
         # subsampling_ratio = 16
         x = F.roi_pooling(x, ssbboxs, 7, 1 / 16)
         # x.shape = (N, 512, 7, 7)
-        x = F.reshape(x, (x.shape[0], -1))
+        x = F.flatten(x)
         x = F.dropout(F.relu(self.fc6(x)))
         x = F.dropout(F.relu(self.fc7(x)))
 
@@ -48,7 +48,7 @@ class Fast_R_CNN(VGG16):
 
 def multi_loss(x, x_bbox, t, t_bbox):
     loss_cls = F.softmax_cross_entropy(x, t)
-    loss_loc =
+    # loss_loc =
 def main_Fast_R_CNN():
     batch_size = 16
     epoch = 10

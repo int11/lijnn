@@ -35,7 +35,7 @@ class LeNet_5(Model):
         x = F.max_pooling(x, kernel_size=2)
         x = F.tanh(self.conv3(x))
 
-        x = F.reshape(x, (x.shape[0], -1))
+        x = F.flatten(x)
         x = F.tanh(self.fc4(x))
         x = self.fc5(x)
         return x

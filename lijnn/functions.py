@@ -193,8 +193,7 @@ class Sum(Function):
         return y
 
     def backward(self, gy):
-        gy = utils.reshape_sum_backward(gy, self.x_shape, self.axis,
-                                        self.keepdims)
+        gy = utils.reshape_sum_backward(gy, self.x_shape, self.axis, self.keepdims)
         gx = broadcast_to(gy, self.x_shape)
         return gx
 
@@ -393,21 +392,38 @@ def leaky_relu(x, slope=0.2):
 
 
 class MeanSquaredError(Function):
-    def forward(self, x0, x1):
-        diff = x0 - x1
+    def forward(self, x, t):
+        diff = x - t
+        self.diff = diff
         y = (diff ** 2).sum() / len(diff)
         return y
 
     def backward(self, gy):
-        x0, x1 = self.inputs
-        diff = x0 - x1
-        gx0 = gy * diff * (2. / len(diff))
-        gx1 = -gx0
-        return gx0, gx1
+        gx = gy * self.diff * (2. / len(self.diff))
+        gt = -gx
+        return gx, gt
 
 
-def mean_squared_error(x0, x1):
-    return MeanSquaredError()(x0, x1)
+def mean_squared_error(x, t):
+    return MeanSquaredError()(x, t)
+
+
+class CategoricalCrossEntropy(Function):
+    def forward(self, x, t):
+        xp = cuda.get_array_module(x)
+        N = x.shape[0]
+        p = xp.clip(x, 1e-15, 1.0)
+        log_p = xp.log(p[xp.arange(N), t.ravel()])
+        y = -log_p.sum() / N
+        return y
+
+    def backward(self, dout=1):
+        x, t = self.inputs
+        return -(t / x)
+
+
+def categorical_cross_entropy(y, t):
+    return CategoricalCrossEntropy()(y, t)
 
 
 class SoftmaxCrossEntropy(Function):
@@ -447,44 +463,53 @@ def softmax_cross_entropy(x, t):
     return SoftmaxCrossEntropy()(x, t)
 
 
-def sigmoid_cross_entropy(x, t):
+def binary_cross_entropy(x, t):
     if x.ndim != t.ndim:
         t = t.reshape(*x.shape)
     x, t = as_variable(x), as_variable(t)
-    N = len(x)
-    p = sigmoid(x)
-    p = clip(p, 1e-15, 1.0)
-    tlog_p = t * log(p) + (1 - t) * log(1 - p)
-    y = -1 * sum(tlog_p) / N
-    return y
-
-
-def binary_cross_entropy(p, t):
-    if p.ndim != t.ndim:
-        t = t.reshape(*p.shape)
     N = len(t)
-    p = clip(p, 1e-15, 0.999)
-    tlog_p = t * log(p) + (1 - t) * log(1 - p)
+    x = clip(x, 1e-15, 1.0)
+    tlog_p = t * log(x) + (1 - t) * log(1 - x)
     y = -1 * sum(tlog_p) / N
     return y
 
 
-class CategoricalCrossEntropy(Function):
+def sigmoid_cross_entropy(x, t):
+    return binary_cross_entropy(sigmoid(x), t)
+
+
+class L1Loss(Function):
     def forward(self, x, t):
-        xp = cuda.get_array_module(x)
-        N = x.shape[0]
-        p = xp.clip(x, 1e-15, 1.0)
-        log_p = xp.log(p[xp.arange(N), t.ravel()])
-        y = -log_p.sum() / N
+        self.x_shape = x.shape
+        y = x - t
+        return y.sum()
+
+    def backward(self, gy):
+        gy = utils.reshape_sum_backward(gy, self.x_shape, None, False)
+        gx = broadcast_to(gy, self.x_shape)
+        gt = -gx
+        return gx, gt
+
+
+def l1_loss(x, t):
+    return L1Loss()(x, t)
+
+
+class L2Loss(Function):
+    def forward(self, x, t):
+        diff = x - t
+        self.diff = diff
+        y = (diff ** 2).sum()
         return y
 
-    def backward(self, dout=1):
-        x, t = self.inputs
-        return -(t / x)
+    def backward(self, gy):
+        gx = gy * self.diff * 2.
+        gt = -gx
+        return gx, gt
 
 
-def categorical_cross_entropy(y, t):
-    return CategoricalCrossEntropy()(y, t)
+def l2_loss(x, t):
+    return L2Loss()(x, t)
 
 
 # =============================================================================

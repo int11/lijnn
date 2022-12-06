@@ -118,7 +118,7 @@ class VGG16_RCNN(VGG16):
         x = F.relu(self.conv5_3(x))
         x = F.max_pooling(x, 2, 2)
         if self.pool5_feature:
-            x = F.reshape(x, (x.shape[0], -1))
+            x = F.flatten(x)
             return x
         # x.shape = (10, 512, 7, 7)
         if self.dense_evaluate:
@@ -126,7 +126,7 @@ class VGG16_RCNN(VGG16):
             x = F.relu(self.conv7(x))
             x = self.conv8(x)
         else:
-            x = F.reshape(x, (x.shape[0], -1))
+            x = F.flatten(x)
             x = F.dropout(F.relu(self.fc6(x)))
             x = F.dropout(F.relu(self.fc7(x)))
             x = self.fc8(x)

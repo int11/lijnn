@@ -43,7 +43,7 @@ class AlexNet(Model):
 
         x = F.max_pooling(x, kernel_size=3, stride=2)
 
-        x = F.reshape(x, (x.shape[0], -1))
+        x = F.flatten(x)
         x = F.dropout(F.relu(self.fc6(x)))
         x = F.dropout(F.relu(self.fc7(x)))
         x = self.fc8(x)

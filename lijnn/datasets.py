@@ -227,7 +227,7 @@ class VOCDetection(Dataset):
 
     def __init__(self, train=True, year=2007, x_transform=None, t_transform=None):
         assert 2007 <= year <= 2012
-        assert not train and year != 2007
+        assert not (not train and year != 2007)
         super().__init__(train, x_transform, t_transform)
         self.year = str(year)
         url = self.DATASET_YEAR_DICT[self.year + 'test'] if self.train == False and self.year == "2007" else \

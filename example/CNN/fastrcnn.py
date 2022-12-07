@@ -46,9 +46,13 @@ class Fast_R_CNN(VGG16):
         bbox_pred = self.Bbr(x)
         return cls_score, bbox_pred
 
+
 def multi_loss(x, x_bbox, t, t_bbox):
     loss_cls = F.softmax_cross_entropy(x, t)
-    # loss_loc =
+    loss_loc = F.smooth_l1_loss(x_bbox, t_bbox)
+    return loss_cls + loss_loc
+
+
 def main_Fast_R_CNN():
     batch_size = 16
     epoch = 10

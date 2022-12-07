@@ -154,6 +154,12 @@ class Variable:
     def sum(self, axis=None, keepdims=False):
         return lijnn.functions.sum(self, axis, keepdims)
 
+    def Absolute(self):
+        return lijnn.functions.absolute(self)
+
+    def abs(self):
+        return lijnn.functions.absolute(self)
+
     def to_cpu(self):
         if self.data is not None:
             self.data = lijnn.cuda.as_numpy(self.data)

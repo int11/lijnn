@@ -188,13 +188,12 @@ class Sum(Function):
         self.keepdims = keepdims
 
     def forward(self, x):
-        self.x_shape = x.shape
-        y = x.sum(axis=self.axis, keepdims=self.keepdims)
-        return y
+        return x.sum(axis=self.axis, keepdims=self.keepdims)
 
     def backward(self, gy):
-        gy = utils.reshape_sum_backward(gy, self.x_shape, self.axis, self.keepdims)
-        gx = broadcast_to(gy, self.x_shape)
+        input_shape = self.inputs[0].shape
+        gy = utils.reshape_sum_backward(gy, input_shape, self.axis, self.keepdims)
+        gx = broadcast_to(gy, input_shape)
         return gx
 
 
@@ -394,12 +393,13 @@ def leaky_relu(x, slope=0.2):
 class MeanSquaredError(Function):
     def forward(self, x, t):
         diff = x - t
-        self.diff = diff
         y = (diff ** 2).sum() / len(diff)
         return y
 
     def backward(self, gy):
-        gx = gy * self.diff * (2. / len(self.diff))
+        x, t = self.inputs
+        diff = x - t
+        gx = gy * diff * (2. / len(diff))
         gt = -gx
         return gx, gt
 
@@ -495,15 +495,39 @@ def l1_loss(x, t):
     return L1Loss()(x, t)
 
 
+class SmoothL1Loss(Function):
+    def forward(self, x, t):
+        xp = cuda.get_array_module(x)
+        y = x - t
+        self.index = xp.abs(y) <= 1
+        y[self.index] = 0.5 * y[self.index] ** 2
+        y[~self.index] = xp.abs(y[~self.index]) - 0.5
+        return y.sum()
+
+    def backward(self, gy):
+        x, t = self.inputs
+        y = x - t
+        gy = utils.reshape_sum_backward(gy, y.shape, self.axis, self.keepdims)
+        gx = broadcast_to(gy, y.shape)
+        gx[~self.index] = AbsoluteGrad(y[~self.index])(gx[~self.index])
+        gx[self.index] = gx[self.index] * y * 2 * 0.5
+        return gy
+
+
+def smooth_l1_loss(x, t):
+    return SmoothL1Loss()(x, t)
+
+
 class L2Loss(Function):
     def forward(self, x, t):
         diff = x - t
-        self.diff = diff
         y = (diff ** 2).sum()
         return y
 
     def backward(self, gy):
-        gx = gy * self.diff * 2.
+        x, t = self.inputs
+        diff = x - t
+        gx = gy * diff * 2.
         gt = -gx
         return gx, gt
 
@@ -617,7 +641,7 @@ def embed_id(x, W):
 
 
 # =============================================================================
-# max / min / clip
+# max / min / clip / Concatenate
 # =============================================================================
 class Max(Function):
     def __init__(self, axis=None, keepdims=False):
@@ -717,13 +741,40 @@ class SplitAxis(Function):
 
 
 def split_axis(x, indices_or_sections, axis):
-    res = SplitAxis(indices_or_sections, axis)(x)
-    return res
+    return SplitAxis(indices_or_sections, axis)(x)
 
 
-# =============================================================================
-# conv2d / col2im / im2col / basic_math
-# =============================================================================
+class Absolute(Function):
+    def forward(self, x):
+        xp = cuda.get_array_module(x)
+        return xp.absolute(x)
+
+    def backward(self, gy):
+        x = self.inputs[0]
+        return AbsoluteGrad(x.data)(gy)
+
+
+class AbsoluteGrad(Function):
+    def __init__(self, x):
+        super(AbsoluteGrad, self).__init__()
+        self.x = x
+
+    def forward(self, gy):
+        xp = cuda.get_array_module(gy)
+        return xp.sign(self.x) * gy
+
+    def backward(self, gy):
+        return AbsoluteGrad(self.x)(gy)
+
+
+def absolute(x):
+    return Absolute()(x)
+
+
+def abs(x):
+    return Absolute()(x)
+
+
 from lijnn.functions_conv import conv2d, deconv2d
 from lijnn.functions_conv import im2col, col2im
 from lijnn.functions_conv import max_pooling, average_pooling, find_pooling, roi_pooling

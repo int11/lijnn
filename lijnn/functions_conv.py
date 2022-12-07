@@ -345,18 +345,19 @@ class ROIPooling2D(Function):
         self.spatial_scale = spatial_scale
 
     def forward(self, x, bboxs):
-        bboxs[:, 1:] = bboxs[:, 1:] * self.spatial_scale
+        t_bboxs = bboxs.copy()
+        t_bboxs[:, 1:] = np.around(t_bboxs[:, 1:] * self.spatial_scale)
         self._bottom_data_shape = x.shape
 
         _, C, H, W = x.shape
         OH, OW = pair(self.output_size)
-        N, _ = bboxs.shape
+        N, _ = t_bboxs.shape
 
         y = np.zeros((N, C, OH, OW), dtype=x.dtype)
         self.argmax_data = np.zeros(y.shape, np.int32)
 
         for i_roi in range(N):
-            idx, xmin, ymin, xmax, ymax = bboxs[i_roi]
+            idx, xmin, ymin, xmax, ymax = t_bboxs[i_roi]
             roi_width, roi_height = max(xmax - xmin, 1), max(ymax - ymin, 1)
             strideh, stridew = roi_height / OH, roi_width / OW
             for _outh in range(OH):
@@ -469,15 +470,16 @@ class ROIPooling2DGrad(Function):
         self.argmax_data = argmax_data
 
     def forward(self, gy, bboxs):
-        bboxs[:, 1:] *= self.spatial_scale
+        t_bboxs = bboxs.copy()
+        t_bboxs[:, 1:] = np.around(t_bboxs[:, 1:] * self.spatial_scale)
         OH, OW = pair(self.output_size)
         _, C, H, W = self._bottom_data_shape
-        N, _ = bboxs.shape
+        N, _ = t_bboxs.shape
 
-        bottom_delta = np.zeros(self._bottom_data_shape, bboxs.dtype)
+        bottom_delta = np.zeros(self._bottom_data_shape, t_bboxs.dtype)
 
         for i_roi in range(N):
-            idx, xmin, ymin, xmax, ymax = bboxs[i_roi]
+            idx, xmin, ymin, xmax, ymax = t_bboxs[i_roi]
             idx = int(idx)
             roi_width = max(xmax - xmin + 1, 1)
             roi_height = max(ymax - ymin + 1, 1)
@@ -503,8 +505,7 @@ class ROIPooling2DGrad(Function):
                             max_idx_tmp = self.argmax_data[i_roi, :, ph, pw]
                             for c in range(C):
                                 if max_idx_tmp[c] == (h * W + w):
-                                    bottom_delta[idx, c, h, w] += \
-                                        gy[i_roi, c, ph, pw]
+                                    bottom_delta[idx, c, h, w] += gy[i_roi, c, ph, pw]
         return bottom_delta, None
 
     def forward_gpu(self, gy, bboxs):

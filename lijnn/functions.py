@@ -163,8 +163,7 @@ class GetItemGrad(Function):
 
 
 def get_item(x, slices):
-    f = GetItem(slices)
-    return f(x)
+    return GetItem(slices)(x)
 
 
 def expand_dims(x, axis):
@@ -499,23 +498,39 @@ class SmoothL1Loss(Function):
     def forward(self, x, t):
         xp = cuda.get_array_module(x)
         y = x - t
-        self.index = xp.abs(y) <= 1
-        y[self.index] = 0.5 * y[self.index] ** 2
-        y[~self.index] = xp.abs(y[~self.index]) - 0.5
+        index = xp.abs(y) <= 1
+        y[index] = 0.5 * y[index] ** 2
+        y[~index] = xp.abs(y[~index]) - 0.5
         return y.sum()
 
     def backward(self, gy):
         x, t = self.inputs
-        y = x - t
-        gy = utils.reshape_sum_backward(gy, y.shape, self.axis, self.keepdims)
-        gx = broadcast_to(gy, y.shape)
-        gx[~self.index] = AbsoluteGrad(y[~self.index])(gx[~self.index])
-        gx[self.index] = gx[self.index] * y * 2 * 0.5
-        return gy
+        diff = x - t
+        return tuple(SmoothL1LossGrad(diff.data)(gy))
 
 
 def smooth_l1_loss(x, t):
     return SmoothL1Loss()(x, t)
+
+
+class SmoothL1LossGrad(Function):
+    def __init__(self, diff):
+        self.diff = diff
+
+    def forward(self, gy):
+        xp = cuda.get_array_module(gy)
+        index = xp.abs(self.diff) <= 1
+
+        gy = utils.reshape_sum_backward(gy, self.diff.shape, None, False)
+        gx = xp.broadcast_to(gy, self.diff.shape).copy()
+
+        gx[~index] = xp.sign(self.diff[~index]) * gx[~index]
+        gx[index] = gx[index] * self.diff[index]  # * 2 * 0.5
+        gt = -gx
+        return gx, gt
+
+    def backward(self, gx, gt):
+        raise NotImplementedError
 
 
 class L2Loss(Function):

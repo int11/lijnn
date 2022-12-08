@@ -345,19 +345,17 @@ class ROIPooling2D(Function):
         self.spatial_scale = spatial_scale
 
     def forward(self, x, bboxs):
-        t_bboxs = bboxs.copy()
-        t_bboxs[:, 1:] = np.around(t_bboxs[:, 1:] * self.spatial_scale)
         self._bottom_data_shape = x.shape
 
         _, C, H, W = x.shape
         OH, OW = pair(self.output_size)
-        N, _ = t_bboxs.shape
+        N, _ = bboxs.shape
 
         y = np.zeros((N, C, OH, OW), dtype=x.dtype)
         self.argmax_data = np.zeros(y.shape, np.int32)
-
+        # bboxs[i_roi][0], np.around(bboxs[i_roi][1:] * self.spatial_scale)
         for i_roi in range(N):
-            idx, xmin, ymin, xmax, ymax = t_bboxs[i_roi]
+            idx, xmin, ymin, xmax, ymax = bboxs[i_roi][0], *np.around(bboxs[i_roi][1:] * self.spatial_scale)
             roi_width, roi_height = max(xmax - xmin, 1), max(ymax - ymin, 1)
             strideh, stridew = roi_height / OH, roi_width / OW
             for _outh in range(OH):

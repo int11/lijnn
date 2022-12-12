@@ -495,30 +495,40 @@ def l1_loss(x, t):
 
 
 class SmoothL1Loss(Function):
+    def __init__(self, reduction):
+        assert reduction == 'sum' or reduction == 'mean'
+        self.reduction = reduction
+
     def forward(self, x, t):
         xp = cuda.get_array_module(x)
         y = x - t
         index = xp.abs(y) <= 1
         y[index] = 0.5 * y[index] ** 2
         y[~index] = xp.abs(y[~index]) - 0.5
-        return y.sum()
+        y = y.sum()
+        if self.reduction == 'mean':
+            y /= len(t)
+        return y
 
     def backward(self, gy):
         x, t = self.inputs
         diff = x - t
-        return tuple(SmoothL1LossGrad(diff.data)(gy))
+        return tuple(SmoothL1LossGrad(diff.data, self.reduction)(gy))
 
 
-def smooth_l1_loss(x, t):
-    return SmoothL1Loss()(x, t)
+def smooth_l1_loss(x, t, reduction='sum'):
+    return SmoothL1Loss(reduction)(x, t)
 
 
 class SmoothL1LossGrad(Function):
-    def __init__(self, diff):
+    def __init__(self, diff, reduction):
         self.diff = diff
+        self.reduction = reduction
 
     def forward(self, gy):
         xp = cuda.get_array_module(gy)
+        if self.reduction == 'mean':
+            gy /= len(self.diff)
         index = xp.abs(self.diff) <= 1
 
         gy = utils.reshape_sum_backward(gy, self.diff.shape, None, False)

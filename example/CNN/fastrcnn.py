@@ -1,8 +1,23 @@
+import lijnn.datasets
 from lijnn import *
 from lijnn import layers as L
 from lijnn import functions as F
 from lijnn.transforms import *
-from example.CNN import VGG16
+from example.CNN import VGG16, rcnn
+
+
+class VOC_fastrcnn(rcnn.VOC_SelectiveSearch):
+    def __init__(self, train=True, year=2007, x_transform=None, t_transform=None):
+        super(VOC_fastrcnn, self).__init__(train, year, x_transform, t_transform)
+
+    def __getitem__(self, index):
+        img = self._get_index_img(index)
+        temp = self.count[np.where(self.count[:, 0] == index)]
+        ssbboxs, labels = temp[:, 1:5], temp[:, 5]
+        return img, ssbboxs, labels,
+
+    def __len__(self):
+        return super(lijnn.datasets.VOCclassfication, self).__len__()
 
 
 class Fast_R_CNN(VGG16):
@@ -13,10 +28,7 @@ class Fast_R_CNN(VGG16):
         self._params.remove('conv8')
         self.Bbr = L.Linear(num_classes * 4)
 
-    def forward(self, x):
-        xp = cuda.get_array_module(x)
-        ssbboxs = xp.concatenate([np.pad(utils.SelectiveSearch(i), ((0, 0), (1, 0)), mode='constant', constant_values=e)
-                                  for e, i in enumerate(x)])
+    def forward(self, x, ssbboxs):
         x = F.relu(self.conv1_1(x))
         x = F.relu(self.conv1_2(x))
         x = F.max_pooling(x, 2, 2)

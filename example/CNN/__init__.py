@@ -8,4 +8,4 @@ from example.CNN.resnet import resnet18, resnet34, resnet50, resnet101, resnet15
 from example.CNN.preact_resnet import preact_resnet18, preact_resnet34, preact_resnet50, preact_resnet101, \
     preact_resnet152, preact_resnet164, preact_resnet1001
 from example.CNN import rcnn
-from example.CNN.fastrcnn import Fast_R_CNN
+from example.CNN.fastrcnn import Fast_R_CNN, VOC_fastrcnn

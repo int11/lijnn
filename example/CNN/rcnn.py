@@ -22,25 +22,35 @@ class VOC_SelectiveSearch(VOCclassfication):
     def __init__(self, train=True, year=2007, x_transform=None, t_transform=None, around_context=True):
         super(VOC_SelectiveSearch, self).__init__(train, year, x_transform, t_transform)
         self.around_context = around_context
-        loaded = datasets.load_cache_npz('VOC_SelectiveSearch', train=train)
+        loaded = datasets.load_cache_npz(f'VOC_SelectiveSearch{year}', train=train)
         if loaded is not None:
-            self.count = loaded[0]
+            self.count, self.iou = loaded
         else:
+            self.iou = [1.] * len(self.count)
             for i in range(VOCDetection.__len__(self)):
                 img, labels, bboxs = VOCDetection.__getitem__(self, i)
-                ssbboxs = utils.SelectiveSearch(img)
+                ssbboxs = utils.SelectiveSearch(img)[:2000]
                 temp = []
                 for ssbbox in ssbboxs:
                     bb_iou = [utils.IOU(ssbbox, bbox) for bbox in bboxs]
                     indexM = np.argmax(bb_iou)
                     temp.append(labels[indexM] if bb_iou[indexM] > 0.5 else 20)
+                    self.iou.append(bb_iou[indexM])
 
                 temp = np.append(ssbboxs, np.array(temp).reshape(-1, 1), axis=1)
                 temp = np.pad(temp, ((0, 0), (1, 0)), mode='constant', constant_values=i)
-                temp = temp[:2000]
                 self.count = np.append(self.count, temp, axis=0)
-            self.count = self.count[np.apply_along_axis(lambda x: x[0], axis=1, arr=self.count).argsort()]
-            datasets.save_cache_npz({'label': self.count}, 'VOC_SelectiveSearch', train=train)
+            self.iou = np.array(self.iou)
+
+            # sort_index = np.apply_along_axis(lambda x: x[0], axis=1, arr=self.count).argsort()
+            sort_index = np.empty(0, dtype=np.int32)
+            for i in range(VOCDetection.__len__(self)):
+                index = np.where(self.count[:, 0] == i)[0]
+                sort_index = np.append(sort_index, index)
+
+            self.count = self.count[sort_index]
+            self.iou = self.iou[sort_index]
+            datasets.save_cache_npz({'label': self.count, 'iou': self.iou}, f'VOC_SelectiveSearch{year}', train=train)
 
     def __getitem__(self, index):
         temp = self.count[index]
@@ -157,30 +167,25 @@ class VOC_Bbr(VOC_SelectiveSearch):
         super(VOC_Bbr, self).__init__(train, year, None, None, around_context)
         self.img_transpose = img_transpose
 
-        loaded = datasets.load_cache_npz('VOC_Bbr', train=train)
-        if loaded is not None:
-            self.p, self.g = loaded[0], loaded[1]
-        else:
-            self.count = self.count[np.where(self.count[:, 5] != 20)]
+        index = np.where(self.iou > 0.6)
+        self.p = self.count[index]
+        self.g = []
+        index = -1
+        for e in self.p:
+            if index != e[0]:
+                index = e[0]
+                label, bboxes = self._get_index_label_bboxes(e[0])
+            bb_iou = [utils.IOU(e[1:5], bbox) for bbox in bboxes]
+            indexM = np.argmax(bb_iou)
+            self.g.append(bboxes[indexM])
+        self.g = np.array(self.g)
 
-            index = []
-            self.g = np.empty((0, 4), np.int32)
-            for e in range(len(self.count)):
-                label, bboxes = self._get_index_label_bboxes(self.count[e][0])
-                bb_iou = [utils.IOU(self.count[e][1:5], bbox) for bbox in bboxes]
-                indexM = np.argmax(bb_iou)
-                if bb_iou[indexM] > 0.6:
-                    index.append(e)
-                    self.g = np.vstack((self.g, bboxes[indexM]))
-            self.p = self.count[:, :5][index]
-            datasets.save_cache_npz({'x': self.p, 't': self.g}, 'VOC_Bbr', train=train)
-
-        del self.count
+        del self.count, self.iou
 
     def __getitem__(self, index):
         # xy1xy2
         p, g = self.p[index], self.g[index]
-        index, p = p[0], p[1:]
+        index, p = p[0], p[1:5]
         img = self._get_index_img(index)
         img = AroundContext(img, p, 16) if self.around_context else img[:, p[1]:p[3], p[0]:p[2]]
         # xywh

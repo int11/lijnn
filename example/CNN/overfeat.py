@@ -141,10 +141,10 @@ class OverFeat_fast(Model):
 def main_OverFeat(name='default'):
     batch_size = 64
     epoch = 100
-    trainset = datasets.VOCclassfication(train=True, x_transform=compose(
+    trainset = datasets.VOCclassfication(train=True, img_transform=compose(
         [isotropically_resize(256), centerCrop(256), randomCrop(221), randomFlip(), toFloat()]))
 
-    testset = datasets.VOCclassfication(train=False, x_transform=None)
+    testset = datasets.VOCclassfication(train=False, img_transform=None)
 
     train_loader = iterators.iterator(trainset, batch_size, shuffle=True)
     test_loader = iterators.iterator(testset, 1, shuffle=False)

@@ -7,17 +7,37 @@ from example.CNN import VGG16, rcnn
 
 
 class VOC_fastrcnn(rcnn.VOC_SelectiveSearch):
-    def __init__(self, train=True, year=2007, x_transform=None, t_transform=None):
-        super(VOC_fastrcnn, self).__init__(train, year, x_transform, t_transform)
+    def __init__(self, train=True, year=2007, img_transform=None):
+        super(VOC_fastrcnn, self).__init__(train, year, img_transform)
 
     def __getitem__(self, index):
         img = self._get_index_img(index)
-        temp = self.count[np.where(self.count[:, 0] == index)]
-        ssbboxs, labels = temp[:, 1:5], temp[:, 5]
-        return img, ssbboxs, labels,
+        index = np.where(self.count[:, 0] == index)
+        return img, self.count[index][:, 1:], self.iou[index]
 
     def __len__(self):
         return super(lijnn.datasets.VOCclassfication, self).__len__()
+
+
+class Hierarchical_Sampling(lijnn.iterator):
+    def __init__(self, dataset, N=2, R=128, positive_sample_per=0.25, shuffle=True, gpu=False):
+        super(Hierarchical_Sampling, self).__init__(dataset, N, shuffle, gpu)
+        self.r_n = R / N
+        self.positive_sample_per = positive_sample_per
+
+    def __next__(self):
+        if self.iteration >= self.max_iter:
+            self.reset()
+            raise StopIteration
+
+        i, batch_size = self.iteration, self.batch_size
+        batch_index = self.index[i * batch_size:(i + 1) * batch_size]
+        batch = [self.dataset[i] for i in batch_index]
+
+        for i in batch:
+            pass
+        self.iteration += 1
+        return batch
 
 
 class Fast_R_CNN(VGG16):

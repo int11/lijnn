@@ -225,10 +225,10 @@ class VOCDetection(Dataset):
         "2007": "http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtrainval_06-Nov-2007.tar",
         "2007test": "http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtest_06-Nov-2007.tar"}
 
-    def __init__(self, train=True, year=2007, x_transform=None, t_transform=None):
+    def __init__(self, train=True, year=2007, img_transform=None):
         assert 2007 <= year <= 2012
         assert not (not train and year != 2007)
-        super().__init__(train, x_transform, t_transform)
+        super().__init__(train, img_transform, None)
         self.year = str(year)
         url = self.DATASET_YEAR_DICT[self.year + 'test'] if self.train == False and self.year == "2007" else \
             self.DATASET_YEAR_DICT[self.year]
@@ -284,8 +284,8 @@ class VOCDetection(Dataset):
 
 
 class VOCclassfication(VOCDetection):
-    def __init__(self, train=True, year=2007, x_transform=None, t_transform=None):
-        super(VOCclassfication, self).__init__(train, year, x_transform, t_transform)
+    def __init__(self, train=True, year=2007, img_transform=None):
+        super(VOCclassfication, self).__init__(train, year, img_transform)
         self.count = np.empty((0, 6), dtype=np.int32)
         for a, b in enumerate(self.xml_tarinfo):
             bytes = self.file.extractfile(b).read()

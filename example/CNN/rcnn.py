@@ -19,8 +19,8 @@ def AroundContext(img, bbox, pad):
 
 
 class VOC_SelectiveSearch(VOCclassfication):
-    def __init__(self, train=True, year=2007, x_transform=None, t_transform=None, around_context=True):
-        super(VOC_SelectiveSearch, self).__init__(train, year, x_transform, t_transform)
+    def __init__(self, train=True, year=2007, img_transform=None, around_context=True):
+        super(VOC_SelectiveSearch, self).__init__(train, year, img_transform)
         self.around_context = around_context
         loaded = datasets.load_cache_npz(f'VOC_SelectiveSearch{year}', train=train)
         if loaded is not None:
@@ -149,7 +149,7 @@ def main_VGG16_RCNN(name='default'):
     epoch = 10
     model = VGG16_RCNN()
     trainset = VOC_SelectiveSearch(
-        x_transform=compose([transforms.resize(224), toFloat(), z_score_normalize(model.mean, 1)]))
+        img_transform=compose([transforms.resize(224), toFloat(), z_score_normalize(model.mean, 1)]))
     train_loader = rcnniter(trainset, pos_neg_number=(size, size * 3))
 
     model.fit(epoch, lijnn.optimizers.Adam(alpha=0.00001), train_loader, name=name, iteration_print=True)
@@ -164,7 +164,7 @@ def trans_coordinate(c):
 
 class VOC_Bbr(VOC_SelectiveSearch):
     def __init__(self, train=True, year=2007, img_transpose=None, around_context=True):
-        super(VOC_Bbr, self).__init__(train, year, None, None, around_context)
+        super(VOC_Bbr, self).__init__(train, year, None, around_context)
         self.img_transpose = img_transpose
 
         index = np.where(self.iou > 0.6)

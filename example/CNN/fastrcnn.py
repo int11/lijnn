@@ -26,6 +26,8 @@ class Hierarchical_Sampling(lijnn.iterator):
         self.positive_sample_per = positive_sample_per
 
     def __next__(self):
+        xp = cuda.cupy if self.gpu else np
+
         if self.iteration >= self.max_iter:
             self.reset()
             raise StopIteration
@@ -34,8 +36,14 @@ class Hierarchical_Sampling(lijnn.iterator):
         batch_index = self.index[i * batch_size:(i + 1) * batch_size]
         batch = [self.dataset[i] for i in batch_index]
 
-        for i in batch:
-            pass
+        img_batch, ssbboxs, label, t = [], [], [], []
+
+        for img, count, iou in batch:
+            img_batch.append(img)
+            positive_sample = count[iou >= 0.6]
+            asdf = np.random.permutation(len(positive_sample))
+            index = positive_sample[asdf[:16]]
+
         self.iteration += 1
         return batch
 

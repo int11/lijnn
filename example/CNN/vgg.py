@@ -126,7 +126,6 @@ def main_VGG16(name='default'):
     optimizer = optimizers.Adam(alpha=0.0001).setup(model)
     model.fit(epoch, optimizer, train_loader, test_loader, name=name)
 
-
 """
 https://blog.naver.com/laonple/220749876381
 https://blog.naver.com/laonple/220752877630

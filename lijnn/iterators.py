@@ -27,6 +27,8 @@ class iterator:
         return self
 
     def __next__(self):
+        xp = cuda.cupy if self.gpu else np
+
         if self.iteration >= self.max_iter:
             self.reset()
             raise StopIteration
@@ -35,11 +37,10 @@ class iterator:
         batch_index = self.index[i * batch_size:(i + 1) * batch_size]
         batch = [self.dataset[i] for i in batch_index]
 
-        xp = cuda.cupy if self.gpu else np
-        result = []
-
-        for i in range(len(batch[0])):
-            result.append(xp.array([example[i] for example in batch]))
+        result = [xp.array([example[i] for example in batch]) for i in range(len(batch[0]))]
+        # result = []
+        # for i in range(len(batch[0])):
+        #     result.append(xp.array([example[i] for example in batch]))
 
         self.iteration += 1
         return result

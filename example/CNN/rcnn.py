@@ -23,10 +23,12 @@ class VOC_SelectiveSearch(VOCclassfication):
         super(VOC_SelectiveSearch, self).__init__(train, year, img_transform)
         self.around_context = around_context
         loaded = datasets.load_cache_npz(f'VOC_SelectiveSearch{year}', train=train)
+
         if loaded is not None:
-            self.count, self.iou = loaded
+            self.count, self.iou, self.g = loaded
         else:
             self.iou = [1.] * len(self.count)
+            self.g = [*self.count[:, 1:5]]
             for i in range(VOCDetection.__len__(self)):
                 img, labels, bboxs = VOCDetection.__getitem__(self, i)
                 ssbboxs = utils.SelectiveSearch(img)[:2000]
@@ -36,11 +38,12 @@ class VOC_SelectiveSearch(VOCclassfication):
                     indexM = np.argmax(bb_iou)
                     temp.append(labels[indexM] if bb_iou[indexM] > 0.5 else 20)
                     self.iou.append(bb_iou[indexM])
+                    self.g.append(bboxs[indexM])
 
                 temp = np.append(ssbboxs, np.array(temp).reshape(-1, 1), axis=1)
                 temp = np.pad(temp, ((0, 0), (1, 0)), mode='constant', constant_values=i)
                 self.count = np.append(self.count, temp, axis=0)
-            self.iou = np.array(self.iou)
+            self.iou, self.g = np.array(self.iou), np.array(self.g)
 
             # sort_index = np.apply_along_axis(lambda x: x[0], axis=1, arr=self.count).argsort()
             sort_index = np.empty(0, dtype=np.int32)
@@ -50,6 +53,7 @@ class VOC_SelectiveSearch(VOCclassfication):
 
             self.count = self.count[sort_index]
             self.iou = self.iou[sort_index]
+            self.g = self.g[sort_index]
             datasets.save_cache_npz({'label': self.count, 'iou': self.iou}, f'VOC_SelectiveSearch{year}', train=train)
 
     def __getitem__(self, index):
@@ -169,16 +173,7 @@ class VOC_Bbr(VOC_SelectiveSearch):
 
         index = np.where(self.iou > 0.6)
         self.p = self.count[index]
-        self.g = []
-        index = -1
-        for e in self.p:
-            if index != e[0]:
-                index = e[0]
-                label, bboxes = self._get_index_label_bboxes(e[0])
-            bb_iou = [utils.IOU(e[1:5], bbox) for bbox in bboxes]
-            indexM = np.argmax(bb_iou)
-            self.g.append(bboxes[indexM])
-        self.g = np.array(self.g)
+        self.g = self.g[index]
 
         del self.count, self.iou
 

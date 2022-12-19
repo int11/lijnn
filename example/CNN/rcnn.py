@@ -178,12 +178,11 @@ class VOC_Bbr(VOC_SelectiveSearch):
         del self.count, self.iou
 
     def __getitem__(self, index):
-        # xy1xy2
         p, g = self.p[index], self.g[index]
         index, p = p[0], p[1:5]
         img = self._get_index_img(index)
         img = AroundContext(img, p, 16) if self.around_context else img[:, p[1]:p[3], p[0]:p[2]]
-        # xywh
+        # xy1xy2
         p, g = trans_coordinate(p), trans_coordinate(g)
         # xywh
         t = np.array([(g[0] - p[0]) / p[2], (g[1] - p[1]) / p[3], np.log(g[2] / p[2]), np.log(g[3] / p[3])])

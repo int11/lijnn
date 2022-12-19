@@ -13,14 +13,20 @@ class VOC_fastrcnn(rcnn.VOC_SelectiveSearch):
     def __getitem__(self, index):
         img = self._get_index_img(index)
         index = np.where(self.count[:, 0] == index)
-        return img, self.count[index][:, 1:], self.iou[index]
+        return img, self.count[index][:, 1:], self.iou[index], self.g[index]
 
     def __len__(self):
         return super(lijnn.datasets.VOCclassfication, self).__len__()
 
 
+def xy1xy2_to_xywh(xy1xy2):
+    xp = cuda.get_array_module(xy1xy2)
+    xmin, ymin, xmax, ymax = xp.split(xy1xy2, 4, axis=1)
+    return (xmin + xmax) / 2, (ymin + ymax) / 2, xmax - xmin, ymax - ymin
+
+
 class Hierarchical_Sampling(lijnn.iterator):
-    def __init__(self, dataset, N=2, R=128, positive_sample_per=0.25, shuffle=True, gpu=False):
+    def __init__(self, dataset=VOC_fastrcnn(), N=2, R=128, positive_sample_per=0.25, shuffle=True, gpu=False):
         super(Hierarchical_Sampling, self).__init__(dataset, N, shuffle, gpu)
         self.r_n = R / N
         self.positive_sample_per = positive_sample_per
@@ -38,14 +44,26 @@ class Hierarchical_Sampling(lijnn.iterator):
 
         img_batch, ssbboxs, label, t = [], [], [], []
 
-        for img, count, iou in batch:
+        for img, count, iou, g in batch:
             img_batch.append(img)
-            positive_sample = count[iou >= 0.6]
-            asdf = np.random.permutation(len(positive_sample))
-            index = positive_sample[asdf[:16]]
+            positive_img_num = int(self.r_n * self.positive_sample_per)
 
+            POSsample = np.where(iou >= 0.6)[0]
+            POSsample = POSsample[np.random.permutation(len(POSsample))[:positive_img_num]]
+
+            NEGsample = np.where(~(iou >= 0.6))[0]
+            NEGsample = NEGsample[np.random.permutation(len(NEGsample))[:self.r_n - positive_img_num]]
+
+            index = np.concatenate((POSsample, NEGsample))
+            p, g = count[index][:, :4], g[index]
+            ssbboxs.append(p)
+            label.append(count[index][:, 4])
+
+            p_x, p_y, p_w, p_h = xy1xy2_to_xywh(p)
+            g_x, g_y, g_w, g_h = xy1xy2_to_xywh(g)
+            t.append(np.concatenate([(g_x - p_x) / p_w, (g_y - p_y) / p_h, np.log(g_w / p_w), np.log(g_h / p_h)], axis=1))
         self.iteration += 1
-        return batch
+        return np.concatenate(img_batch), np.concatenate(ssbboxs), np.concatenate(label), np.concatenate(t)
 
 
 class Fast_R_CNN(VGG16):

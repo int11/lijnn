@@ -141,8 +141,8 @@ class Model(Layer):
         start_epoch = int(epoch) if ti else int(epoch) + 1
         return start_epoch, ti
 
-    def fit(self, epoch, optimizer, train_loader, test_loader=None, f_loss=F.softmax_cross_entropy,
-            f_accuracy=F.accuracy, name='default', iteration_print=False, autosave=True, autosave_time=30):
+    def fit(self, epoch, optimizer, train_loader, test_loader=None, loss_function=F.softmax_cross_entropy,
+            accuracy_function=F.accuracy, name='default', iteration_print=False, autosave=True, autosave_time=30):
         optimizer = optimizer.setup(self)
         start_epoch, ti = self.load_weights_epoch(name=name)
 
@@ -156,9 +156,9 @@ class Model(Layer):
             sum_loss, sum_acc = 0, 0
             st = time.time()
             for x, t in train_loader:
-                y = self(x)
-                loss = f_loss(y, t)
-                acc = f_accuracy(y, t).data if f_accuracy else 0
+                y = self(*x)
+                loss = loss_function(*y, *t)
+                acc = accuracy_function(*y, *t).data if accuracy_function else 0
                 self.cleargrads()
                 loss.backward()
                 optimizer.update()
@@ -166,7 +166,7 @@ class Model(Layer):
                 sum_acc += acc
                 if iteration_print:
                     s = f"loss : {loss.data}"
-                    if f_accuracy:
+                    if accuracy_function:
                         s += f"accuracy {acc}"
                     print(s)
                 if autosave and time.time() - st > autosave_time * 60:
@@ -181,13 +181,13 @@ class Model(Layer):
                 with no_grad(), test_mode():
                     for x, t in test_loader:
                         y = self(x)
-                        loss = f_loss(y, t)
-                        acc = f_accuracy(y, t).data if f_accuracy else 0
+                        loss = loss_function(y, t)
+                        acc = accuracy_function(y, t).data if accuracy_function else 0
                         sum_loss += loss.data
                         sum_acc += acc
                         if iteration_print:
                             s = f"loss : {loss.data}"
-                            if f_accuracy:
+                            if accuracy_function:
                                 s += f"accuracy {acc}"
                             print(s)
                 print(f'test loss {sum_loss / test_loader.max_iter} accuracy {sum_acc / test_loader.max_iter}')

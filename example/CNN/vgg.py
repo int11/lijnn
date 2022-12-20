@@ -15,7 +15,7 @@ class VGG16(Model):
     params_size = 138,357,544
     """
     WEIGHTS_PATH = 'https://github.com/koki0702/dezero-models/releases/download/v0.1/vgg16.npz'
-
+    mean = [103.939, 116.779, 123.68]
     def __init__(self, num_classes=1000, imagenet_pretrained=False, dense_evaluate=False):
         assert not (imagenet_pretrained and num_classes != 1000)
         super().__init__()
@@ -79,10 +79,6 @@ class VGG16(Model):
             x = self.fc8(x)
         return x
 
-    @property
-    def mean(self):
-        return [103.939, 116.779, 123.68]
-
     # TODO: multi-crop & dense evaluation
     def predict(self, x, mean, std):
         xp = cuda.get_array_module(x)
@@ -123,7 +119,7 @@ def main_VGG16(name='default'):
     test_loader = iterators.iterator(testset, batch_size, shuffle=False)
 
     model = VGG16(num_classes=10)
-    optimizer = optimizers.Adam(alpha=0.0001).setup(model)
+    optimizer = optimizers.Adam(alpha=0.0001)
     model.fit(epoch, optimizer, train_loader, test_loader, name=name)
 
 """

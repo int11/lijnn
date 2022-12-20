@@ -355,7 +355,7 @@ class ROIPooling2D(Function):
         self.argmax_data = np.zeros(y.shape, np.int32)
         # bboxs[i_roi][0], np.around(bboxs[i_roi][1:] * self.spatial_scale)
         for i_roi in range(N):
-            idx, xmin, ymin, xmax, ymax = bboxs[i_roi][0], *np.around(bboxs[i_roi][1:] * self.spatial_scale)
+            idx, xmin, ymin, xmax, ymax = bboxs[i_roi][0], *np.around(bboxs[i_roi][1:] * self.spatial_scale).astype(np.int32)
             roi_width, roi_height = max(xmax - xmin, 1), max(ymax - ymin, 1)
             strideh, stridew = roi_height / OH, roi_width / OW
             for _outh in range(OH):

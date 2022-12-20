@@ -6,66 +6,6 @@ from lijnn.transforms import *
 from example.CNN import VGG16, rcnn
 
 
-class VOC_fastrcnn(rcnn.VOC_SelectiveSearch):
-    def __init__(self, train=True, year=2007, img_transform=None):
-        super(VOC_fastrcnn, self).__init__(train, year, img_transform)
-
-    def __getitem__(self, index):
-        img = self._get_index_img(index)
-        index = np.where(self.count[:, 0] == index)
-        return img, self.count[index][:, 1:], self.iou[index], self.g[index]
-
-    def __len__(self):
-        return super(lijnn.datasets.VOCclassfication, self).__len__()
-
-
-def xy1xy2_to_xywh(xy1xy2):
-    xp = cuda.get_array_module(xy1xy2)
-    xmin, ymin, xmax, ymax = xp.split(xy1xy2, 4, axis=1)
-    return (xmin + xmax) / 2, (ymin + ymax) / 2, xmax - xmin, ymax - ymin
-
-
-class Hierarchical_Sampling(lijnn.iterator):
-    def __init__(self, dataset=VOC_fastrcnn(), N=2, R=128, positive_sample_per=0.25, shuffle=True, gpu=False):
-        super(Hierarchical_Sampling, self).__init__(dataset, N, shuffle, gpu)
-        self.r_n = R / N
-        self.positive_sample_per = positive_sample_per
-
-    def __next__(self):
-        xp = cuda.cupy if self.gpu else np
-
-        if self.iteration >= self.max_iter:
-            self.reset()
-            raise StopIteration
-
-        i, batch_size = self.iteration, self.batch_size
-        batch_index = self.index[i * batch_size:(i + 1) * batch_size]
-        batch = [self.dataset[i] for i in batch_index]
-
-        img_batch, ssbboxs, label, t = [], [], [], []
-
-        for img, count, iou, g in batch:
-            img_batch.append(img)
-            positive_img_num = int(self.r_n * self.positive_sample_per)
-
-            POSsample = np.where(iou >= 0.6)[0]
-            POSsample = POSsample[np.random.permutation(len(POSsample))[:positive_img_num]]
-
-            NEGsample = np.where(~(iou >= 0.6))[0]
-            NEGsample = NEGsample[np.random.permutation(len(NEGsample))[:self.r_n - positive_img_num]]
-
-            index = np.concatenate((POSsample, NEGsample))
-            p, g = count[index][:, :4], g[index]
-            ssbboxs.append(p)
-            label.append(count[index][:, 4])
-
-            p_x, p_y, p_w, p_h = xy1xy2_to_xywh(p)
-            g_x, g_y, g_w, g_h = xy1xy2_to_xywh(g)
-            t.append(np.concatenate([(g_x - p_x) / p_w, (g_y - p_y) / p_h, np.log(g_w / p_w), np.log(g_h / p_h)], axis=1))
-        self.iteration += 1
-        return np.concatenate(img_batch), np.concatenate(ssbboxs), np.concatenate(label), np.concatenate(t)
-
-
 class Fast_R_CNN(VGG16):
     def __init__(self, num_classes=21):
         super().__init__(imagenet_pretrained=True)
@@ -105,13 +45,81 @@ class Fast_R_CNN(VGG16):
         return cls_score, bbox_pred
 
 
+class VOC_fastrcnn(rcnn.VOC_SelectiveSearch):
+    def __init__(self, train=True, year=2007,
+                 img_transform=compose([resize(224), toFloat(), z_score_normalize(Fast_R_CNN.mean, 1)])):
+        super(VOC_fastrcnn, self).__init__(train, year, img_transform)
+
+    def __getitem__(self, index):
+        img = self._get_index_img(index)
+        index = np.where(self.count[:, 0] == index)
+        return self.img_transform(img), self.count[index][:, 1:], self.iou[index], self.g[index]
+
+    def __len__(self):
+        return super(lijnn.datasets.VOCclassfication, self).__len__()
+
+
+def xy1xy2_to_xywh(xy1xy2):
+    xp = cuda.get_array_module(xy1xy2)
+    xmin, ymin, xmax, ymax = xp.split(xy1xy2, 4, axis=1)
+    return (xmin + xmax) / 2, (ymin + ymax) / 2, xmax - xmin, ymax - ymin
+
+
+class Hierarchical_Sampling(lijnn.iterator):
+    def __init__(self, dataset=VOC_fastrcnn(), N=2, R=128, positive_sample_per=0.25, shuffle=True, gpu=False):
+        super(Hierarchical_Sampling, self).__init__(dataset, N, shuffle, gpu)
+        self.r_n = round(R / N)
+        self.positive_sample_per = positive_sample_per
+
+    def __next__(self):
+        xp = cuda.cupy if self.gpu else np
+
+        if self.iteration >= self.max_iter:
+            self.reset()
+            raise StopIteration
+
+        i, batch_size = self.iteration, self.batch_size
+        batch_index = self.index[i * batch_size:(i + 1) * batch_size]
+        batch = [self.dataset[i] for i in batch_index]
+
+        img_batch, ssbboxs, label, t = [], [], [], []
+
+        for i, (img, count, iou, g) in enumerate(batch):
+            img_batch.append(img)
+            positive_img_num = int(self.r_n * self.positive_sample_per)
+
+            POSsample = np.where(iou >= 0.6)[0]
+            POSsample = POSsample[np.random.permutation(len(POSsample))[:positive_img_num]]
+
+            NEGsample = np.where(~(iou >= 0.6))[0]
+            NEGsample = NEGsample[np.random.permutation(len(NEGsample))[:self.r_n - positive_img_num]]
+
+            index = np.concatenate((POSsample, NEGsample))
+            p, g = count[index][:, :4], g[index]
+            ssbboxs.append(np.pad(p, ((0, 0), (1, 0)), mode='constant', constant_values=i))
+            label.append(count[index][:, 4])
+
+            p_x, p_y, p_w, p_h = xy1xy2_to_xywh(p)
+            g_x, g_y, g_w, g_h = xy1xy2_to_xywh(g)
+            t.append(
+                np.concatenate([(g_x - p_x) / p_w, (g_y - p_y) / p_h, np.log(g_w / p_w), np.log(g_h / p_h)], axis=1))
+        self.iteration += 1
+        return (np.array(img_batch), np.concatenate(ssbboxs)), (np.concatenate(label), np.concatenate(t))
+
+
 def multi_loss(x, x_bbox, t, t_bbox):
     loss_cls = F.softmax_cross_entropy(x, t)
     loss_loc = F.smooth_l1_loss(x_bbox, t_bbox)
-    return loss_cls + loss_loc
+
+    lmb = 1.0
+    return loss_cls + lmb * loss_loc
 
 
-def main_Fast_R_CNN():
+def main_Fast_R_CNN(name='default'):
     batch_size = 16
     epoch = 10
+
+    train_loader = Hierarchical_Sampling()
     model = Fast_R_CNN()
+    optimizer = optimizers.Adam(alpha=0.0001)
+    model.fit(epoch, optimizer, train_loader, loss_function=multi_loss, name=name)

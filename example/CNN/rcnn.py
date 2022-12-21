@@ -231,7 +231,8 @@ def main_Bbr(name='default'):
     trainset = VOC_Bbr(img_transpose=compose([resize(224), toFloat(), z_score_normalize(vgg.mean, 1)]))
     train_loader = iterators.iterator(trainset, batch_size, shuffle=True)
     model = Bounding_box_Regression(feature_model=vgg)
-    model.fit(epoch, lijnn.optimizers.Adam(alpha=0.0001), train_loader, loss_function=F.mean_squared_error, f_accuracy=None,
+    model.fit(epoch, lijnn.optimizers.Adam(alpha=0.0001), train_loader, loss_function=F.mean_squared_error,
+              f_accuracy=None,
               name=name, iteration_print=True)
 
 

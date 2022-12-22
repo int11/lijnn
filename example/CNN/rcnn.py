@@ -7,6 +7,7 @@ from lijnn.datasets import VOCDetection, VOCclassfication
 from example.CNN import VGG16
 
 
+# Feature extraction model fine tuning
 def AroundContext(img, bbox, pad):
     xp = cuda.get_array_module(img)
     image_mean = xp.mean(img, axis=(1, 2))
@@ -159,6 +160,7 @@ def main_VGG16_RCNN(name='default'):
     model.fit(epoch, lijnn.optimizers.Adam(alpha=0.00001), train_loader, name=name, iteration_print=True)
 
 
+# Bounding box Regression training
 def trans_coordinate(c):
     xp = cuda.get_array_module(c)
     xmin, ymin, xmax, ymax = c
@@ -232,10 +234,12 @@ def main_Bbr(name='default'):
     train_loader = iterators.iterator(trainset, batch_size, shuffle=True)
     model = Bounding_box_Regression(feature_model=vgg)
     model.fit(epoch, lijnn.optimizers.Adam(alpha=0.0001), train_loader, loss_function=F.mean_squared_error,
-              f_accuracy=None,
-              name=name, iteration_print=True)
+              f_accuracy=None, name=name, iteration_print=True)
 
 
+# TODO linear SVM
+# Current code use softmax function, not linear SVM
+# R-CNN main code
 class R_CNN(Model):
     def __init__(self):
         super(R_CNN, self).__init__()

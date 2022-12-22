@@ -355,6 +355,8 @@ class ROIPooling2D(Function):
         self.argmax_data = np.zeros(y.shape, np.int32)
         # bboxs[i_roi][0], np.around(bboxs[i_roi][1:] * self.spatial_scale)
         for i_roi in range(N):
+            if i_roi == 140:
+                print(1234)
             idx, xmin, ymin, xmax, ymax = bboxs[i_roi][0], *np.around(bboxs[i_roi][1:] * self.spatial_scale).astype(np.int32)
             roi_width, roi_height = max(xmax - xmin, 1), max(ymax - ymin, 1)
             strideh, stridew = roi_height / OH, roi_width / OW
@@ -368,7 +370,6 @@ class ROIPooling2D(Function):
 
                     roi_data = x[int(idx), :, sliceh, slicew].reshape(C, -1)
                     y[i_roi, :, _outh, _outw] = np.max(roi_data, axis=1)
-
                     # get the max idx respect to feature_maps coordinates
                     max_idx_slice = np.unravel_index(np.argmax(roi_data, axis=1), (lenh, lenw))
                     max_idx_slice_h = max_idx_slice[0] + sliceh.start

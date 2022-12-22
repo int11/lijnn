@@ -192,12 +192,6 @@ class centerCrop:
 
 
 class flip:
-    """
-    0 means flipping around the x-axis and positive value
-    1 means flipping around y-axis. Negative value
-    -1 means flipping around both axes.
-    """
-
     def __init__(self, flipcode=2):
         self.flipcode = flipcode
 

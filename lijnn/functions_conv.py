@@ -354,10 +354,12 @@ class ROIPooling2D(Function):
         y = np.zeros((N, C, OH, OW), dtype=x.dtype)
         self.argmax_data = np.zeros(y.shape, np.int32)
         # bboxs[i_roi][0], np.around(bboxs[i_roi][1:] * self.spatial_scale)
+
+        bboxs[:, [1, 2]] = np.floor(bboxs[:, [1, 2]] * self.spatial_scale)
+        bboxs[:, [3, 4]] = np.ceil(bboxs[:, [3, 4]] * self.spatial_scale)
+
         for i_roi in range(N):
-            if i_roi == 140:
-                print(1234)
-            idx, xmin, ymin, xmax, ymax = bboxs[i_roi][0], *np.around(bboxs[i_roi][1:] * self.spatial_scale).astype(np.int32)
+            idx, xmin, ymin, xmax, ymax = bboxs[i_roi]
             roi_width, roi_height = max(xmax - xmin, 1), max(ymax - ymin, 1)
             strideh, stridew = roi_height / OH, roi_width / OW
             for _outh in range(OH):

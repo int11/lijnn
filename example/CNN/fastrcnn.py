@@ -1,3 +1,5 @@
+import numpy as np
+
 import lijnn.datasets
 from lijnn import *
 from lijnn import layers as L
@@ -52,14 +54,12 @@ class bbox_transpose:
     def __call__(self, img_shape, bbox):
         H, W = img_shape[1:]
         OH, OW = pair(self.img_outputsize)
-        bbox[:, [0, 2]] = bbox[:, [0, 2]] * OW / W
-        #bbox[[808, 1123, 1271]][:, [0,2]] * OW / W
-        # if w == 0: x2 += 1
-        bbox[bbox[:, 0] - bbox[:, 2] == 0, 2] += 1
+        bbox[:, 0] = np.floor(bbox[:, 0] * OW / W)
+        bbox[:, 2] = np.ceil(bbox[:, 2] * OW / W)
 
-        bbox[:, [1, 3]] = bbox[:, [1, 3]] * OH / H
-        # if h == 0: y2 += 1
-        bbox[bbox[:, 1] - bbox[:, 3] == 0, 3] += 1
+        bbox[:, 1] = np.floor(bbox[:, 1] * OH / H)
+        bbox[:, 3] = np.ceil(bbox[:, 3] * OH / H)
+
         return bbox
 
 
@@ -106,42 +106,45 @@ class Hierarchical_Sampling(lijnn.iterator):
         i, batch_size = self.iteration, self.batch_size
         batch_index = self.index[i * batch_size:(i + 1) * batch_size]
         batch = [self.dataset[i] for i in batch_index]
-        img_batch, ssbboxs, label, t = [], [], [], []
+        img_batch, ssbboxs, label, t, u = [], [], [], [], []
 
         for i, (img, count, iou, g) in enumerate(batch):
-            img_batch.append(img)
             positive_img_num = int(self.r_n * self.positive_sample_per)
 
-            POSsample = np.where(iou >= 0.6)[0]
-            #POSsample = POSsample[np.random.permutation(len(POSsample))[:positive_img_num]]
+            POSindex = np.where(iou >= 0.6)[0]
+            POSindex = POSindex[np.random.permutation(len(POSindex))[:positive_img_num]]
+            NEGindex = np.where(~(iou >= 0.6))[0]
+            NEGindex = NEGindex[np.random.permutation(len(NEGindex))[:self.r_n - positive_img_num]]
 
-            NEGsample = np.where(~(iou >= 0.6))[0]
-            #NEGsample = NEGsample[np.random.permutation(len(NEGsample))[:self.r_n - positive_img_num]]
+            index = np.concatenate((POSindex, NEGindex))
 
-            index = np.concatenate((POSsample, NEGsample))
             p, g = count[index][:, :4], g[index]
-            ssbboxs.append(np.pad(p, ((0, 0), (1, 0)), mode='constant', constant_values=i))
-            label.append(count[index][:, 4])
-
             p_x, p_y, p_w, p_h = xy1xy2_to_xywh(p)
             g_x, g_y, g_w, g_h = xy1xy2_to_xywh(g)
-            t.append(np.concatenate([(g_x - p_x) / p_w, (g_y - p_y) / p_h, np.log(g_w / p_w), np.log(g_h / p_h)], axis=1))
+
+            img_batch.append(img)
+            ssbboxs.append(np.pad(p, ((0, 0), (1, 0)), mode='constant', constant_values=i))
+            label.append(count[index][:, 4])
+            t.append(
+                np.concatenate([(g_x - p_x) / p_w, (g_y - p_y) / p_h, np.log(g_w / p_w), np.log(g_h / p_h)], axis=1))
+            u.append(np.ones_like(POSindex))
+            u.append(np.zeros_like(NEGindex))
+
         self.iteration += 1
-        return (np.array(img_batch), np.concatenate(ssbboxs)), (np.concatenate(label), np.concatenate(t))
+        return (np.array(img_batch), np.concatenate(ssbboxs)), (np.concatenate(label), np.concatenate(t), np.concatenate(u))
 
 
-def multi_loss(x, x_bbox, t, t_bbox):
+def multi_loss(x, x_bbox, t, t_bbox, u):
     loss_cls = F.softmax_cross_entropy(x, t)
-    loss_loc = F.smooth_l1_loss(x_bbox, t_bbox)
+    loss_loc = F.smooth_l1_loss(x_bbox[np.arange(len(x)), t], t_bbox)
 
-    return loss_cls + 1 * loss_loc
+    return loss_cls + u * loss_loc
 
 
 def main_Fast_R_CNN(name='default'):
-    batch_size = 16
     epoch = 10
 
     train_loader = Hierarchical_Sampling(shuffle=False)
     model = Fast_R_CNN()
     optimizer = optimizers.Adam(alpha=0.0001)
-    model.fit(epoch, optimizer, train_loader, loss_function=multi_loss, name=name)
+    model.fit(epoch, optimizer, train_loader, loss_function=multi_loss, accuracy_function=None, iteration_print=True, name=name)

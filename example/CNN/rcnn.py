@@ -234,7 +234,7 @@ def main_Bbr(name='default'):
     train_loader = iterators.iterator(trainset, batch_size, shuffle=True)
     model = Bounding_box_Regression(feature_model=vgg)
     model.fit(epoch, lijnn.optimizers.Adam(alpha=0.0001), train_loader, loss_function=F.mean_squared_error,
-              f_accuracy=None, name=name, iteration_print=True)
+              accuracy_function=None, name=name, iteration_print=True)
 
 
 # TODO linear SVM

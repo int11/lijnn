@@ -141,8 +141,9 @@ class Model(Layer):
         start_epoch = int(epoch) if ti else int(epoch) + 1
         return start_epoch, ti
 
-    def fit(self, epoch, optimizer, train_loader, test_loader=None, loss_function=F.softmax_cross_entropy,
-            accuracy_function=F.accuracy, name='default', iteration_print=False, autosave=True, autosave_time=30):
+    def fit(self, epoch, optimizer, train_loader, test_loader=None,
+            loss_function=F.softmax_cross_entropy,
+            accuracy_function=F.accuracy, iteration_print=False, autosave=True, autosave_time=30, name='default'):
         optimizer = optimizer.setup(self)
         start_epoch, ti = self.load_weights_epoch(name=name)
 
@@ -156,8 +157,8 @@ class Model(Layer):
             sum_loss, sum_acc = 0, 0
             st = time.time()
             for x, t in train_loader:
-                y = self(*x)
-                loss = loss_function(*y, *t)
+                y = self(*x) if isinstance(x, tuple) else self(x)
+                loss = loss_function(*y, *t) if isinstance(t, tuple) else loss_function(y, t)
                 acc = accuracy_function(*y, *t).data if accuracy_function else 0
                 self.cleargrads()
                 loss.backward()

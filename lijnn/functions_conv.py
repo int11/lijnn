@@ -345,6 +345,10 @@ class ROIPooling2D(Function):
         self.spatial_scale = spatial_scale
 
     def forward(self, x, bboxs):
+        xp = cuda.get_array_module(x)
+        return self.forward_gpu(x, bboxs) if xp != np else self.forward_cpu(x, bboxs)
+
+    def forward_cpu(self, x, bboxs):
         self._bottom_data_shape = x.shape
 
         _, C, H, W = x.shape
@@ -721,7 +725,7 @@ def col2im_array(col, img_shape, kernel_size, stride, pad, to_matrix=True):
         col = col.reshape(N, OH, OW, C, KH, KW).transpose(0, 3, 4, 5, 1, 2)
 
     xp = cuda.get_array_module(col)
-    if xp != np:
+    if xp == np:
         img = _col2im_gpu(col, SH, SW, PH, PW, H, W)
         return img
     else:

@@ -109,27 +109,28 @@ class Hierarchical_Sampling(lijnn.iterator):
         for i, (img, count, iou, g) in enumerate(batch):
             positive_img_num = int(self.r_n * self.positive_sample_per)
 
-            POSindex = xp.where(iou >= 0.6)[0]
-            POSindex = POSindex[xp.random.permutation(len(POSindex))[:positive_img_num]]
-            NEGindex = xp.where(~(iou >= 0.6))[0]
-            NEGindex = NEGindex[xp.random.permutation(len(NEGindex))[:self.r_n - positive_img_num]]
+            POSindex = np.where(iou >= 0.6)[0]
+            POSindex = POSindex[np.random.permutation(len(POSindex))[:positive_img_num]]
+            NEGindex = np.where(~(iou >= 0.6))[0]
+            NEGindex = NEGindex[np.random.permutation(len(NEGindex))[:self.r_n - positive_img_num]]
 
-            index = xp.concatenate((POSindex, NEGindex))
+            index = np.concatenate((POSindex, NEGindex))
 
             p, g = count[index][:, :4], g[index]
             p_x, p_y, p_w, p_h = xy1xy2_to_xywh(p)
             g_x, g_y, g_w, g_h = xy1xy2_to_xywh(g)
 
             img_batch.append(img)
-            ssbboxs.append(xp.pad(p, ((0, 0), (1, 0)), mode='constant', constant_values=i))
+            ssbboxs.append(np.pad(p, ((0, 0), (1, 0)), mode='constant', constant_values=i))
             label.append(count[index][:, 4])
             t.append(
-                xp.concatenate([(g_x - p_x) / p_w, (g_y - p_y) / p_h, xp.log(g_w / p_w), xp.log(g_h / p_h)], axis=1))
-            u.append(xp.ones_like(POSindex))
-            u.append(xp.zeros_like(NEGindex))
+                np.concatenate([(g_x - p_x) / p_w, (g_y - p_y) / p_h, np.log(g_w / p_w), np.log(g_h / p_h)], axis=1))
+            u.append(np.ones_like(POSindex))
+            u.append(np.zeros_like(NEGindex))
 
         self.iteration += 1
-        return (xp.array(img_batch), xp.concatenate(ssbboxs)), (xp.concatenate(label), xp.concatenate(t), xp.concatenate(u))
+        return (xp.array(img_batch), xp.array(np.concatenate(ssbboxs))), \
+               (xp.array(np.concatenate(label)), xp.array(np.concatenate(t)), xp.array(np.concatenate(u)))
 
 
 def multi_loss(x, x_bbox, t, t_bbox, u):

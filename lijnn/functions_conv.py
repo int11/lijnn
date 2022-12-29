@@ -393,11 +393,12 @@ class ROIPooling2D(Function):
 
         y = cuda.cupy.empty((N, C, OH, OW), dtype=x.dtype)
         self.argmax_data = cuda.cupy.empty(y.shape, np.int32)
+
         cuda.cupy.ElementwiseKernel(
             '''
             raw T x, T spatial_scale, int32 C,
             int32 H, int32 W, int32 pooled_height, int32 pooled_width,
-            raw T bboxs
+            raw int32 bboxs
             ''',
             'T y, int32 argmax_data',
             '''
@@ -520,13 +521,13 @@ class ROIPooling2DGrad(Function):
     def forward_gpu(self, gy, bboxs):
         OH, OW = pair(self.output_size)
         _, C, H, W = self._bottom_data_shape
-        gx = cuda.cupy.zeros(self._bottom_data_shape, bboxs.dtype)
+        gx = cuda.cupy.zeros(self._bottom_data_shape, gy.dtype)
 
         cuda.cupy.ElementwiseKernel(
             '''
             raw T top_diff, raw int32 argmax_data, int32 num_rois,
             T spatial_scale, int32 C, int32 H, int32 W,
-            int32 pooled_height, int32 pooled_width, raw T bboxs
+            int32 pooled_height, int32 pooled_width, raw int32 bboxs
             ''',
             'T gx',
             '''

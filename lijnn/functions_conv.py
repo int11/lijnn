@@ -475,6 +475,10 @@ class ROIPooling2DGrad(Function):
         self.argmax_data = argmax_data
 
     def forward(self, gy, bboxs):
+        xp = cuda.get_array_module(gy)
+        return self.forward_gpu(gy, bboxs) if xp != np else self.forward_cpu(gy, bboxs)
+
+    def forward_cpu(self, gy, bboxs):
         t_bboxs = bboxs.copy()
         t_bboxs[:, 1:] = np.around(t_bboxs[:, 1:] * self.spatial_scale)
         OH, OW = pair(self.output_size)

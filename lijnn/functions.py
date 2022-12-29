@@ -3,7 +3,6 @@ import lijnn
 from lijnn import cuda, utils
 from lijnn.core import Function, Variable, as_variable, as_array
 
-
 # =============================================================================
 # Basic functions: sin / cos / tanh / exp / log
 # =============================================================================
@@ -155,7 +154,8 @@ class GetItemGrad(Function):
         if xp is np:
             np.add.at(gx, self.slices, gy)
         else:
-            xp.scatter_add(gx, self.slices, gy)
+            import cupyx
+            cupyx.scatter_add(gx, self.slices, gy)
         return gx
 
     def backward(self, ggx):

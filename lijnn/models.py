@@ -173,7 +173,7 @@ class Model(Layer):
                 if autosave and time.time() - st > autosave_time * 60:
                     self.save_weights_epoch(i, autosave_time + ti, name)
                     autosave_time += autosave_time
-            print(f"epoch {i + 1}")
+            print(f"epoch {i}")
             print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
             self.save_weights_epoch(i, name=name)
 

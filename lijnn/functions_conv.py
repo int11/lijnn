@@ -389,7 +389,7 @@ class ROIPooling2D(Function):
 
         OH, OW = pair(self.output_size)
         _, C, H, W = x.shape
-        N, _ = bboxs
+        N, _ = bboxs.shape
 
         y = cuda.cupy.empty((N, C, OH, OW), dtype=x.dtype)
         self.argmax_data = cuda.cupy.empty(y.shape, np.int32)

@@ -5,7 +5,7 @@ import lijnn.functions as F
 import lijnn.layers as L
 import os
 import lijnn.functions_conv as Fc
-
+import lijnn.accuracy as ac
 
 class Model(Layer):
     exceptli = [core.Add, core.Mul, core.Sub, core.Div, core.Pow, F.ReLU, Fc.LocalResponseNormalization]
@@ -142,8 +142,8 @@ class Model(Layer):
         return start_epoch, ti
 
     def fit(self, epoch, optimizer, train_loader, test_loader=None,
-            loss_function=F.softmax_cross_entropy,
-            accuracy_function=F.accuracy, iteration_print=False, autosave=True, autosave_time=30, name='default'):
+            loss_function=F.softmax_cross_entropy, accuracy_function=ac.classification,
+            iteration_print=False, autosave=True, autosave_time=30, name='default'):
         optimizer = optimizer.setup(self)
         start_epoch, ti = self.load_weights_epoch(name=name)
 

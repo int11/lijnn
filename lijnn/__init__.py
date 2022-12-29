@@ -24,6 +24,6 @@ import lijnn.utils
 import lijnn.cuda
 import lijnn.transforms
 import lijnn.initializers
-
+import lijnn.accuracy
 setup_variable()
 __version__ = '0.0.1'

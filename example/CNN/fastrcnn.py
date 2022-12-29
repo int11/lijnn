@@ -1,3 +1,5 @@
+import numpy as np
+
 import lijnn.datasets
 from lijnn import *
 from lijnn import layers as L
@@ -104,8 +106,8 @@ class Hierarchical_Sampling(lijnn.iterator):
         i, batch_size = self.iteration, self.batch_size
         batch_index = self.index[i * batch_size:(i + 1) * batch_size]
         batch = [self.dataset[i] for i in batch_index]
-        img_batch, ssbboxs, label, t, u = [], [], [], [], []
-
+        img_batch, ssbboxs = [], []
+        label, t, u, g_batch = [], [], [], []
         for i, (img, count, iou, g) in enumerate(batch):
             positive_img_num = int(self.r_n * self.positive_sample_per)
 
@@ -127,18 +129,27 @@ class Hierarchical_Sampling(lijnn.iterator):
                 np.concatenate([(g_x - p_x) / p_w, (g_y - p_y) / p_h, np.log(g_w / p_w), np.log(g_h / p_h)], axis=1))
             u.append(np.ones_like(POSindex))
             u.append(np.zeros_like(NEGindex))
-
+            g_batch.append(g)
         self.iteration += 1
         return (xp.array(img_batch), xp.array(np.concatenate(ssbboxs))), \
-               (xp.array(np.concatenate(label)), xp.array(np.concatenate(t)), xp.array(np.concatenate(u)))
+               (xp.array(np.concatenate(label)), xp.array(np.concatenate(t)), xp.array(np.concatenate(u)),
+                xp.array(np.concatenate(g_batch)))
 
 
-def multi_loss(x, x_bbox, t, t_bbox, u):
-    loss_cls = F.softmax_cross_entropy(x, t)
+def multi_loss(y, x_bbox, t, t_bbox, u, g):
+    loss_cls = F.softmax_cross_entropy(y, t)
+    x_bbox = x_bbox[np.arange(len(y)), t]
     u = u[None].T
-    loss_loc = F.smooth_l1_loss(x_bbox[np.arange(len(x)), t] * u, t_bbox * u)
+    loss_loc = F.smooth_l1_loss(x_bbox * u, t_bbox * u)
 
     return loss_cls + loss_loc
+
+
+def Faccuracy(y, x_bbox, t, t_bbox, u, g):
+    x_bbox = x_bbox[np.arange(len(y)), t]
+    acc = (y.data.argmax(axis=1) == t.data).mean()
+    iou = sum([utils.IOU(a, b) for a, b in zip(x_bbox.data, g)])
+    return Variable(as_array(acc)), Variable(as_array(iou))
 
 
 def main_Fast_R_CNN(name='default'):
@@ -147,4 +158,5 @@ def main_Fast_R_CNN(name='default'):
     train_loader = Hierarchical_Sampling(shuffle=False)
     model = Fast_R_CNN()
     optimizer = optimizers.Adam(alpha=0.0001)
-    model.fit(epoch, optimizer, train_loader, loss_function=multi_loss, accuracy_function=None, iteration_print=True, name=name)
+    model.fit(epoch, optimizer, train_loader, loss_function=multi_loss, accuracy_function=Faccuracy,
+              iteration_print=True, name=name)

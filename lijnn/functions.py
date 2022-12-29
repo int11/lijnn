@@ -562,19 +562,8 @@ def l2_loss(x, t):
 
 
 # =============================================================================
-# accuracy / dropout / batch_norm / embed_id
+# dropout / batch_norm / embed_id
 # =============================================================================
-def accuracy(y, t):
-    """
-    [WAR] This function is not differentiable.
-    """
-    y, t = as_variable(y), as_variable(t)
-
-    pred = y.data.argmax(axis=1).reshape(t.shape)
-    result = (pred == t.data)
-    acc = result.mean()
-    return Variable(as_array(acc))
-
 
 def dropout(x, dropout_ratio=0.5):
     x = as_variable(x)

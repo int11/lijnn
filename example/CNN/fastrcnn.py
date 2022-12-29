@@ -1,5 +1,3 @@
-import numpy as np
-
 import lijnn.datasets
 from lijnn import *
 from lijnn import layers as L
@@ -111,34 +109,35 @@ class Hierarchical_Sampling(lijnn.iterator):
         for i, (img, count, iou, g) in enumerate(batch):
             positive_img_num = int(self.r_n * self.positive_sample_per)
 
-            POSindex = np.where(iou >= 0.6)[0]
-            POSindex = POSindex[np.random.permutation(len(POSindex))[:positive_img_num]]
-            NEGindex = np.where(~(iou >= 0.6))[0]
-            NEGindex = NEGindex[np.random.permutation(len(NEGindex))[:self.r_n - positive_img_num]]
+            POSindex = xp.where(iou >= 0.6)[0]
+            POSindex = POSindex[xp.random.permutation(len(POSindex))[:positive_img_num]]
+            NEGindex = xp.where(~(iou >= 0.6))[0]
+            NEGindex = NEGindex[xp.random.permutation(len(NEGindex))[:self.r_n - positive_img_num]]
 
-            index = np.concatenate((POSindex, NEGindex))
+            index = xp.concatenate((POSindex, NEGindex))
 
             p, g = count[index][:, :4], g[index]
             p_x, p_y, p_w, p_h = xy1xy2_to_xywh(p)
             g_x, g_y, g_w, g_h = xy1xy2_to_xywh(g)
 
             img_batch.append(img)
-            ssbboxs.append(np.pad(p, ((0, 0), (1, 0)), mode='constant', constant_values=i))
+            ssbboxs.append(xp.pad(p, ((0, 0), (1, 0)), mode='constant', constant_values=i))
             label.append(count[index][:, 4])
             t.append(
-                np.concatenate([(g_x - p_x) / p_w, (g_y - p_y) / p_h, np.log(g_w / p_w), np.log(g_h / p_h)], axis=1))
-            u.append(np.ones_like(POSindex))
-            u.append(np.zeros_like(NEGindex))
+                xp.concatenate([(g_x - p_x) / p_w, (g_y - p_y) / p_h, xp.log(g_w / p_w), xp.log(g_h / p_h)], axis=1))
+            u.append(xp.ones_like(POSindex))
+            u.append(xp.zeros_like(NEGindex))
 
         self.iteration += 1
-        return (np.array(img_batch), np.concatenate(ssbboxs)), (np.concatenate(label), np.concatenate(t), np.concatenate(u))
+        return (xp.array(img_batch), xp.concatenate(ssbboxs)), (xp.concatenate(label), xp.concatenate(t), xp.concatenate(u))
 
 
 def multi_loss(x, x_bbox, t, t_bbox, u):
     loss_cls = F.softmax_cross_entropy(x, t)
-    loss_loc = F.smooth_l1_loss(x_bbox[np.arange(len(x)), t], t_bbox)
+    u = u[None].T
+    loss_loc = F.smooth_l1_loss(x_bbox[np.arange(len(x)), t] * u, t_bbox * u)
 
-    return loss_cls + u * loss_loc
+    return loss_cls + loss_loc
 
 
 def main_Fast_R_CNN(name='default'):

@@ -137,8 +137,9 @@ class Hierarchical_Sampling(lijnn.iterator):
 
 
 def multi_loss(y, x_bbox, t, t_bbox, u, g):
+    xp = cuda.get_array_module(y)
     loss_cls = F.softmax_cross_entropy(y, t)
-    x_bbox = x_bbox[np.arange(len(y)), t]
+    x_bbox = x_bbox[xp.arange(len(y)), t]
     u = u[None].T
     loss_loc = F.smooth_l1_loss(x_bbox * u, t_bbox * u)
 
@@ -146,12 +147,13 @@ def multi_loss(y, x_bbox, t, t_bbox, u, g):
 
 
 def Faccuracy(y, x_bbox, t, t_bbox, u, g):
+    xp = cuda.get_array_module(y)
     y, t = as_array(y), as_array(t)
     x_bbox, t_bbox, u, g = as_array(x_bbox), as_array(t_bbox), as_array(u), as_array(g)
     acc = (y.argmax(axis=1) == t).mean()
 
-    x_bbox = x_bbox[np.arange(len(y)), t]
-    index = u.astype(np.bool)
+    x_bbox = x_bbox[xp.arange(len(y)), t]
+    index = u.astype(xp.bool)
     x_bbox, g = x_bbox[index], g[index]
     iou = sum([utils.IOU(a, b) for a, b in zip(x_bbox, g)])
     return {'acc': Variable(as_array(acc)), 'iou': Variable(as_array(iou))}

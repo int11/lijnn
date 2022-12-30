@@ -311,7 +311,7 @@ class VOCclassfication(VOCDetection):
     def show(self, index):
         img, label = self[index]
         cv.imshow('1', img[::-1].transpose(1, 2, 0))
-        print(self.count()[label])
+        print(self.count[label])
 
     def __len__(self):
         return len(self.count)

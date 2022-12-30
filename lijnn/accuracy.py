@@ -4,6 +4,7 @@ from lijnn import cuda, utils
 from lijnn.core import Function, Variable, as_variable, as_array
 
 
+# accuracy function must return dictionary
 def classification(y, t):
     y, t = as_array(y), as_array(t)
     acc = (y.argmax(axis=1) == t).mean()

@@ -148,8 +148,7 @@ def multi_loss(y, x_bbox, t, t_bbox, u, g):
 
 def Faccuracy(y, x_bbox, t, t_bbox, u, g):
     xp = cuda.get_array_module(y)
-    y, t = as_array(y), as_array(t)
-    x_bbox, t_bbox, u, g = as_array(x_bbox), as_array(t_bbox), as_array(u), as_array(g)
+    y, x_bbox, t, t_bbox, u, g = as_array(y), as_array(x_bbox), as_array(t), as_array(t_bbox), as_array(u), as_array(g)
     acc = (y.argmax(axis=1) == t).mean()
 
     x_bbox = x_bbox[xp.arange(len(y)), t]

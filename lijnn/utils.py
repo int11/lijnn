@@ -2,7 +2,7 @@ import os
 import subprocess
 import urllib.request
 import numpy as np
-from lijnn import as_variable
+from lijnn import as_variable, as_array
 from lijnn import Variable
 from lijnn import cuda
 import cv2 as cv
@@ -399,6 +399,7 @@ def printoptions(precision=6, threshold=np.inf, suppress=True):
 
 
 def IOU(bbox1, bbox2):
+    bbox1, bbox2 = as_array(bbox1), as_array(bbox2)
     xp = cuda.get_array_module(bbox1)
     p0 = xp.maximum(bbox1[:2], bbox2[:2])
     p1 = xp.minimum(bbox1[2:], bbox2[2:])

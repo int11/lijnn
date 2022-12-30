@@ -146,10 +146,15 @@ def multi_loss(y, x_bbox, t, t_bbox, u, g):
 
 
 def Faccuracy(y, x_bbox, t, t_bbox, u, g):
+    y, t = as_array(y), as_array(t)
+    x_bbox, t_bbox, u, g = as_array(x_bbox), as_array(t_bbox), as_array(u), as_array(g)
+    acc = (y.argmax(axis=1) == t).mean()
+
     x_bbox = x_bbox[np.arange(len(y)), t]
-    acc = (y.data.argmax(axis=1) == t.data).mean()
-    iou = sum([utils.IOU(a, b) for a, b in zip(x_bbox.data, g)])
-    return Variable(as_array(acc)), Variable(as_array(iou))
+    index = u.astype(np.bool)
+    x_bbox, g = x_bbox[index], g[index]
+    iou = sum([utils.IOU(a, b) for a, b in zip(x_bbox, g)])
+    return {'acc': Variable(as_array(acc)), 'iou': Variable(as_array(iou))}
 
 
 def main_Fast_R_CNN(name='default'):

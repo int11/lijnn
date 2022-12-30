@@ -7,6 +7,7 @@ import os
 import lijnn.functions_conv as Fc
 import lijnn.accuracy as ac
 
+
 class Model(Layer):
     exceptli = [core.Add, core.Mul, core.Sub, core.Div, core.Pow, F.ReLU, Fc.LocalResponseNormalization]
 
@@ -23,6 +24,7 @@ class Model(Layer):
                     loop(obj, key)
                 else:
                     dict[key] = obj
+
         dict = {}
         loop(self)
         return dict
@@ -93,7 +95,7 @@ class Model(Layer):
         print('=' * (np.sum(space) + 15))
         for i in text:
             for e0, e1 in zip(i, space):
-                print(f'{e0:<{e1+5}}', end='')
+                print(f'{e0:<{e1 + 5}}', end='')
             print()
         print(f"Total_params: {total_params:,}\n")
 
@@ -154,27 +156,45 @@ class Model(Layer):
                 test_loader.to_gpu()
 
         for i in range(start_epoch, epoch + 1):
-            sum_loss, sum_acc = 0, 0
+            sum_loss, sum_acc = 0, {}
             st = time.time()
             for x, t in train_loader:
+                # forward, backward, update
                 y = self(*x) if isinstance(x, tuple) else self(x)
                 loss = loss_function(*y, *t) if isinstance(t, tuple) else loss_function(y, t)
-                acc = accuracy_function(*y, *t).data if accuracy_function else 0
+                if accuracy_function:
+                    acc = accuracy_function(*y, *t) if isinstance(t, tuple) else accuracy_function(y, t)
+                else:
+                    acc = 0
                 self.cleargrads()
                 loss.backward()
                 optimizer.update()
+
+
+                # sum loss/acc
                 sum_loss += loss.data
-                sum_acc += acc
+                for key, value in acc.items():
+                    if not key in sum_acc:
+                        sum_acc[key] = value.data
+                    else:
+                        sum_acc[key] += value.data
+
                 if iteration_print:
-                    s = f"loss : {loss.data}"
+                    text = f"loss : {loss.data}"
                     if accuracy_function:
-                        s += f"accuracy {acc}"
-                    print(s)
+                        for key, value in acc.items():
+                            text += f" {key} : {value.data}"
+                    print(text)
+
                 if autosave and time.time() - st > autosave_time * 60:
                     self.save_weights_epoch(i, autosave_time + ti, name)
                     autosave_time += autosave_time
+
             print(f"epoch {i}")
-            print(f'train loss {sum_loss / train_loader.max_iter} accuracy {sum_acc / train_loader.max_iter}')
+            text = f'train loss : {sum_loss / train_loader.max_iter}'
+            for key, value in sum_acc.items():
+                text += f'{key} : {value / train_loader.max_iter}'
+            print(text)
             self.save_weights_epoch(i, name=name)
 
             sum_loss, sum_acc = 0, 0

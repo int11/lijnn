@@ -131,6 +131,12 @@ def transpose(x, axes=None):
 
 class GetItem(Function):
     def __init__(self, slices):
+        if isinstance(slices, Variable):
+            slices = slices.data
+        elif isinstance(slices, tuple):
+            slices = tuple(slices[i].data if isinstance(slices[i], Variable) else
+                               slices[i] for i in range(len(slices)))
+
         self.slices = slices
 
     def forward(self, x):
@@ -477,21 +483,9 @@ def sigmoid_cross_entropy(x, t):
     return binary_cross_entropy(sigmoid(x), t)
 
 
-class L1Loss(Function):
-    def forward(self, x, t):
-        self.x_shape = x.shape
-        y = x - t
-        return y.sum()
-
-    def backward(self, gy):
-        gy = utils.reshape_sum_backward(gy, self.x_shape, None, False)
-        gx = broadcast_to(gy, self.x_shape)
-        gt = -gx
-        return gx, gt
-
-
 def l1_loss(x, t):
-    return L1Loss()(x, t)
+    y = t - x
+    return y.sum()
 
 
 class SmoothL1Loss(Function):
@@ -501,7 +495,7 @@ class SmoothL1Loss(Function):
 
     def forward(self, x, t):
         xp = cuda.get_array_module(x)
-        y = x - t
+        y = t - x
         index = xp.abs(y) <= 1
         y[index] = 0.5 * y[index] ** 2
         y[~index] = xp.abs(y[~index]) - 0.5
@@ -512,7 +506,7 @@ class SmoothL1Loss(Function):
 
     def backward(self, gy):
         x, t = self.inputs
-        diff = x - t
+        diff = t - x
         return tuple(SmoothL1LossGrad(diff.data, self.reduction)(gy))
 
 
@@ -532,11 +526,11 @@ class SmoothL1LossGrad(Function):
         index = xp.abs(self.diff) <= 1
 
         gy = utils.reshape_sum_backward(gy, self.diff.shape, None, False)
-        gx = xp.broadcast_to(gy, self.diff.shape).copy()
+        gt = xp.broadcast_to(gy, self.diff.shape).copy()
 
-        gx[~index] = xp.sign(self.diff[~index]) * gx[~index]
-        gx[index] = gx[index] * self.diff[index]  # * 2 * 0.5
-        gt = -gx
+        gt[~index] = xp.sign(self.diff[~index]) * gt[~index]
+        gt[index] = gt[index] * self.diff[index]  # * 2 * 0.5
+        gx = -gt
         return gx, gt
 
     def backward(self, gx, gt):
@@ -545,15 +539,15 @@ class SmoothL1LossGrad(Function):
 
 class L2Loss(Function):
     def forward(self, x, t):
-        diff = x - t
+        diff = t - x
         y = (diff ** 2).sum()
         return y
 
     def backward(self, gy):
         x, t = self.inputs
-        diff = x - t
-        gx = gy * diff * 2.
-        gt = -gx
+        diff = t - x
+        gt = gy * diff * 2.
+        gx = -gt
         return gx, gt
 
 

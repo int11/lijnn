@@ -170,14 +170,14 @@ def Faccuracy(y, y_bbox, t_label, p, g, u):
     y_bbox[:, 2] = p_w * xp.exp(y_bbox[:, 2])
     y_bbox[:, 3] = p_h * xp.exp(y_bbox[:, 3])
 
-    iou = sum([utils.IOU(a, b) for a, b in zip(y_bbox, g)])
+    iou = sum([utils.IOU(a, b) for a, b in zip(y_bbox, g)]) / len(y_bbox)
     return {'acc': Variable(as_array(acc)), 'iou': Variable(as_array(iou))}
 
 
 def main_Fast_R_CNN(name='default'):
     epoch = 10
 
-    train_loader = Hierarchical_Sampling(shuffle=False)
+    train_loader = Hierarchical_Sampling()
     model = Fast_R_CNN()
     optimizer = optimizers.Adam(alpha=0.0001)
     model.fit(epoch, optimizer, train_loader, loss_function=multi_loss, accuracy_function=Faccuracy,

@@ -87,7 +87,14 @@ class VOC_fastrcnn(rcnn.VOC_SelectiveSearch):
 def xy1xy2_to_xywh(xy1xy2):
     xp = cuda.get_array_module(xy1xy2)
     xmin, ymin, xmax, ymax = xp.split(xy1xy2, 4, axis=1)
+    xmin, ymin, xmax, ymax = xmin.ravel(), ymin.ravel(), xmax.ravel(), ymax.ravel()
     return (xmin + xmax) / 2, (ymin + ymax) / 2, xmax - xmin, ymax - ymin
+
+
+def getT_from_P_G(p, g):
+    p_x, p_y, p_w, p_h = xy1xy2_to_xywh(p)
+    g_x, g_y, g_w, g_h = xy1xy2_to_xywh(g)
+    return np.array([(g_x - p_x) / p_w, (g_y - p_y) / p_h, np.log(g_w / p_w), np.log(g_h / p_h)]).T
 
 
 class Hierarchical_Sampling(lijnn.iterator):
@@ -107,7 +114,7 @@ class Hierarchical_Sampling(lijnn.iterator):
         batch_index = self.index[i * batch_size:(i + 1) * batch_size]
         batch = [self.dataset[i] for i in batch_index]
         img_batch, ssbboxs = [], []
-        label, t, u, g_batch = [], [], [], []
+        label, p_batch, g_batch, u = [], [], [], []
         for i, (img, count, iou, g) in enumerate(batch):
             positive_img_num = int(self.r_n * self.positive_sample_per)
 
@@ -119,42 +126,50 @@ class Hierarchical_Sampling(lijnn.iterator):
             index = np.concatenate((POSindex, NEGindex))
 
             p, g = count[index][:, :4], g[index]
-            p_x, p_y, p_w, p_h = xy1xy2_to_xywh(p)
-            g_x, g_y, g_w, g_h = xy1xy2_to_xywh(g)
 
             img_batch.append(img)
             ssbboxs.append(np.pad(p, ((0, 0), (1, 0)), mode='constant', constant_values=i))
+
             label.append(count[index][:, 4])
-            t.append(
-                np.concatenate([(g_x - p_x) / p_w, (g_y - p_y) / p_h, np.log(g_w / p_w), np.log(g_h / p_h)], axis=1))
+            p_batch.append(p)
+            g_batch.append(g)
             u.append(np.ones_like(POSindex))
             u.append(np.zeros_like(NEGindex))
-            g_batch.append(g)
+
         self.iteration += 1
         return (xp.array(img_batch), xp.array(np.concatenate(ssbboxs))), \
-               (xp.array(np.concatenate(label)), xp.array(np.concatenate(t)), xp.array(np.concatenate(u)),
-                xp.array(np.concatenate(g_batch)))
+               (xp.array(np.concatenate(label)), xp.array(np.concatenate(p_batch)), xp.array(np.concatenate(g_batch)),
+                xp.array(np.concatenate(u)))
 
 
-def multi_loss(y, x_bbox, t, t_bbox, u, g):
+def multi_loss(y, y_bbox, t_label, p, g, u):
     xp = cuda.get_array_module(y)
-    loss_cls = F.softmax_cross_entropy(y, t)
-    x_bbox = x_bbox[xp.arange(len(y)), t]
+    loss_cls = F.softmax_cross_entropy(y, t_label)
+
+    y_bbox = y_bbox[xp.arange(len(y)), t_label]
+    t_bbox = getT_from_P_G(p, g)
     u = u[None].T
-    loss_loc = F.smooth_l1_loss(x_bbox * u, t_bbox * u)
+    loss_loc = F.smooth_l1_loss(y_bbox * u, t_bbox * u)
 
     return loss_cls + loss_loc
 
 
-def Faccuracy(y, x_bbox, t, t_bbox, u, g):
+def Faccuracy(y, y_bbox, t_label, p, g, u):
     xp = cuda.get_array_module(y)
-    y, x_bbox, t, t_bbox, u, g = as_array(y), as_array(x_bbox), as_array(t), as_array(t_bbox), as_array(u), as_array(g)
-    acc = (y.argmax(axis=1) == t).mean()
+    y, y_bbox, t_label, p, g, u = as_array(y), as_array(y_bbox), as_array(t_label), as_array(p), as_array(g), as_array(
+        u)
+    acc = (y.argmax(axis=1) == t_label).mean()
 
-    x_bbox = x_bbox[xp.arange(len(y)), t]
-    index = u.astype(xp.bool)
-    x_bbox, g = x_bbox[index], g[index]
-    iou = sum([utils.IOU(a, b) for a, b in zip(x_bbox, g)])
+    y_bbox = y_bbox[xp.arange(len(y)), t_label]
+    index = u.astype(xp.bool_)
+    y_bbox, p = y_bbox[index], p[index]
+    p_x, p_y, p_w, p_h = xy1xy2_to_xywh(p)
+    y_bbox[:, 0] = p_w * y_bbox[:, 0] + p_x
+    y_bbox[:, 1] = p_h * y_bbox[:, 1] + p_y
+    y_bbox[:, 2] = p_w * xp.exp(y_bbox[:, 2])
+    y_bbox[:, 3] = p_h * xp.exp(y_bbox[:, 3])
+
+    iou = sum([utils.IOU(a, b) for a, b in zip(y_bbox, g)])
     return {'acc': Variable(as_array(acc)), 'iou': Variable(as_array(iou))}
 
 

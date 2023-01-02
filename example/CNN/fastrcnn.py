@@ -92,9 +92,10 @@ def xy1xy2_to_xywh(xy1xy2):
 
 
 def getT_from_P_G(p, g):
+    xp = cuda.get_array_module(p)
     p_x, p_y, p_w, p_h = xy1xy2_to_xywh(p)
     g_x, g_y, g_w, g_h = xy1xy2_to_xywh(g)
-    return np.array([(g_x - p_x) / p_w, (g_y - p_y) / p_h, np.log(g_w / p_w), np.log(g_h / p_h)]).T
+    return xp.array([(g_x - p_x) / p_w, (g_y - p_y) / p_h, np.log(g_w / p_w), np.log(g_h / p_h)]).T
 
 
 class Hierarchical_Sampling(lijnn.iterator):

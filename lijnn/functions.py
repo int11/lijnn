@@ -510,7 +510,7 @@ class SmoothL1Loss(Function):
         return tuple(SmoothL1LossGrad(diff.data, self.reduction)(gy))
 
 
-def smooth_l1_loss(x, t, reduction='sum'):
+def smooth_l1_loss(x, t, reduction='mean'):
     return SmoothL1Loss(reduction)(x, t)
 
 

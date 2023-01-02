@@ -1,5 +1,3 @@
-import numpy as np
-
 import lijnn.datasets
 from lijnn import *
 from lijnn import layers as L
@@ -76,8 +74,9 @@ class VOC_fastrcnn(rcnn.VOC_SelectiveSearch):
 
         bbox, g = self.count[index][:, 1:], self.g[index]
 
-        bbox[:, :4] = self.bbox_transform(img.shape, bbox[:, :4])
-        g = self.bbox_transform(img.shape, g)
+        if self.bbox_transform is not None:
+            bbox[:, :4] = self.bbox_transform(img.shape, bbox[:, :4])
+            g = self.bbox_transform(img.shape, g)
         return self.img_transform(img), bbox, self.iou[index], g
 
     def __len__(self):
@@ -157,10 +156,11 @@ def multi_loss(y, y_bbox, t_label, p, g, u):
 
 def Faccuracy(y, y_bbox, t_label, p, g, u):
     xp = cuda.get_array_module(y)
+    # acc
     y, y_bbox, t_label, p, g, u = as_array(y), as_array(y_bbox), as_array(t_label), as_array(p), as_array(g), as_array(
         u)
     acc = (y.argmax(axis=1) == t_label).mean()
-
+    # iou
     y_bbox = y_bbox[xp.arange(len(y)), t_label]
     index = u.astype(xp.bool_)
     y_bbox, p = y_bbox[index], p[index]
@@ -169,7 +169,6 @@ def Faccuracy(y, y_bbox, t_label, p, g, u):
     y_bbox[:, 1] = p_h * y_bbox[:, 1] + p_y
     y_bbox[:, 2] = p_w * xp.exp(y_bbox[:, 2])
     y_bbox[:, 3] = p_h * xp.exp(y_bbox[:, 3])
-
     iou = sum([utils.IOU(a, b) for a, b in zip(y_bbox, g)]) / len(y_bbox)
     return {'acc': Variable(as_array(acc)), 'iou': Variable(as_array(iou))}
 

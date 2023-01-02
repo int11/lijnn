@@ -230,6 +230,9 @@ class VOCDetection(Dataset):
         assert not (not train and year != 2007)
         super().__init__(train, None, None)
         self.img_transform = img_transform
+        if self.img_transform is None:
+            self.img_transform = lambda x: x
+
         self.year = str(year)
         url = self.DATASET_YEAR_DICT[self.year + 'test'] if self.train == False and self.year == "2007" else \
             self.DATASET_YEAR_DICT[self.year]
@@ -248,7 +251,7 @@ class VOCDetection(Dataset):
         assert np.isscalar(index)
         label, bboxes = self._get_index_label_bboxes(index)
         img = self._get_index_img(index)
-        return self.x_transform(img), label, np.array(bboxes)
+        return self.x_transform(img), label, bboxes
 
     def _get_index_label_bboxes(self, index):
         bytes = self.file.extractfile(self.xml_tarinfo[index]).read()
@@ -258,7 +261,7 @@ class VOCDetection(Dataset):
             budbox = i.find("bndbox")
             bboxes.append([int(budbox.find(i).text) for i in ['xmin', 'ymin', 'xmax', 'ymax']])
             label.append(self.revers_label[i.find("name").text])
-        return label, bboxes
+        return np.array(label), np.array(bboxes)
 
     def _get_index_img(self, index):
         bytes = self.file.extractfile(self.image_tarinfo[index]).read()

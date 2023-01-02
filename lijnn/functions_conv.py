@@ -481,7 +481,9 @@ class ROIPooling2DGrad(Function):
 
     def forward_cpu(self, gy, bboxs):
         t_bboxs = bboxs.copy()
-        t_bboxs[:, 1:] = np.around(t_bboxs[:, 1:] * self.spatial_scale)
+        t_bboxs[:, [1, 2]] = np.floor(t_bboxs[:, [1, 2]] * self.spatial_scale)
+        t_bboxs[:, [3, 4]] = np.ceil(t_bboxs[:, [3, 4]] * self.spatial_scale)
+
         OH, OW = pair(self.output_size)
         _, C, H, W = self._bottom_data_shape
         N, _ = t_bboxs.shape

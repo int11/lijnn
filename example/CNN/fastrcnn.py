@@ -165,10 +165,11 @@ def Faccuracy(y, y_bbox, t_label, p, g, u):
     index = u.astype(xp.bool_)
     y_bbox, p = y_bbox[index], p[index]
     p_x, p_y, p_w, p_h = xy1xy2_to_xywh(p)
-    y_bbox[:, 0] = p_w * y_bbox[:, 0] + p_x
-    y_bbox[:, 1] = p_h * y_bbox[:, 1] + p_y
-    y_bbox[:, 2] = p_w * xp.exp(y_bbox[:, 2])
-    y_bbox[:, 3] = p_h * xp.exp(y_bbox[:, 3])
+    x = p_w * y_bbox[:, 0] + p_x
+    y = p_h * y_bbox[:, 1] + p_y
+    w = p_w * xp.exp(y_bbox[:, 2])
+    h = p_h * xp.exp(y_bbox[:, 3])
+    y_bbox[:, 0], y_bbox[:, 1], y_bbox[:, 2], y_bbox[:, 3] = x - w / 2, y - h / 2, x + w / 2, y + h / 2
     iou = sum([utils.IOU(a, b) for a, b in zip(y_bbox, g)]) / len(y_bbox)
     return {'acc': Variable(as_array(acc)), 'iou': Variable(as_array(iou))}
 

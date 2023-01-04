@@ -197,8 +197,6 @@ class Model(Layer):
             print(text)
             self.save_weights_epoch(i, name=name)
 
-
-
             sum_loss, sum_acc = 0, 0
             if test_loader:
                 with no_grad(), test_mode():

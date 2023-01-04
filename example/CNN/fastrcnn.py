@@ -119,9 +119,12 @@ class Hierarchical_Sampling(lijnn.iterator):
             positive_img_num = int(self.r_n * self.positive_sample_per)
 
             POSindex = np.where(iou >= 0.6)[0]
-            POSindex = POSindex[np.random.permutation(len(POSindex))[:positive_img_num]]
             NEGindex = np.where(~(iou >= 0.6))[0]
-            NEGindex = NEGindex[np.random.permutation(len(NEGindex))[:self.r_n - positive_img_num]]
+            if self.shuffle:
+                POSindex = POSindex[np.random.permutation(len(POSindex))]
+                NEGindex = NEGindex[np.random.permutation(len(NEGindex))]
+            POSindex = POSindex[:positive_img_num]
+            NEGindex = NEGindex[:self.r_n - positive_img_num]
 
             index = np.concatenate((POSindex, NEGindex))
 

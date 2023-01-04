@@ -349,7 +349,7 @@ class ROIPooling2D(Function):
         return self.forward_gpu(x, bboxs) if xp != np else self.forward_cpu(x, bboxs)
 
     def forward_cpu(self, x, bboxs):
-        self._bottom_data_shape = x.shape
+        bboxs = bboxs.copy()
 
         _, C, H, W = x.shape
         OH, OW = pair(self.output_size)
@@ -366,6 +366,7 @@ class ROIPooling2D(Function):
             idx, xmin, ymin, xmax, ymax = bboxs[i_roi]
             roi_width, roi_height = max(xmax - xmin, 1), max(ymax - ymin, 1)
             strideh, stridew = roi_height / OH, roi_width / OW
+
             for _outh in range(OH):
                 sliceh = slice(int(np.floor(_outh * strideh)) + ymin, int(np.ceil((_outh + 1) * strideh)) + ymin)
                 lenh = sliceh.stop - sliceh.start
@@ -463,7 +464,7 @@ class ROIPooling2D(Function):
 
     def backward(self, gy):
         x, bboxs = self.inputs
-        gx, gbboxs = ROIPooling2DGrad(self.output_size, self.spatial_scale, self._bottom_data_shape, self.argmax_data)(
+        gx, gbboxs = ROIPooling2DGrad(self.output_size, self.spatial_scale, x.shape, self.argmax_data)(
             gy, bboxs)
         return gx, gbboxs
 
@@ -480,18 +481,18 @@ class ROIPooling2DGrad(Function):
         return self.forward_gpu(gy, bboxs) if xp != np else self.forward_cpu(gy, bboxs)
 
     def forward_cpu(self, gy, bboxs):
-        t_bboxs = bboxs.copy()
-        t_bboxs[:, [1, 2]] = np.floor(t_bboxs[:, [1, 2]] * self.spatial_scale)
-        t_bboxs[:, [3, 4]] = np.ceil(t_bboxs[:, [3, 4]] * self.spatial_scale)
+        bboxs = bboxs.copy()
+        bboxs[:, [1, 2]] = np.floor(bboxs[:, [1, 2]] * self.spatial_scale)
+        bboxs[:, [3, 4]] = np.ceil(bboxs[:, [3, 4]] * self.spatial_scale)
 
         OH, OW = pair(self.output_size)
         _, C, H, W = self._bottom_data_shape
-        N, _ = t_bboxs.shape
+        N, _ = bboxs.shape
 
-        bottom_delta = np.zeros(self._bottom_data_shape, t_bboxs.dtype)
+        bottom_delta = np.zeros(self._bottom_data_shape, gy.dtype)
 
         for i_roi in range(N):
-            idx, xmin, ymin, xmax, ymax = t_bboxs[i_roi]
+            idx, xmin, ymin, xmax, ymax = bboxs[i_roi]
             idx = int(idx)
             roi_width = max(xmax - xmin + 1, 1)
             roi_height = max(ymax - ymin + 1, 1)

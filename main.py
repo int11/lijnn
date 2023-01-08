@@ -1,3 +1,3 @@
 from example import CNN
 
-CNN.main_ResNet()
+CNN.fastrcnn.main_Fast_R_CNN()

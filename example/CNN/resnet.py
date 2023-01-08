@@ -147,7 +147,7 @@ def resnet152(num_classes=1000):
 
 
 def main_ResNet(name='default'):
-    batch_size = 32
+    batch_size = 16
     epoch = 100
     transfrom = compose(
         [resize(224), toFloat(),

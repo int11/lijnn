@@ -1,5 +1,6 @@
 import lijnn.datasets
 from lijnn import *
+from lijnn.cuda import *
 from lijnn import layers as L
 from lijnn import functions as F
 from lijnn.transforms import *
@@ -160,8 +161,7 @@ def multi_loss(y, y_bbox, t_label, p, g, u):
 def Faccuracy(y, y_bbox, t_label, p, g, u):
     xp = cuda.get_array_module(y)
     # acc
-    y, y_bbox, t_label, p, g, u = as_array(y), as_array(y_bbox), as_array(t_label), as_array(p), as_array(g), as_array(
-        u)
+    y, y_bbox, t_label, p, g, u = as_numpy(y), as_numpy(y_bbox), as_numpy(t_label), as_numpy(p), as_numpy(g), as_numpy(u)
     acc = (y.argmax(axis=1) == t_label).mean()
     # iou
     y_bbox = y_bbox[xp.arange(len(y)), t_label]
@@ -174,7 +174,7 @@ def Faccuracy(y, y_bbox, t_label, p, g, u):
     h = p_h * xp.exp(y_bbox[:, 3])
     y_bbox[:, 0], y_bbox[:, 1], y_bbox[:, 2], y_bbox[:, 3] = x - w / 2, y - h / 2, x + w / 2, y + h / 2
     iou = sum([utils.IOU(a, b) for a, b in zip(y_bbox, g)]) / len(y_bbox)
-    return {'acc': Variable(as_array(acc)), 'iou': Variable(as_array(iou))}
+    return {'acc': Variable(as_numpy(acc)), 'iou': Variable(as_numpy(iou))}
 
 
 def main_Fast_R_CNN(name='default'):

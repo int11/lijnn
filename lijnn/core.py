@@ -182,8 +182,6 @@ def as_variable(obj):
 def as_array(x, array_module=np):
     if np.isscalar(x):
         return array_module.array(x)
-    elif isinstance(x, Variable):
-        return x.data
     return x
 
 
@@ -219,10 +217,10 @@ class Function:
     def backward(self, gys):
         """
         Args:
-            gys (`dezero.Variable`): Input type must be dezero.Variable
+            gys (`lijnn.Variable`): Input type must be lijnn.Variable
 
         Returns:
-            `tuple(dezero.Variable)`: Output type must be tuple(dezero.Variable)
+            `tuple(lijnn.Variable)`: Output type must be tuple(lijnn.Variable)
         """
         raise NotImplementedError()
 

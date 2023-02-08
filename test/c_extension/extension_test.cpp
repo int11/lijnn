@@ -30,12 +30,12 @@ static PyMethodDef superfastcode_methods[] = {
 
 static PyModuleDef superfastcode_module = {
     PyModuleDef_HEAD_INIT,
-    "testcode",                        // Module name to use with Python import statements
+    "extension_test",                        // Module name to use with Python import statements
     "Provides some functions, but faster",  // Module description
     0,
     superfastcode_methods                   // Structure that defines the methods of the module
 };
 
-PyMODINIT_FUNC PyInit_testcode() {
+PyMODINIT_FUNC PyInit_extension_test() {
     return PyModule_Create(&superfastcode_module);
 }

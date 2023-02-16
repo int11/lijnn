@@ -145,15 +145,17 @@ class Model(Layer):
 
     def fit(self, epoch, optimizer, train_loader, test_loader=None,
             loss_function=F.softmax_cross_entropy, accuracy_function=ac.classification,
-            iteration_print=False, autosave=True, autosave_time=30, name='default'):
+            iteration_print=False, autosave=True, autosave_time=30, name='default', gpu="True"):
         optimizer = optimizer.setup(self)
         start_epoch, ti = self.load_weights_epoch(name=name)
 
-        if cuda.gpu_enable:
+        if cuda.gpu_enable and gpu:
             self.to_gpu()
             train_loader.to_gpu()
             if test_loader:
                 test_loader.to_gpu()
+        elif cuda.gpu_enable == False and gpu:
+            print("Can't use GPU, training with CPU.")
 
         for i in range(start_epoch, epoch + 1):
             sum_loss, sum_acc = 0, {}

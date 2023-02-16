@@ -11,14 +11,15 @@ N_CLASS = 20
 
 
 class SlowROIPool(nn.Module):
-    def __init__(self, output_size):
+    def __init__(self, output_size, spatial_scale):
         super().__init__()
         self.maxpool = nn.AdaptiveMaxPool2d(output_size)
+        self.spatial_scale = spatial_scale
         self.size = output_size
 
     def forward(self, images, rois):
-        rois[:, [1, 2]] = np.floor(rois[:, [1, 2]] * 1 / 16)
-        rois[:, [3, 4]] = np.ceil(rois[:, [3, 4]] * 1 / 16)
+        rois[:, [1, 2]] = np.floor(rois[:, [1, 2]] * self.spatial_scale)
+        rois[:, [3, 4]] = np.ceil(rois[:, [3, 4]] * self.spatial_scale)
         rois = rois.astype(int)
 
         n = rois.shape[0]

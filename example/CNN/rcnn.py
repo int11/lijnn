@@ -305,3 +305,8 @@ def main_R_CNN():
                 img = cv.rectangle(img, i[:2], i[2:], (0, 255, 0), 2)
             cv.imshow('result', img)
             cv.waitKey()
+
+if __name__ == "__main__":
+    main_VGG16_RCNN()
+    main_Bbr()
+    main_R_CNN()

@@ -35,7 +35,7 @@ class Fast_R_CNN(VGG16):
         x = F.relu(self.conv5_3(x))
         # receptive field = 16
         # subsampling_ratio = 16
-        x = F.roi_pooling(x, ssbboxs, 7, 1 / 16)
+        x = F.roi_pooling(x, ssbboxs, 7, 1/16)
         # x.shape = (N, 512, 7, 7)
         x = F.flatten(x)
         x = F.dropout(F.relu(self.fc6(x)))
@@ -160,21 +160,22 @@ def multi_loss(y, y_bbox, t_label, p, g, u):
 
 def Faccuracy(y, y_bbox, t_label, p, g, u):
     xp = cuda.get_array_module(y)
-    # acc
     y, y_bbox, t_label, p, g, u = as_numpy(y), as_numpy(y_bbox), as_numpy(t_label), as_numpy(p), as_numpy(g), as_numpy(u)
+
+    # acc
     acc = (y.argmax(axis=1) == t_label).mean()
     # iou
-    y_bbox = y_bbox[xp.arange(len(y)), t_label]
-    index = u.astype(xp.bool_)
+    y_bbox = y_bbox[np.arange(len(y)), t_label]
+    index = u.astype(np.bool_)
     y_bbox, p = y_bbox[index], p[index]
     p_x, p_y, p_w, p_h = xy1xy2_to_xywh(p)
     x = p_w * y_bbox[:, 0] + p_x
     y = p_h * y_bbox[:, 1] + p_y
-    w = p_w * xp.exp(y_bbox[:, 2])
-    h = p_h * xp.exp(y_bbox[:, 3])
+    w = p_w * np.exp(y_bbox[:, 2])
+    h = p_h * np.exp(y_bbox[:, 3])
     y_bbox[:, 0], y_bbox[:, 1], y_bbox[:, 2], y_bbox[:, 3] = x - w / 2, y - h / 2, x + w / 2, y + h / 2
     iou = sum([utils.IOU(a, b) for a, b in zip(y_bbox, g)]) / len(y_bbox)
-    return {'acc': Variable(as_numpy(acc)), 'iou': Variable(as_numpy(iou))}
+    return {'acc': Variable(xp.array(acc)), 'iou': Variable(xp.array(iou))}
 
 
 def main_Fast_R_CNN(name='default'):
@@ -184,4 +185,7 @@ def main_Fast_R_CNN(name='default'):
     model = Fast_R_CNN()
     optimizer = optimizers.Adam(alpha=0.0001)
     model.fit(epoch, optimizer, train_loader, loss_function=multi_loss, accuracy_function=Faccuracy,
-              iteration_print=True, name=name)
+              iteration_print=True, name=name, gpu=False)
+
+if __name__ == "__main__":
+	main_Fast_R_CNN()

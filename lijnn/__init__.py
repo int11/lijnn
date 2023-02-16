@@ -14,16 +14,17 @@ from lijnn.datasets import Dataset
 from lijnn.iterators import iterator
 from lijnn.iterators import SeqIterator
 
-import lijnn.datasets
-import lijnn.iterators
-import lijnn.optimizers
-import lijnn.functions
-import lijnn.functions_conv
-import lijnn.layers
-import lijnn.utils
-import lijnn.cuda
-import lijnn.transforms
-import lijnn.initializers
-import lijnn.accuracy
+from lijnn import datasets
+from lijnn import iterators
+from lijnn import optimizers
+from lijnn import functions
+from lijnn import functions_conv
+from lijnn import layers
+from lijnn import utils
+from lijnn import cuda
+from lijnn import transforms
+from lijnn import initializers
+from lijnn import accuracy
+
 setup_variable()
 __version__ = '0.0.1'

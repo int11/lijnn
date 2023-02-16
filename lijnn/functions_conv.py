@@ -357,19 +357,18 @@ class ROIPooling2D(Function):
 
         y = np.zeros((N, C, OH, OW), dtype=x.dtype)
         self.argmax_data = np.zeros(y.shape, np.int32)
-        # bboxs[i_roi][0], np.around(bboxs[i_roi][1:] * self.spatial_scale)
 
         bboxs[:, [1, 2]] = np.floor(bboxs[:, [1, 2]] * self.spatial_scale)
         bboxs[:, [3, 4]] = np.ceil(bboxs[:, [3, 4]] * self.spatial_scale)
 
         for i_roi in range(N):
             idx, xmin, ymin, xmax, ymax = bboxs[i_roi]
-            roi_width, roi_height = max(xmax - xmin, 1), max(ymax - ymin, 1)
+            roi_width, roi_height = xmax - xmin, ymax - ymin
+            assert roi_width >= 1 or roi_height >= 1
             strideh, stridew = roi_height / OH, roi_width / OW
 
             for _outh in range(OH):
                 sliceh = slice(int(np.floor(_outh * strideh)) + ymin, int(np.ceil((_outh + 1) * strideh)) + ymin)
-                lenh = sliceh.stop - sliceh.start
 
                 for _outw in range(OW):
                     slicew = slice(int(np.floor(_outw * stridew)) + xmin, int(np.ceil((_outw + 1) * stridew)) + xmin)
@@ -377,12 +376,11 @@ class ROIPooling2D(Function):
 
                     roi_data = x[int(idx), :, sliceh, slicew].reshape(C, -1)
                     y[i_roi, :, _outh, _outw] = np.max(roi_data, axis=1)
-                    # get the max idx respect to feature_maps coordinates
-                    max_idx_slice = np.unravel_index(np.argmax(roi_data, axis=1), (lenh, lenw))
-                    max_idx_slice_h = max_idx_slice[0] + sliceh.start
-                    max_idx_slice_w = max_idx_slice[1] + slicew.start
-                    max_idx_slice = max_idx_slice_h * W + max_idx_slice_w
-                    self.argmax_data[i_roi, :, _outh, _outw] = max_idx_slice
+
+
+                    a = np.argmax(roi_data, axis=1)
+                    c = (slicew.start + sliceh.start * W) + (a // lenw * W) + (a % lenw)
+                    self.argmax_data[i_roi, :, _outh, _outw] = c
         return y
 
     def forward_gpu(self, x, bboxs):
@@ -464,67 +462,41 @@ class ROIPooling2D(Function):
 
     def backward(self, gy):
         x, bboxs = self.inputs
-        gx, gbboxs = ROIPooling2DGrad(self.output_size, self.spatial_scale, x.shape, self.argmax_data)(
-            gy, bboxs)
+        gx, gbboxs = ROIPooling2DGrad(x.shape, self.argmax_data)(gy, bboxs)
         return gx, gbboxs
 
 
 class ROIPooling2DGrad(Function):
-    def __init__(self, output_size, spatial_scale, bottom_data_shape, argmax_data):
-        self.output_size = output_size
-        self.spatial_scale = spatial_scale
-        self._bottom_data_shape = bottom_data_shape
+    def __init__(self,  input_shape, argmax_data):
+        self.input_shape = input_shape
         self.argmax_data = argmax_data
+        
 
     def forward(self, gy, bboxs):
         xp = cuda.get_array_module(gy)
         return self.forward_gpu(gy, bboxs) if xp != np else self.forward_cpu(gy, bboxs)
 
     def forward_cpu(self, gy, bboxs):
-        bboxs = bboxs.copy()
-        bboxs[:, [1, 2]] = np.floor(bboxs[:, [1, 2]] * self.spatial_scale)
-        bboxs[:, [3, 4]] = np.ceil(bboxs[:, [3, 4]] * self.spatial_scale)
-
-        OH, OW = pair(self.output_size)
-        _, C, H, W = self._bottom_data_shape
+        _, C, H, W = self.input_shape
         N, _ = bboxs.shape
 
-        bottom_delta = np.zeros(self._bottom_data_shape, gy.dtype)
+        gx = np.zeros(self.input_shape, gy.dtype).ravel()
+        a = bboxs[:,0] * C * H * W
+        a = np.broadcast_to(a.reshape(N,1,1,1), (N,C,1,1)) + (np.arange(C) * H * W).reshape(1,C,1,1)
+        a = self.argmax_data + a.reshape(N,C,1,1)
+        a = a.ravel()
+    
+        gy_f = gy.ravel()
+        for i, e in enumerate(a):
+            gx[e] += gy_f[i]
+        gx = gx.reshape(self.input_shape)
 
-        for i_roi in range(N):
-            idx, xmin, ymin, xmax, ymax = bboxs[i_roi]
-            idx = int(idx)
-            roi_width = max(xmax - xmin + 1, 1)
-            roi_height = max(ymax - ymin + 1, 1)
-
-            strideh = float(roi_height) / float(OH)
-            stridew = float(roi_width) / float(OW)
-
-            # iterate all the w, h (from feature map) that fall into this ROIs
-            for w in range(xmin, xmax + 1):
-                for h in range(ymin, ymax + 1):
-                    phstart = int(np.floor(float(h - ymin) / strideh))
-                    phend = int(np.ceil(float(h - ymin + 1) / strideh))
-                    pwstart = int(np.floor(float(w - xmin) / stridew))
-                    pwend = int(np.ceil(float(w - xmin + 1) / stridew))
-
-                    phstart = min(max(phstart, 0), OH)
-                    phend = min(max(phend, 0), OH)
-                    pwstart = min(max(pwstart, 0), OW)
-                    pwend = min(max(pwend, 0), OW)
-
-                    for ph in range(phstart, phend):
-                        for pw in range(pwstart, pwend):
-                            max_idx_tmp = self.argmax_data[i_roi, :, ph, pw]
-                            for c in range(C):
-                                if max_idx_tmp[c] == (h * W + w):
-                                    bottom_delta[idx, c, h, w] += gy[i_roi, c, ph, pw]
-        return bottom_delta, None
+        return gx, None
 
     def forward_gpu(self, gy, bboxs):
         OH, OW = pair(self.output_size)
-        _, C, H, W = self._bottom_data_shape
-        gx = cuda.cupy.zeros(self._bottom_data_shape, gy.dtype)
+        _, C, H, W = self.input_shape
+        gx = cuda.cupy.zeros(self.input_shape, gy.dtype)
 
         cuda.cupy.ElementwiseKernel(
             '''
@@ -614,7 +586,7 @@ class ROIPooling2DGrad(Function):
         raise NotImplementedError
 
 
-def roi_pooling(x, rois, output_size, spatial_scale):
+def roi_pooling(x, rois, output_size, spatial_scale=1):
     return ROIPooling2D(output_size, spatial_scale)(x, rois)
 
 

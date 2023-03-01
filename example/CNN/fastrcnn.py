@@ -5,7 +5,208 @@ from lijnn import layers as L
 from lijnn import functions as F
 from lijnn.transforms import *
 from example.CNN import VGG16, rcnn
+import torch
+import torch.nn as nn
 
+class ROIPooling2D(Function):
+    def __init__(self, output_size, spatial_scale):
+        self.output_size = output_size
+        self.spatial_scale = spatial_scale
+        class SlowROIPool(nn.Module):
+            def __init__(self, output_size, spatial_scale):
+                super().__init__()
+                self.maxpool = nn.AdaptiveMaxPool2d(output_size)
+                self.spatial_scale = spatial_scale
+                self.size = output_size
+
+            def forward(self, images, rois):
+                rois[:, [1, 2]] = np.floor(rois[:, [1, 2]] * self.spatial_scale)
+                rois[:, [3, 4]] = np.ceil(rois[:, [3, 4]] * self.spatial_scale)
+                rois = rois.astype(int)
+
+                n = rois.shape[0]
+                x1 = rois[:, 1]
+                y1 = rois[:, 2]
+                x2 = rois[:, 3]
+                y2 = rois[:, 4]
+
+                res = []
+                for i in range(n):
+                    img = images[int(rois[i][0])].unsqueeze(0)
+                    img = img[:, :, y1[i]:y2[i], x1[i]:x2[i]]
+                    img = self.maxpool(img)
+                    res.append(img)
+                res = torch.cat(res, dim=0)
+                return res
+        self.roipool = SlowROIPool(output_size=(7, 7), spatial_scale=1/16)
+
+
+    def forward(self, x, bboxs):
+        assert bboxs.shape[-1] == 5, "bboxs input "
+        self.x1 = torch.from_numpy(x)
+        self.x1.requires_grad=True
+        self.a = self.roipool(self.x1, bboxs.copy())
+
+
+        xp = cuda.get_array_module(x)
+        x = self.forward_gpu(x, bboxs) if xp != np else self.forward_cpu(x, bboxs)
+        
+        print(np.array_equal(x, self.a.detach().numpy()))
+
+        return x 
+
+    def forward_cpu(self, x, bboxs):
+        bboxs = bboxs.copy()
+        
+        _, C, H, W = x.shape
+        OH, OW = pair(self.output_size)
+        N, _ = bboxs.shape
+
+        y = np.zeros((N, C, OH, OW), dtype=x.dtype)
+        self.argmax_data = np.zeros(y.shape, np.int32)
+
+        bboxs[:, [1, 2]] = np.floor(bboxs[:, [1, 2]] * self.spatial_scale)
+        bboxs[:, [3, 4]] = np.ceil(bboxs[:, [3, 4]] * self.spatial_scale)
+
+        for i_roi in range(N):
+            idx, xmin, ymin, xmax, ymax = bboxs[i_roi]
+            roi_width, roi_height = xmax - xmin, ymax - ymin
+            assert roi_width >= 1 or roi_height >= 1
+            strideh, stridew = roi_height / OH, roi_width / OW
+
+            for _outh in range(OH):
+                sliceh = slice(int(np.floor(_outh * strideh)) + ymin, int(np.ceil((_outh + 1) * strideh)) + ymin)
+
+                for _outw in range(OW):
+                    slicew = slice(int(np.floor(_outw * stridew)) + xmin, int(np.ceil((_outw + 1) * stridew)) + xmin)
+                    lenw = slicew.stop - slicew.start
+
+                    roi_data = x[int(idx), :, sliceh, slicew].reshape(C, -1)
+                    y[i_roi, :, _outh, _outw] = np.max(roi_data, axis=1)
+
+
+                    a = np.argmax(roi_data, axis=1)
+                    c = (slicew.start + sliceh.start * W) + (a // lenw * W) + (a % lenw)
+                    self.argmax_data[i_roi, :, _outh, _outw] = c
+        return y
+
+    def forward_gpu(self, x, bboxs):
+        self._bottom_data_shape = x.shape
+
+        OH, OW = pair(self.output_size)
+        _, C, H, W = x.shape
+        N, _ = bboxs.shape
+
+        y = cuda.cupy.empty((N, C, OH, OW), dtype=x.dtype)
+        self.argmax_data = cuda.cupy.empty(y.shape, np.int32)
+
+        cuda.cupy.ElementwiseKernel(
+            '''
+            raw T x, T spatial_scale, int32 C,
+            int32 H, int32 W, int32 pooled_height, int32 pooled_width,
+            raw int32 bboxs
+            ''',
+            'T y, int32 argmax_data',
+            '''
+            // pos in output filter
+            int pw = i % pooled_width;
+            int ph = (i / pooled_width) % pooled_height;
+            int c = (i / pooled_width / pooled_height) % C;
+            int num = i / pooled_width / pooled_height / C;
+
+            int roi_batch_ind = bboxs[num * 5 + 0];
+            int roi_start_w = round(bboxs[num * 5 + 1] * spatial_scale);
+            int roi_start_h = round(bboxs[num * 5 + 2] * spatial_scale);
+            int roi_end_w = round(bboxs[num * 5 + 3] * spatial_scale);
+            int roi_end_h = round(bboxs[num * 5 + 4] * spatial_scale);
+
+            // Force malformed ROIs to be 1x1
+            int roi_width = max(roi_end_w - roi_start_w + 1, 1);
+            int roi_height = max(roi_end_h - roi_start_h + 1, 1);
+            float bin_size_h = static_cast<float>(roi_height)
+                           / static_cast<float>(pooled_height);
+            float bin_size_w = static_cast<float>(roi_width)
+                           / static_cast<float>(pooled_width);
+
+            int hstart = static_cast<int>(floor(static_cast<float>(ph)
+                                          * bin_size_h));
+            int wstart = static_cast<int>(floor(static_cast<float>(pw)
+                                          * bin_size_w));
+            int hend = static_cast<int>(ceil(static_cast<float>(ph + 1)
+                                        * bin_size_h));
+            int wend = static_cast<int>(ceil(static_cast<float>(pw + 1)
+                                        * bin_size_w));
+
+            // Add roi offsets and clip to input boundaries
+            hstart = min(max(hstart + roi_start_h, 0), H);
+            hend = min(max(hend + roi_start_h, 0), H);
+            wstart = min(max(wstart + roi_start_w, 0), W);
+            wend = min(max(wend + roi_start_w, 0), W);
+            bool is_empty = (hend <= hstart) || (wend <= wstart);
+
+            // Define an empty pooling region to be zero
+            float maxval = is_empty ? 0 : -1E+37;
+            // If nothing is pooled, argmax=-1 causes nothing to be backprop'd
+            int maxidx = -1;
+            int data_offset = (roi_batch_ind * C + c) * H * W;
+            for (int h = hstart; h < hend; ++h) {
+                for (int w = wstart; w < wend; ++w) {
+                    int bottom_index = h * W + w;
+                    if (x[data_offset + bottom_index] > maxval) {
+                        maxval = x[data_offset + bottom_index];
+                        maxidx = bottom_index;
+                    }
+                }
+            }
+            y = maxval;
+            argmax_data = maxidx;
+            ''', 'roi_pooling_2d_fwd'
+        )(x, self.spatial_scale, C, H, W,
+          OH, OW, bboxs, y,
+          self.argmax_data)
+
+        return y
+
+    def backward(self, gy):
+        asdf = self.a * torch.from_numpy(gy.data)
+        adad = asdf.sum()
+        adad.backward()
+        x, bboxs = self.inputs
+        gx, gbboxs = ROIPooling2DGrad(x.shape, self.argmax_data)(gy, bboxs)
+        return gx, gbboxs
+
+
+class ROIPooling2DGrad(Function):
+    def __init__(self,  input_shape, argmax_data):
+        self.input_shape = input_shape
+        self.argmax_data = argmax_data
+
+    def forward(self, gy, bboxs):
+        xp = cuda.get_array_module(gy)
+
+        _, C, H, W = self.input_shape
+        N, _ = bboxs.shape
+
+        gx = xp.zeros(self.input_shape, gy.dtype).ravel()
+        a = bboxs[:,0] * C * H * W
+        a = xp.broadcast_to(a.reshape(N,1,1,1), (N,C,1,1)) + (xp.arange(C) * H * W).reshape(1,C,1,1)
+        a = self.argmax_data + a.reshape(N,C,1,1)
+        a = a.ravel()
+    
+        gy_f = gy.ravel()
+        for i, e in enumerate(a):
+            gx[e] += gy_f[i]
+        gx = gx.reshape(self.input_shape)
+
+        return gx, None # gbboxs
+
+    def backward(self, ggx, ggbboxs):
+        # No trivial way to implement double-backward for this function.
+        raise NotImplementedError
+
+
+def roi_pooling1(x, rois, output_size, spatial_scale=1):
+    return ROIPooling2D(output_size, spatial_scale)(x, rois)
 
 class Fast_R_CNN(VGG16):
     def __init__(self, num_classes=21):
@@ -35,7 +236,7 @@ class Fast_R_CNN(VGG16):
         x = F.relu(self.conv5_3(x))
         # receptive field = 16
         # subsampling_ratio = 16
-        x = F.roi_pooling(x, ssbboxs, 7, 1/16)
+        x = roi_pooling1(x, ssbboxs, 7, 1/16)
         # x.shape = (N, 512, 7, 7)
         x = F.flatten(x)
         x = F.dropout(F.relu(self.fc6(x)))
@@ -78,7 +279,7 @@ class VOC_fastrcnn(rcnn.VOC_SelectiveSearch):
         if self.bbox_transform is not None:
             bbox[:, :4] = self.bbox_transform(img.shape, bbox[:, :4])
             g = self.bbox_transform(img.shape, g)
-        return self.img_transform(img), bbox, self.iou[index], g
+        return self.img_transform(img), bbox, self.iou[index].astype(np.float32), g
 
     def __len__(self):
         return super(lijnn.datasets.VOCclassfication, self).__len__()
@@ -95,7 +296,7 @@ def getT_from_P_G(p, g):
     xp = cuda.get_array_module(p)
     p_x, p_y, p_w, p_h = xy1xy2_to_xywh(p)
     g_x, g_y, g_w, g_h = xy1xy2_to_xywh(g)
-    return xp.array([(g_x - p_x) / p_w, (g_y - p_y) / p_h, np.log(g_w / p_w), np.log(g_h / p_h)]).T
+    return xp.array([(g_x - p_x) / p_w, (g_y - p_y) / p_h, np.log(g_w / p_w), np.log(g_h / p_h)], dtype=np.float32).T
 
 
 class Hierarchical_Sampling(lijnn.iterator):
@@ -153,7 +354,7 @@ def multi_loss(y, y_bbox, t_label, p, g, u):
     y_bbox = y_bbox[xp.arange(len(y)), t_label]
     t_bbox = getT_from_P_G(p, g)
     u = u[None].T
-    loss_loc = F.smooth_l1_loss(y_bbox * u, t_bbox * u)
+    loss_loc = F.smooth_l1_loss((y_bbox * u).astype(np.float32), (t_bbox * u).astype(np.float32))
 
     return loss_cls + loss_loc
 

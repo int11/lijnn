@@ -45,7 +45,7 @@ class RCNN(nn.Module):
         rawnet = torchvision.models.vgg16_bn(pretrained=True)
         self.seq = nn.Sequential(*list(rawnet.features.children())[:-1])
         # self.roipool = nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2), dilation=(1, 1))
-        self.roipool = SlowROIPool(output_size=(7, 7))
+        self.roipool = SlowROIPool(output_size=(7, 7), spatial_scale=1/16)
         self.feature = nn.Sequential(*list(rawnet.classifier.children())[:-1])
 
         _x = Variable(torch.Tensor(1, 3, 224, 224))

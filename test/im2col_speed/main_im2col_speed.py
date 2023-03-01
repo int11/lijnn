@@ -75,13 +75,14 @@ def im2col_stride_K(img, kernel_size, stride, pad):
 
 def check_speed(x, function):
     t = time.time()
-    col = function(x, (2, 2), 1, 0)
+    col = function(x, (5,5), 1, 0)
     print(time.time() - t)
     return col
 
 
 np.random.seed(0)
-x = np.random.randint(0, 10, (20, 3, 2000, 2000))
+x = np.random.randint(0, 10, (200, 300, 10, 10))
+
 
 check_speed(x, im2col_for_O)
 check_speed(x, im2col_for_K)

@@ -9,8 +9,7 @@ def test_add():
 
     y.backward(retain_grad=True)
 
-    print(y.grad.data == 1)
-    print(x.grad.data == 2)
+    print(y.grad.data == 1 and x.grad.data == 2)
 
 
 def test_roi_pooling():
@@ -48,21 +47,16 @@ def test_roi_pooling():
     data = np.random.randint(0,1000,(3,40,5,5)).astype(np.float32)
 
     x0 = Variable(data)
-    # x.to_gpu()
+    # x0.to_gpu()
     y0 = roi_pooling(x0, cuda.get_array_module(x0.data).array([[0,0,0,4,4],[2,0,0,2,4]], dtype=np.int32), 3, 1)
-    #print(y0)
     y0.backward()
-    print(x0.grad.data)
 
 
-    x = torch.from_numpy(data).type(torch.float)
-    x.requires_grad=True
-    y = SlowROIPool(3,1)(x, np.array([[0,0,0,4,4],[2,0,0,2,4]]))
-
-    #print(y)
-    y = y.sum()
-    y.backward()
-    print(x.grad.numpy())
-    print((x0.grad.data != x.grad.numpy()).sum())
+    x1 = torch.from_numpy(data).type(torch.float)
+    x1.requires_grad=True
+    y1 = SlowROIPool(3,1)(x1, np.array([[0,0,0,4,4],[2,0,0,2,4]]))
+    y1 = y1.sum()
+    y1.backward()
+    print(np.array_equal(x0.grad.data,x1.grad.numpy()))
 
 test_roi_pooling()

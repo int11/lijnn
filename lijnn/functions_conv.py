@@ -345,6 +345,7 @@ class ROIPooling2D(Function):
         self.spatial_scale = spatial_scale
 
     def forward(self, x, bboxs):
+        assert bboxs.shape[-1] == 5, "bboxs input "
         xp = cuda.get_array_module(x)
         return self.forward_gpu(x, bboxs) if xp != np else self.forward_cpu(x, bboxs)
 
@@ -474,15 +475,13 @@ class ROIPooling2DGrad(Function):
 
     def forward(self, gy, bboxs):
         xp = cuda.get_array_module(gy)
-        return self.forward_gpu(gy, bboxs) if xp != np else self.forward_cpu(gy, bboxs)
 
-    def forward_cpu(self, gy, bboxs):
         _, C, H, W = self.input_shape
         N, _ = bboxs.shape
 
-        gx = np.zeros(self.input_shape, gy.dtype).ravel()
+        gx = xp.zeros(self.input_shape, gy.dtype).ravel()
         a = bboxs[:,0] * C * H * W
-        a = np.broadcast_to(a.reshape(N,1,1,1), (N,C,1,1)) + (np.arange(C) * H * W).reshape(1,C,1,1)
+        a = xp.broadcast_to(a.reshape(N,1,1,1), (N,C,1,1)) + (xp.arange(C) * H * W).reshape(1,C,1,1)
         a = self.argmax_data + a.reshape(N,C,1,1)
         a = a.ravel()
     
@@ -491,95 +490,7 @@ class ROIPooling2DGrad(Function):
             gx[e] += gy_f[i]
         gx = gx.reshape(self.input_shape)
 
-        return gx, None
-
-    def forward_gpu(self, gy, bboxs):
-        OH, OW = pair(self.output_size)
-        _, C, H, W = self.input_shape
-        gx = cuda.cupy.zeros(self.input_shape, gy.dtype)
-
-        cuda.cupy.ElementwiseKernel(
-            '''
-            raw T top_diff, raw int32 argmax_data, int32 num_rois,
-            T spatial_scale, int32 C, int32 H, int32 W,
-            int32 pooled_height, int32 pooled_width, raw int32 bboxs
-            ''',
-            'T gx',
-            '''
-            int w = i % W;
-            int h = (i / W) % H;
-            int c = (i / (W * H)) % C;
-            int num = i / (W * H * C);
-
-            float gradient = 0;
-            // Accumulate gradient over all ROIs that pooled this element
-            for (int roi_n = 0; roi_n < num_rois; ++roi_n) {
-                // Skip if ROI's batch index doesn't match num
-                if (num != static_cast<int>(bboxs[roi_n * 5])) {
-                    continue;
-                }
-
-                int roi_start_w = round(bboxs[roi_n * 5 + 1]
-                                        * spatial_scale);
-                int roi_start_h = round(bboxs[roi_n * 5 + 2]
-                                        * spatial_scale);
-                int roi_end_w = round(bboxs[roi_n * 5 + 3]
-                                      * spatial_scale);
-                int roi_end_h = round(bboxs[roi_n * 5 + 4]
-                                      * spatial_scale);
-
-                // Skip if ROI doesn't include (h, w)
-                const bool in_roi = (w >= roi_start_w && w <= roi_end_w &&
-                                     h >= roi_start_h && h <= roi_end_h);
-                if (!in_roi) {
-                    continue;
-                }
-
-                int offset = (roi_n * C + c) * pooled_height
-                             * pooled_width;
-
-                // Compute feasible set of pooled units that could have pooled
-                // this bottom unit
-
-                // Force malformed ROIs to be 1x1
-                int roi_width = max(roi_end_w - roi_start_w + 1, 1);
-                int roi_height = max(roi_end_h - roi_start_h + 1, 1);
-
-                float bin_size_h = static_cast<float>(roi_height)
-                               / static_cast<float>(pooled_height);
-                float bin_size_w = static_cast<float>(roi_width)
-                               / static_cast<float>(pooled_width);
-
-                int phstart = floor(static_cast<float>(h - roi_start_h)
-                                    / bin_size_h);
-                int phend = ceil(static_cast<float>(h - roi_start_h + 1)
-                                 / bin_size_h);
-                int pwstart = floor(static_cast<float>(w - roi_start_w)
-                                    / bin_size_w);
-                int pwend = ceil(static_cast<float>(w - roi_start_w + 1)
-                                 / bin_size_w);
-
-                phstart = min(max(phstart, 0), pooled_height);
-                phend = min(max(phend, 0), pooled_height);
-                pwstart = min(max(pwstart, 0), pooled_width);
-                pwend = min(max(pwend, 0), pooled_width);
-
-                for (int ph = phstart; ph < phend; ++ph) {
-                    for (int pw = pwstart; pw < pwend; ++pw) {
-                        int index_ = ph * pooled_width + pw + offset;
-                        if (argmax_data[index_] == (h * W + w)) {
-                            gradient += top_diff[index_];
-                        }
-                    }
-                }
-            }
-            gx = gradient;
-            ''', 'roi_pooling_2d_bwd'
-        )(gy, self.argmax_data, bboxs.shape[0],
-          self.spatial_scale, C, H, W, OH, OW,
-          bboxs, gx)
-
-        return gx, None
+        return gx, None # gbboxs
 
     def backward(self, ggx, ggbboxs):
         # No trivial way to implement double-backward for this function.

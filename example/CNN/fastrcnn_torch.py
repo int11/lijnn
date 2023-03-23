@@ -82,7 +82,7 @@ class RCNN(nn.Module):
 
 path = os.path.join(lijnn.utils.cache_dir, "Fast_R_CNN")
 
-start_epoch = 4
+start_epoch = 20
 model = RCNN().cuda() if cuda.gpu_enable else RCNN()
 model.load_state_dict(torch.load(os.path.join(path, f"{start_epoch}.pt")))
 

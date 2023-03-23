@@ -68,6 +68,10 @@ class Variable:
     def dtype(self):
         return self.data.dtype
 
+    def astype(self, dtype):
+        self.data = self.data.astype(dtype)
+        return self
+
     def __len__(self):
         return len(self.data)
 
@@ -185,15 +189,37 @@ def as_array(x, array_module=np):
     return x
 
 
+def fix_dtype(x0, x1):
+    """
+    if operation float32 type data and int64 type data, it return float64. 
+    this fucntion exist to fix this problem.
+
+    if x0.dtype, x1.dtype = int32, float32
+        dtype = float32
+    if x0.dtype, x1.dtype = float16, int64
+        dtype = float16
+    """
+
+    if x0.dtype != x1.dtype and np.issubdtype(x0.dtype, np.floating) == np.issubdtype(x1.dtype, np.integer):
+        dtype = x0.dtype if np.issubdtype(x0.dtype, np.floating) else x1.dtype
+        x0, x1 = x0.astype(dtype), x1.astype(dtype)
+    return x0, x1
+
 class Function:
     def __call__(self, *inputs):
+        dtype = inputs[0].dtype
         inputs = [as_variable(x) for x in inputs]
 
         xs = [x.data for x in inputs]
         ys = self.forward(*xs)
         if not isinstance(ys, tuple):
             ys = (ys,)
+            
         outputs = [Variable(as_array(y)) for y in ys]
+
+        for i in outputs:
+            if i.data is not None:
+                assert i.dtype == dtype
 
         if Config.enable_backprop:
             self.generation = max([x.generation for x in inputs])
@@ -223,6 +249,7 @@ class Function:
             `tuple(lijnn.Variable)`: Output type must be tuple(lijnn.Variable)
         """
         raise NotImplementedError()
+
 
 
 class Add(Function):
@@ -260,7 +287,8 @@ class Mul(Function):
 
 
 def mul(x0, x1):
-    x1 = as_array(x1, lijnn.cuda.get_array_module(x0.data))
+    x1 = as_array(x1, lijnn.cuda.get_array_module(x0.data), x0.dtype)
+    x0, x1 = fix_dtype(x0, x1)
     return Mul()(x0, x1)
 
 
@@ -292,12 +320,14 @@ class Sub(Function):
 
 
 def sub(x0, x1):
-    x1 = as_array(x1, lijnn.cuda.get_array_module(x0.data))
+    x1 = as_array(x1, lijnn.cuda.get_array_module(x0.data), x0.dtype)
+    x0, x1 = fix_dtype(x0, x1)
     return Sub()(x0, x1)
 
 
 def rsub(x0, x1):
-    x1 = as_array(x1, lijnn.cuda.get_array_module(x0.data))
+    x1 = as_array(x1, lijnn.cuda.get_array_module(x0.data), x0.dtype)
+    x0, x1 = fix_dtype(x0, x1)
     return Sub()(x1, x0)
 
 
@@ -317,12 +347,14 @@ class Div(Function):
 
 
 def div(x0, x1):
-    x1 = as_array(x1, lijnn.cuda.get_array_module(x0.data))
+    x1 = as_array(x1, lijnn.cuda.get_array_module(x0.data), x0.dtype)
+    x0, x1 = fix_dtype(x0, x1)
     return Div()(x0, x1)
 
 
 def rdiv(x0, x1):
-    x1 = as_array(x1, lijnn.cuda.get_array_module(x0.data))
+    x1 = as_array(x1, lijnn.cuda.get_array_module(x0.data), x0.dtype)
+    x0, x1 = fix_dtype(x0, x1)
     return Div()(x1, x0)
 
 

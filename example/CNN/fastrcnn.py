@@ -296,7 +296,7 @@ def getT_from_P_G(p, g):
     xp = cuda.get_array_module(p)
     p_x, p_y, p_w, p_h = xy1xy2_to_xywh(p)
     g_x, g_y, g_w, g_h = xy1xy2_to_xywh(g)
-    return xp.array([(g_x - p_x) / p_w, (g_y - p_y) / p_h, np.log(g_w / p_w), np.log(g_h / p_h)], dtype=np.float32).T
+    return Variable(xp.array([(g_x - p_x) / p_w, (g_y - p_y) / p_h, np.log(g_w / p_w), np.log(g_h / p_h)], dtype=np.float32).T)
 
 
 class Hierarchical_Sampling(lijnn.iterator):
@@ -354,7 +354,7 @@ def multi_loss(y, y_bbox, t_label, p, g, u):
     y_bbox = y_bbox[xp.arange(len(y)), t_label]
     t_bbox = getT_from_P_G(p, g)
     u = u[None].T
-    loss_loc = F.smooth_l1_loss((y_bbox * u).astype(np.float32), (t_bbox * u).astype(np.float32))
+    loss_loc = F.smooth_l1_loss(y_bbox * u, t_bbox * u)
 
     return loss_cls + loss_loc
 

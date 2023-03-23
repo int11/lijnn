@@ -211,7 +211,7 @@ class Adam(Optimizer):
         m, v = self.ms[pointer], self.vs[pointer]
         beta1, beta2, eps = self.beta1, self.beta2, self.eps
         grad = param.grad.data
-
+        
         m += (1 - beta1) * (grad - m)
         v += (1 - beta2) * (grad * grad - v)
         param.data -= self.lr * m / (xp.sqrt(v) + eps)

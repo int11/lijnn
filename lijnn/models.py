@@ -30,6 +30,11 @@ class Model(Layer):
         return dict
 
     def info(self, shape):
+        """Print Model forward function information
+        
+        Args:
+            shape(tuple): Numpy data shape for generate test data
+        """
         with using_config('enable_backprop', True):
             y = self(np.zeros(shape))
 

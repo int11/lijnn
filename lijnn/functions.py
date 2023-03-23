@@ -1,7 +1,7 @@
 import numpy as np
 import lijnn
 from lijnn import cuda, utils
-from lijnn.core import Function, Variable, as_variable, as_array
+from lijnn.core import Function, Variable, as_variable
 
 # =============================================================================
 # Basic functions: sin / cos / tanh / exp / log
@@ -502,7 +502,7 @@ class SmoothL1Loss(Function):
         y = y.sum()
         if self.reduction == 'mean':
             y /= len(t)
-        return y
+        return y.astype(x.dtype)
 
     def backward(self, gy):
         x, t = self.inputs

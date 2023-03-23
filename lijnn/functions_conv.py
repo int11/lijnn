@@ -362,26 +362,40 @@ class ROIPooling2D(Function):
         bboxs[:, [1, 2]] = np.floor(bboxs[:, [1, 2]] * self.spatial_scale)
         bboxs[:, [3, 4]] = np.ceil(bboxs[:, [3, 4]] * self.spatial_scale)
 
+        #roi width, roi height, stridew, strideh, 
+        a = np.array([bboxs[:,3] - bboxs[:, 1], bboxs[:, 4] - bboxs[:, 2],  (bboxs[:, 3] - bboxs[:, 1])/OW, (bboxs[:,4] - bboxs[:, 2])/OH]).T
+        b = np.broadcast_to(np.arange(OH), (N, 2, OH)).transpose(0,2,1).copy()
+        #             np.floor(_outh        * strideh)) + ymin
+        b[:, :, 0] = (np.floor(b[:, :, 0].T * a[:, 3]) + bboxs[:, 2]).T
+        b[:, :, 1] = (np.ceil((b[:, :, 1].T + 1) * a[:, 3]) + bboxs[:, 2]).T
+
+        c = np.broadcast_to(np.arange(OW), (N, 2, OW)).transpose(0,2,1).copy()
+
+        c[:, :, 0] = (np.floor(c[:, :, 0].T * a[:, 2]) + bboxs[:, 1]).T
+        c[:, :, 1] = (np.ceil((c[:, :, 1].T + 1) * a[:, 2]) + bboxs[:, 1]).T
+
+
+
         for i_roi in range(N):
             idx, xmin, ymin, xmax, ymax = bboxs[i_roi]
             roi_width, roi_height = xmax - xmin, ymax - ymin
             assert roi_width >= 1 or roi_height >= 1
             strideh, stridew = roi_height / OH, roi_width / OW
-
             for _outh in range(OH):
-                sliceh = slice(int(np.floor(_outh * strideh)) + ymin, int(np.ceil((_outh + 1) * strideh)) + ymin)
 
+                sliceh = slice(int(np.floor(_outh * strideh)) + ymin, int(np.ceil((_outh + 1) * strideh)) + ymin)
+                print("sliceh", sliceh)
                 for _outw in range(OW):
                     slicew = slice(int(np.floor(_outw * stridew)) + xmin, int(np.ceil((_outw + 1) * stridew)) + xmin)
+                    print("slicewwwwwwwwww",slicew)
                     lenw = slicew.stop - slicew.start
 
                     roi_data = x[int(idx), :, sliceh, slicew].reshape(C, -1)
                     y[i_roi, :, _outh, _outw] = np.max(roi_data, axis=1)
 
-
-                    a = np.argmax(roi_data, axis=1)
-                    c = (slicew.start + sliceh.start * W) + (a // lenw * W) + (a % lenw)
-                    self.argmax_data[i_roi, :, _outh, _outw] = c
+                    index = np.argmax(roi_data, axis=1)
+                    ttt = (slicew.start + sliceh.start * W) + (index // lenw * W) + (index % lenw)
+                    self.argmax_data[i_roi, :, _outh, _outw] = ttt
         return y
 
     def forward_gpu(self, x, bboxs):

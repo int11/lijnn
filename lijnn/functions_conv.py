@@ -362,17 +362,18 @@ class ROIPooling2D(Function):
         bboxs[:, [1, 2]] = np.floor(bboxs[:, [1, 2]] * self.spatial_scale)
         bboxs[:, [3, 4]] = np.ceil(bboxs[:, [3, 4]] * self.spatial_scale)
 
+
         #roi width, roi height, stridew, strideh, 
         a = np.array([bboxs[:,3] - bboxs[:, 1], bboxs[:, 4] - bboxs[:, 2],  (bboxs[:, 3] - bboxs[:, 1])/OW, (bboxs[:,4] - bboxs[:, 2])/OH]).T
-        b = np.broadcast_to(np.arange(OH), (N, 2, OH)).transpose(0,2,1).copy()
+        L_sliceH = np.tile(np.arange(OH)[None].T, (N, 1, 2))
         #             np.floor(_outh        * strideh)) + ymin
-        b[:, :, 0] = (np.floor(b[:, :, 0].T * a[:, 3]) + bboxs[:, 2]).T
-        b[:, :, 1] = (np.ceil((b[:, :, 1].T + 1) * a[:, 3]) + bboxs[:, 2]).T
+        L_sliceH[:, :, 0] = (np.floor(L_sliceH[:, :, 0].T * a[:, 3]) + bboxs[:, 2]).T
+        L_sliceH[:, :, 1] = (np.ceil((L_sliceH[:, :, 1].T + 1) * a[:, 3]) + bboxs[:, 2]).T
 
-        c = np.broadcast_to(np.arange(OW), (N, 2, OW)).transpose(0,2,1).copy()
+        L_sliceW = np.tile(np.arange(OW)[None].T, (N, 1, 2))
 
-        c[:, :, 0] = (np.floor(c[:, :, 0].T * a[:, 2]) + bboxs[:, 1]).T
-        c[:, :, 1] = (np.ceil((c[:, :, 1].T + 1) * a[:, 2]) + bboxs[:, 1]).T
+        L_sliceW[:, :, 0] = (np.floor(L_sliceW[:, :, 0].T * a[:, 2]) + bboxs[:, 1]).T
+        L_sliceW[:, :, 1] = (np.ceil((L_sliceW[:, :, 1].T + 1) * a[:, 2]) + bboxs[:, 1]).T 
 
 
 

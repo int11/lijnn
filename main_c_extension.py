@@ -3,7 +3,9 @@ sys.path.append(os.getcwd())
 
 from random import random
 from time import perf_counter
+#g++ -shared -g extension_test.cpp -o extension_test.so
 from extension_test import CPython_tanh_impl, CPython_tanh_impl_point
+#g++ -shared -g ctypes_test.cpp -o ctypes_test.so
 import ctypes
 import sys, os
 from array import array

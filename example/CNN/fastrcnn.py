@@ -43,54 +43,59 @@ class ROIPooling2D(Function):
 
     def forward(self, x, bboxs):
         assert bboxs.shape[-1] == 5, "bboxs input "
-        self.x1 = torch.from_numpy(x)
+        self.x1 = torch.from_numpy(as_numpy(x))
         self.x1.requires_grad=True
-        self.a = self.roipool(self.x1, bboxs.copy())
+        self.a = self.roipool(self.x1, as_numpy(bboxs.copy()))
 
-
-        xp = cuda.get_array_module(x)
-        x = self.forward_gpu(x, bboxs) if xp != np else self.forward_cpu(x, bboxs)
+        x = self.forward1(x, bboxs)
         
-        print(np.array_equal(x, self.a.detach().numpy()))
+        print("forward", np.array_equal(as_numpy(x), self.a.detach().numpy()))
 
         return x 
 
-    def forward_cpu(self, x, bboxs):
-        bboxs = bboxs.copy()
+    def forward1(self, x, bboxs):
+        xp = cuda.get_array_module(x)
+        assert bboxs.shape[-1] == 5, "bboxs input "
         
+        bboxs = bboxs.copy()
+
         _, C, H, W = x.shape
         OH, OW = pair(self.output_size)
         N, _ = bboxs.shape
 
-        y = np.zeros((N, C, OH, OW), dtype=x.dtype)
-        self.argmax_data = np.zeros(y.shape, np.int32)
+        y = xp.zeros((N, C, OH, OW), dtype=x.dtype)
+        self.argmax_data = xp.zeros(y.shape, xp.int32)
 
-        bboxs[:, [1, 2]] = np.floor(bboxs[:, [1, 2]] * self.spatial_scale)
-        bboxs[:, [3, 4]] = np.ceil(bboxs[:, [3, 4]] * self.spatial_scale)
-
-        for i_roi in range(N):
-            idx, xmin, ymin, xmax, ymax = bboxs[i_roi]
-            roi_width, roi_height = xmax - xmin, ymax - ymin
-            assert roi_width >= 1 or roi_height >= 1
-            strideh, stridew = roi_height / OH, roi_width / OW
-
-            for _outh in range(OH):
-                sliceh = slice(int(np.floor(_outh * strideh)) + ymin, int(np.ceil((_outh + 1) * strideh)) + ymin)
-
-                for _outw in range(OW):
-                    slicew = slice(int(np.floor(_outw * stridew)) + xmin, int(np.ceil((_outw + 1) * stridew)) + xmin)
-                    lenw = slicew.stop - slicew.start
-
-                    roi_data = x[int(idx), :, sliceh, slicew].reshape(C, -1)
-                    y[i_roi, :, _outh, _outw] = np.max(roi_data, axis=1)
+        bboxs[:, [1, 2]] = xp.floor(bboxs[:, [1, 2]] * self.spatial_scale)
+        bboxs[:, [3, 4]] = xp.ceil(bboxs[:, [3, 4]] * self.spatial_scale)
 
 
-                    a = np.argmax(roi_data, axis=1)
-                    c = (slicew.start + sliceh.start * W) + (a // lenw * W) + (a % lenw)
-                    self.argmax_data[i_roi, :, _outh, _outw] = c
+        #roi width, roi height, stridew, strideh, 
+        a = xp.array([bboxs[:,3] - bboxs[:, 1], bboxs[:, 4] - bboxs[:, 2],  (bboxs[:, 3] - bboxs[:, 1])/OW, (bboxs[:,4] - bboxs[:, 2])/OH]).T
+        L_sliceH = xp.tile(xp.arange(OH)[:, None], (N, 1, 2))
+        #             xp.floor(_outh        * strideh)) + ymin
+        L_sliceH[:, :, 0] = (xp.floor(L_sliceH[:, :, 0].T * a[:, 3]) + bboxs[:, 2]).T
+        L_sliceH[:, :, 1] = (xp.ceil((L_sliceH[:, :, 1].T + 1) * a[:, 3]) + bboxs[:, 2]).T
+
+        L_sliceW = xp.tile(xp.arange(OW)[:, None], (N, 1, 2))
+
+        L_sliceW[:, :, 0] = (xp.floor(L_sliceW[:, :, 0].T * a[:, 2]) + bboxs[:, 1]).T
+        L_sliceW[:, :, 1] = (xp.ceil((L_sliceW[:, :, 1].T + 1) * a[:, 2]) + bboxs[:, 1]).T 
+
+        
+        for n in range(N):
+            for outh in range(OH):
+                sliceh = L_sliceH[n][outh]
+                for outw in range(OW):
+                    slicew = L_sliceW[n][outw]
+                    lenw = slicew[1] - slicew[0]
+
+                    roi_data = x[int(bboxs[n][0]), :, sliceh[0]:sliceh[1], slicew[0]:slicew[1]].reshape(C, -1)
+                    y[n, :, outh, outw] = xp.max(roi_data, axis=1)
+                    index = xp.argmax(roi_data, axis=1)
+                    ttt = (slicew[0] + sliceh[0] * W) + (index // lenw * W) + (index % lenw)
+                    self.argmax_data[n, :, outh, outw] = ttt
         return y
-
-    def forward_gpu(self, x, bboxs):
         self._bottom_data_shape = x.shape
 
         OH, OW = pair(self.output_size)
@@ -168,11 +173,16 @@ class ROIPooling2D(Function):
         return y
 
     def backward(self, gy):
-        asdf = self.a * torch.from_numpy(gy.data)
+        asdf = self.a * torch.from_numpy(as_numpy(gy.data))
         adad = asdf.sum()
         adad.backward()
         x, bboxs = self.inputs
         gx, gbboxs = ROIPooling2DGrad(x.shape, self.argmax_data)(gy, bboxs)
+
+        a = self.x1.grad.detach().numpy()
+        b = as_numpy(gx.data)
+
+        print("grad",(b[np.where(a != b)] - a[np.where(a != b)]).sum() < 0.0001)
         return gx, gbboxs
 
 
@@ -191,11 +201,10 @@ class ROIPooling2DGrad(Function):
         a = bboxs[:,0] * C * H * W
         a = xp.broadcast_to(a.reshape(N,1,1,1), (N,C,1,1)) + (xp.arange(C) * H * W).reshape(1,C,1,1)
         a = self.argmax_data + a.reshape(N,C,1,1)
-        a = a.ravel()
-    
         gy_f = gy.ravel()
-        for i, e in enumerate(a):
-            gx[e] += gy_f[i]
+
+        xp.add.at(gx, a, gy_f[np.arange(len(gy_f))])
+
         gx = gx.reshape(self.input_shape)
 
         return gx, None # gbboxs
@@ -386,7 +395,7 @@ def main_Fast_R_CNN(name='default'):
     model = Fast_R_CNN()
     optimizer = optimizers.Adam(alpha=0.0001)
     model.fit(epoch, optimizer, train_loader, loss_function=multi_loss, accuracy_function=Faccuracy,
-              iteration_print=True, name=name, gpu=False)
+              iteration_print=True, name=name)
 
 if __name__ == "__main__":
 	main_Fast_R_CNN()

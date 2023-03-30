@@ -183,9 +183,9 @@ def as_variable(obj):
     return Variable(obj)
 
 
-def as_array(x, array_module=np):
+def as_array(x, array_module=np, dtype=None):
     if np.isscalar(x):
-        return array_module.array(x)
+        return array_module.array(x, dtype=dtype) if dtype else array_module.array(x)
     return x
 
 

@@ -1,5 +1,6 @@
 #include <cmath>
 #include "python3.10/Python.h"
+// g++ -g -shared extension_test.cpp -o extension_test.so
 
 const double e = 2.7182818284590452353602874713527;
 

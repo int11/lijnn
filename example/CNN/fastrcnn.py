@@ -203,7 +203,7 @@ class ROIPooling2DGrad(Function):
         a = self.argmax_data + a.reshape(N,C,1,1)
         gy_f = gy.ravel()
 
-        xp.add.at(gx, a, gy_f[np.arange(len(gy_f))])
+        np.add.at(gx, a, gy_f[np.arange(len(gy_f))])
 
         gx = gx.reshape(self.input_shape)
 

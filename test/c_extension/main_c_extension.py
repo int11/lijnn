@@ -1,5 +1,4 @@
 import sys, os
-sys.path.append(os.getcwd())
 
 from random import random
 from time import perf_counter
@@ -11,7 +10,10 @@ import sys, os
 from array import array
 import numpy as np
 
-libc = ctypes.cdll.LoadLibrary(os.path.dirname(__file__) + '/ctypes_test.so')
+lib_ctypes = ctypes.cdll.LoadLibrary(os.path.dirname(__file__) + '/ctypes_test.so')
+
+lib_cuda = ctypes.cdll.LoadLibrary(os.path.dirname(__file__) + '/cuda_test.so')
+
 COUNT = 10000000  # Change this value depending on the speed of your computer
 data = [(random() - 0.5) * 3 for _ in range(COUNT)]
 
@@ -36,34 +38,47 @@ def test(fn, name):
     for d in result:
         assert -1 <= d <= 1, " incorrect values"
 
+ctypes_tanh_impl = lib_ctypes.ctypes_tanh_impl
+ctypes_tanh_impl.restype = ctypes.c_double
+
+ctypes_tanh_impl_point = lib_ctypes.ctypes_tanh_impl_point
+ctypes_tanh_impl_point.restype = ctypes.POINTER(ctypes.c_double * COUNT)
+
+cuda_tanh_impl = lib_cuda.tanh_impl
+
+cuda_tanh_impl.argtypes = [ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double), ctypes.c_size_t] 
+
+def ctypes_pointer(data):
+    temp = array('d', data)
+    temp = (ctypes.c_double * len(data)).from_buffer(temp)
+    result = ctypes_tanh_impl_point(temp, len(data))
+    return result.contents
+
+def ctypes_pointer_numpy(data):
+    temp = np.ctypeslib.as_ctypes(np.array(data))
+    result = ctypes_tanh_impl_point(temp, len(data))
+    result = np.ctypeslib.as_array(result.contents, shape=[COUNT])
+    return result
+
+def cuda_tanh_impl1(data):
+    result = np.zeros_like(data)
+
+    temp = np.ctypeslib.as_ctypes(np.array(data))
+    result_p = np.ctypeslib.as_ctypes(np.array(result))
+
+    cuda_tanh_impl(temp, result_p, len(data))
+    return result
+
 if __name__ == "__main__":
-    ctypes_tanh_impl = libc.ctypes_tanh_impl
-    ctypes_tanh_impl_point = libc.ctypes_tanh_impl_point
-    ctypes_tanh_impl.restype = ctypes.c_double
-    ctypes_tanh_impl_point.restype = ctypes.POINTER(ctypes.c_double * COUNT)
-
-    def ctypes_pointer(data):
-        temp = array('d', data)
-        temp = (ctypes.c_double * len(data)).from_buffer(temp)
-        result = ctypes_tanh_impl_point(temp, len(data))
-        return result[0]
-
-    def ctypes_pointer_numpy(data):
-        temp = np.ctypeslib.as_ctypes(np.array(data))
-        result = ctypes_tanh_impl_point(temp, len(data))
-        result = np.ctypeslib.as_array(result[0])
-        return result
-
-    
     print(ctypes_tanh_impl(ctypes.c_double(data[1])), ctypes_pointer(data)[1], ctypes_pointer_numpy(data)[1])
     print(CPython_tanh_impl(data[1]), CPython_tanh_impl_point(data)[1])
     print(tanh(data[1]))
 
+    print(cuda_tanh_impl1(data)[1])
 
     print('Running benchmarks with COUNT = {}'.format(COUNT))
 
-    
-    
+
     test(lambda d: [ctypes_tanh_impl(ctypes.c_double(x)) for x in d], 'ctypes')
     test(lambda d: ctypes_pointer(data), 'ctypes pointer')
     test(lambda d: ctypes_pointer_numpy(data), 'ctypes pointer numpy')

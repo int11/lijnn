@@ -1,5 +1,5 @@
 #include <cmath>
-
+// g++ -g -shared ctypes_test.cpp -o ctypes_test.so
 const double e = 2.7182818284590452353602874713527;
 
 double sinh_impl(double x) {

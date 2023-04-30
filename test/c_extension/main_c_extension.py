@@ -45,8 +45,7 @@ ctypes_tanh_impl_point = lib_ctypes.ctypes_tanh_impl_point
 ctypes_tanh_impl_point.restype = ctypes.POINTER(ctypes.c_double * COUNT)
 
 cuda_tanh_impl = lib_cuda.tanh_impl
-
-cuda_tanh_impl.argtypes = [ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double), ctypes.c_size_t] 
+cuda_tanh_impl.restype = ctypes.POINTER(ctypes.c_double * COUNT)
 
 def ctypes_pointer(data):
     temp = array('d', data)
@@ -61,12 +60,9 @@ def ctypes_pointer_numpy(data):
     return result
 
 def cuda_tanh_impl1(data):
-    result = np.zeros_like(data)
-
     temp = np.ctypeslib.as_ctypes(np.array(data))
-    result_p = np.ctypeslib.as_ctypes(np.array(result))
-
-    cuda_tanh_impl(temp, result_p, len(data))
+    result = cuda_tanh_impl(temp, len(data))
+    result = np.ctypeslib.as_array(result.contents, shape=[COUNT])
     return result
 
 if __name__ == "__main__":

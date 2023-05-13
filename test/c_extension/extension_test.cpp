@@ -12,13 +12,13 @@ double cosh_impl(double x) {
     return (1 + pow(e, (-2 * x))) / (2 * pow(e, -x));
 }
 
-PyObject* CPython_tanh_impl(PyObject*, PyObject* o) {
+PyObject* _CPython_tanh_impl(PyObject*, PyObject* o) {
     double x = PyFloat_AsDouble(o);
     double tanh_x = sinh_impl(x) / cosh_impl(x);
     return PyFloat_FromDouble(tanh_x);
 }
 
-PyObject* CPython_tanh_impl_point(PyObject*, PyObject* o) {
+PyObject* _CPython_tanh_impl_point(PyObject*, PyObject* o) {
     Py_ssize_t tot_len = PyList_Size(o);
     PyObject* ret = PyList_New(tot_len);
 
@@ -37,8 +37,8 @@ static PyMethodDef superfastcode_methods[] = {
     // The first property is the name exposed to Python, fast_tanh
     // The second is the C++ function with the implementation
     // METH_O means it takes a single PyObject argument
-    { "CPython_tanh_impl", (PyCFunction)CPython_tanh_impl, METH_O, "asdfasdftestete" },
-    { "CPython_tanh_impl_point", (PyCFunction)CPython_tanh_impl_point, METH_O, "asdfasdftestete" },
+    { "_CPython_tanh_impl", (PyCFunction)_CPython_tanh_impl, METH_O, "asdfasdftestete" },
+    { "_CPython_tanh_impl_point", (PyCFunction)_CPython_tanh_impl_point, METH_O, "asdfasdftestete" },
 
     // Terminate the array with an object containing nulls.
     { nullptr, nullptr, 0, nullptr }

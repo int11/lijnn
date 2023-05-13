@@ -17,9 +17,14 @@ drive mount directory have to be "/content/drive"
 ex) drive.mount("/content/drive")
 """
 
-cache_dir = '/content/drive/MyDrive/.lijnn' if 'root' in os.path.expanduser('~') else \
-    os.path.join(os.path.expanduser('~'), '.lijnn')
-
+try:
+    if 'root' in os.path.expanduser('~'):
+        cache_dir = '/content/drive/MyDrive/.lijnn'
+    else:
+        os.path.join(os.path.expanduser('~'), '.lijnn')
+except:
+    print("No cache dir found to store weights.")
+    
 
 # =============================================================================
 # Visualize for computational graph

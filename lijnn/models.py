@@ -151,6 +151,7 @@ class Model(Layer):
     def fit(self, epoch, optimizer, train_loader, test_loader=None,
             loss_function=F.softmax_cross_entropy, accuracy_function=ac.classification,
             iteration_print=False, autosave=True, autosave_time=30, name='default', gpu="True"):
+        
         optimizer = optimizer.setup(self)
         start_epoch, ti = self.load_weights_epoch(name=name)
 

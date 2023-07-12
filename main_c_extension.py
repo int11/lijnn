@@ -1,11 +1,9 @@
 import sys, os
-os.system(f"make -C {os.path.dirname(__file__)}")
-
+a = os.system(f"make -C {os.path.dirname(__file__)}")
+if a == 512: raise
 from random import random
 from time import perf_counter
-#g++ -shared -g extension_test.cpp -o extension_test.so
-from extension_test import _CPython_tanh_impl, _CPython_tanh_impl_point
-#g++ -shared -g ctypes_test.cpp -o ctypes_test.so
+from extensiontest import _CPython_tanh_impl, _CPython_tanh_impl_point
 import ctypes
 import sys, os
 from array import array
@@ -73,7 +71,7 @@ def CPython_tanh_impl_point():
     return _CPython_tanh_impl_point(data)
 
 
-func = [ctypes_tanh_impl, ctypes_tanh_impl_point, ctypes_tanh_impl_point_numpy, cuda_tanh_impl, CPython_tanh_impl, CPython_tanh_impl_point, python_tanh_impl]
+func = [cuda_tanh_impl, CPython_tanh_impl, CPython_tanh_impl_point, ctypes_tanh_impl_point, ctypes_tanh_impl_point_numpy, ctypes_tanh_impl, python_tanh_impl]
 
 def test(fn):
     start = perf_counter()

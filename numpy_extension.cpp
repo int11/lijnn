@@ -14,8 +14,8 @@ double cosh_impl(double x) {
 }
 
 PyObject* _numpy_extension(PyObject*, PyObject* o) {
-    PyArrayObject *arr = o;
-    double * data = PyArray_DATA(o);
+    PyArrayObject *arr = (PyArrayObject *)o;
+    auto *a = PyArray_DATA(arr);
 }
 
 static PyMethodDef methods[] = {

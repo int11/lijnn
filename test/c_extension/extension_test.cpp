@@ -43,7 +43,7 @@ static PyMethodDef methods[] = {
     { nullptr, nullptr, 0, nullptr }
 };
 
-static PyModuleDef extensiontest_module = {
+static PyModuleDef extension_test_module = {
     PyModuleDef_HEAD_INIT,
     "extension_test",                        // Module name to use with Python import statements
     "Provides some functions, but faster",  // Module description
@@ -51,6 +51,6 @@ static PyModuleDef extensiontest_module = {
     methods                   // Structure that defines the methods of the module
 };
 
-PyMODINIT_FUNC PyInit_extensiontest() {
-    return PyModule_Create(&extensiontest_module);
+PyMODINIT_FUNC PyInit_extension_test() {
+    return PyModule_Create(&extension_test_module);
 }

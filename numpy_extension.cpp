@@ -27,12 +27,12 @@ PyObject* _numpy_extension(PyObject*, PyObject* args) {
     double *data = (double *)PyArray_DATA(arr);
     npy_intp size = PyArray_SIZE(arr);
     PyArray_Descr * dtype = PyArray_DTYPE(arr);
-
-    for (int i = 0; i < size; ++i){
-        double tanh_x = sinh_impl(data[i]) / cosh_impl(data[i]);
-        printf("%f", tanh_x);
-    }
-    return NULL;
+    int typ = PyArray_TYPE(arr);
+    printf("%d\n", typ);
+    // for (int i = 0; i < size; ++i){
+    //     double tanh_x = sinh_impl(data[i]) / cosh_impl(data[i]);
+    // }
+    return args;
 }
 
 static PyMethodDef methods[] = {

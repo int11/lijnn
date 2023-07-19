@@ -15,10 +15,16 @@ lib_cuda = ctypes.cdll.LoadLibrary(os.path.dirname(__file__) + '/cuda_test.so')
 
 COUNT = int(100000000/2) # Change this value depending on the speed of your computer
 data = [(random() - 0.5) * 3 for _ in range(COUNT)]
-data_numpy = np.array(data)
-print(data_numpy.dtype)
+data_numpy = np.array(data, dtype=np.float64)
 
-_numpy_extension(data_numpy)
+def a(a):
+    print(a.dtype)
+    _numpy_extension(a)
+    
+a(data_numpy)
+a(data_numpy.astype(np.float32))
+a(data_numpy.astype(np.float16))
+
 e = 2.7182818284590452353602874713527
 
 def sinh(x):

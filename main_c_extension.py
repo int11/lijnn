@@ -1,7 +1,7 @@
 import sys, os
 a = os.system(f"make -C {os.path.dirname(__file__)}")
 if a == 512: raise
-from random import random
+from random import random, seed
 from time import perf_counter
 from extension_test import _CPython_tanh_impl, _CPython_tanh_impl_point
 from numpy_extension import _numpy_extension
@@ -12,18 +12,21 @@ import numpy as np
 
 lib_ctypes = ctypes.cdll.LoadLibrary(os.path.dirname(__file__) + '/ctypes_test.so')
 lib_cuda = ctypes.cdll.LoadLibrary(os.path.dirname(__file__) + '/cuda_test.so')
-
+seed(0)
 COUNT = int(100000000/2) # Change this value depending on the speed of your computer
 data = [(random() - 0.5) * 3 for _ in range(COUNT)]
-data_numpy = np.array(data, dtype=np.float64)
+data_numpy = np.array(data, dtype=np.float16)
+print(data_numpy[0])
 
 def a(a):
     print(a.dtype)
     _numpy_extension(a)
-    
+
+
 a(data_numpy)
-a(data_numpy.astype(np.float32))
-a(data_numpy.astype(np.float16))
+# a(data_numpy.astype(np.float32))
+# a(data_numpy.astype(np.float16))
+
 
 e = 2.7182818284590452353602874713527
 

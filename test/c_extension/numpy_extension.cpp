@@ -3,35 +3,66 @@
 #include <Python.h>
 #include "numpy/arrayobject.h"
 #include <iostream>
+#include "half.hpp"
+
 using namespace std;
+using half_float::half;
 
 const double e = 2.7182818284590452353602874713527;
 
-double sinh_impl(double x) {
+
+template <typename T>
+T sinh_impl(T x) {
     return (1 - pow(e, (-2 * x))) / (2 * pow(e, -x));
 }
 
-double cosh_impl(double x) {
+template <typename T>
+T cosh_impl(T x) {
     return (1 + pow(e, (-2 * x))) / (2 * pow(e, -x));
+}
+
+template <typename T>
+void tanh_impl(void *data, npy_intp size, T *result){
+    for (int i=0; i < size; ++i){
+        T x =  data[i];
+        result[i] = sinh_impl(x) / cosh_impl(x);
+    }
 }
 
 PyObject* _numpy_extension(PyObject*, PyObject* args) {
     PyArrayObject *arr;
     PyArg_ParseTuple(args, "O", &arr);
     
-    
     if (PyErr_Occurred()){
         return NULL;
     }
 
-    double *data = (double *)PyArray_DATA(arr);
+    void *data;
+    PyArray_AsCArray((PyObject **)&arr, &data, PyArray_DIMS(arr), PyArray_NDIM(arr), PyArray_DescrFromType(PyArray_TYPE(arr)));
+    PyObject *result = PyArray_SimpleNew(PyArray_NDIM(arr), PyArray_DIMS(arr), PyArray_TYPE(arr));
     npy_intp size = PyArray_SIZE(arr);
-    PyArray_Descr * dtype = PyArray_DTYPE(arr);
-    int typ = PyArray_TYPE(arr);
-    printf("%d\n", typ);
-    // for (int i = 0; i < size; ++i){
-    //     double tanh_x = sinh_impl(data[i]) / cosh_impl(data[i]);
-    // }
+    int type = PyArray_TYPE(arr);
+    
+    cout << ((half *)data)[0] << type << endl;
+
+    switch (type)
+    {
+    case NPY_FLOAT16:
+        {half *a;
+        break;}
+    case NPY_FLOAT32:
+        {float *a;
+        break;}
+    case NPY_FLOAT64:
+        {double *a;
+        break;}
+    default:
+        {float *a;
+        break;}
+    }
+
+    tanh_impl(data, size, a);
+
     return args;
 }
 

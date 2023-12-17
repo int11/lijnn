@@ -41,8 +41,21 @@ void main_f(PyArrayObject *arr){
     PyArray_AsCArray((PyObject **)&arr, &data, PyArray_DIMS(arr), PyArray_NDIM(arr), PyArray_DescrFromType(PyArray_TYPE(arr)));
     PyObject *result = PyArray_SimpleNew(PyArray_NDIM(arr), PyArray_DIMS(arr), PyArray_TYPE(arr));
     npy_intp size = PyArray_SIZE(arr);
+    cout << fixed;
     
-    cout << ((T *)data)[0] << endl;
+    switch (PyArray_TYPE(arr))
+    {
+    case NPY_FLOAT16:
+        cout.precision(16);
+        break;
+    case NPY_FLOAT32:
+        cout.precision(7);
+        break;
+    case NPY_FLOAT64:
+        cout.precision(3);
+        break;
+    }
+    cout << "c : " << ((T *)data)[0] << endl;
 }
 
 PyObject* _numpy_extension(PyObject*, PyObject* args) {

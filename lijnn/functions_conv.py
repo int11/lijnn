@@ -414,8 +414,10 @@ class ROIPooling2DGrad(Function):
         a = a.ravel()
     
         gy_f = gy.ravel()
-
-        np.add.at(gx, a, gy_f[np.arange(len(gy_f))])
+        if xp == np:
+            np.add.at(gx, a, gy_f[np.arange(len(gy_f))])
+        else:
+            cupyx.scatter_add(gx, a.ravel(), gy_f[np.arange(len(gy_f))])
 
         gx = gx.reshape(self.input_shape)
 

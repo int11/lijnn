@@ -85,3 +85,7 @@ def main_AlexNet(name='default'):
     model = AlexNet(10)
     optimizer = optimizers.Adam(alpha=0.0001).setup(model)
     model.fit(epoch, optimizer, train_loader, test_loader)
+
+
+if __name__ == "__main__":
+	main_AlexNet()

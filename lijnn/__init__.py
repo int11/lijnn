@@ -27,4 +27,3 @@ from lijnn import initializers
 from lijnn import accuracy
 
 setup_variable()
-__version__ = '0.0.1'

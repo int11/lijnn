@@ -1,4 +1,5 @@
 import numpy as np
+import cupyx as cpx
 from lijnn import cuda
 from lijnn.core import Function, as_variable
 from lijnn.utils import pair, get_conv_outsize, get_deconv_outsize
@@ -417,7 +418,7 @@ class ROIPooling2DGrad(Function):
         if xp == np:
             np.add.at(gx, a, gy_f[np.arange(len(gy_f))])
         else:
-            cupyx.scatter_add(gx, a.ravel(), gy_f[np.arange(len(gy_f))])
+            cpx.scatter_add(gx, a.ravel(), gy_f[np.arange(len(gy_f))])
 
         gx = gx.reshape(self.input_shape)
 

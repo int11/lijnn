@@ -1,12 +1,12 @@
 import numpy as np
+from lijnn import Variable
 gpu_enable = True
+
 try:
     import cupy as cp
-    import cupyx
     cupy = cp
 except ImportError:
     gpu_enable = False
-from lijnn import Variable
 
 
 def get_array_module(x):

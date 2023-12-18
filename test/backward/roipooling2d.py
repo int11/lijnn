@@ -3,6 +3,7 @@ import torch.nn as nn
 from lijnn import *
 import numpy as np
 import cupy as cp
+from lijnn.cuda import as_numpy
 from lijnn.functions import *
 
 class SlowROIPool(nn.Module):
@@ -32,21 +33,23 @@ class SlowROIPool(nn.Module):
         res = torch.cat(res, dim=0)
         return res
 
-gpu = False
-np.random.seed(0)
-data = np.random.randint(0,1000,(3,40,5,5)).astype(np.float32)
-
-x_lijnn = Variable(data)
-if gpu:
-    x_lijnn.to_gpu()
-y_lijnn = roi_pooling(x_lijnn, cuda.get_array_module(x_lijnn.data).array([[0,0,0,4,4],[2,0,0,2,4]], dtype=np.int32), 3, 1)
-y_lijnn.backward()
 
 
-x_torch = torch.from_numpy(data).type(torch.float)
-x_torch.requires_grad=True
-y_torch = SlowROIPool(3,1)(x_torch, np.array([[0,0,0,4,4],[2,0,0,2,4]]))
-y_torch = y_torch.sum()
-y_torch.backward()
+def test(gpu):
+    np.random.seed(0)
+    data = np.random.randint(0,1000,(3,40,5,5)).astype(np.float32)
 
-print(np.array_equal(x_lijnn.grad.data, x_torch.grad.numpy()))
+    x_lijnn = Variable(data)
+    if gpu:
+        x_lijnn.to_gpu()
+    y_lijnn = roi_pooling(x_lijnn, cuda.get_array_module(x_lijnn.data).array([[0,0,0,4,4],[2,0,0,2,4]], dtype=np.int32), 3, 1)
+    y_lijnn.backward()
+
+
+    x_torch = torch.from_numpy(data).type(torch.float)
+    x_torch.requires_grad=True
+    y_torch = SlowROIPool(3,1)(x_torch, np.array([[0,0,0,4,4],[2,0,0,2,4]]))
+    y_torch = y_torch.sum()
+    y_torch.backward()
+
+    return np.array_equal(as_numpy(x_lijnn.grad.data), x_torch.grad.numpy())

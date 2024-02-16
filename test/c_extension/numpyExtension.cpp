@@ -17,45 +17,49 @@ public:
     typedef T value_type;
 };
 
-template <typename T>
-T sinh_impl(T x) {
+double sinh_impl(double x) {
     return (1 - pow(e, (-2 * x))) / (2 * pow(e, -x));
 }
 
-template <typename T>
-T cosh_impl(T x) {
+double cosh_impl(double x) {
     return (1 + pow(e, (-2 * x))) / (2 * pow(e, -x));
 }
 
-template <typename T>
-void tanh_impl(void *data, npy_intp size, T *result){
-    for (int i=0; i < size; ++i){
-        T x =  ((T *)data)[i];
-        result[i] = sinh_impl(x) / cosh_impl(x);
-    }
+double tanh_impl(double x) {
+    return sinh_impl(x) / cosh_impl(x);
 }
 
 template<typename T>
-void main_f(PyArrayObject *arr){
-    void *data;
+PyObject* main_f(PyArrayObject *arr){
+    T *data;
     PyArray_AsCArray((PyObject **)&arr, &data, PyArray_DIMS(arr), PyArray_NDIM(arr), PyArray_DescrFromType(PyArray_TYPE(arr)));
     PyObject *result = PyArray_SimpleNew(PyArray_NDIM(arr), PyArray_DIMS(arr), PyArray_TYPE(arr));
     npy_intp size = PyArray_SIZE(arr);
-    cout << fixed;
-    
-    switch (PyArray_TYPE(arr))
-    {
-    case NPY_FLOAT16:
-        cout.precision(16);
-        break;
-    case NPY_FLOAT32:
-        cout.precision(7);
-        break;
-    case NPY_FLOAT64:
-        cout.precision(3);
-        break;
+
+    // 과학적 표기법을 소수점 표기법으로 표시
+    // cout << fixed;
+
+    // switch (PyArray_TYPE(arr))
+    // {
+    // case NPY_FLOAT16:
+    //     cout.precision(3);
+    //     break;
+    // case NPY_FLOAT32:
+    //     cout.precision(7);
+    //     break;
+    // case NPY_FLOAT64:
+    //     cout.precision(16);
+    //     break;
+    // }
+    // cout << ((T *)data)[0] << endl;
+
+    T *result_data = (T *)PyArray_DATA((PyArrayObject *)result);
+    for (npy_intp i = 0; i < size; ++i) {
+        // result_data[i] = tanh_impl(data[i]);
+        result_data[i] = std::tanh(data[i]);
     }
-    cout << "c : " << ((T *)data)[0] << endl;
+    
+    return result;
 }
 
 PyObject* _numpy_extension(PyObject*, PyObject* args) {
@@ -67,19 +71,20 @@ PyObject* _numpy_extension(PyObject*, PyObject* args) {
     }
 
     int type = PyArray_TYPE(arr);
+    PyObject *result;
     switch (type)
     {
     case NPY_FLOAT16:
-        main_f<half>(arr);
+        result = main_f<half>(arr);
         break;
     case NPY_FLOAT32:
-        main_f<float>(arr);
+        result = main_f<float>(arr);
         break;
     case NPY_FLOAT64:
-        main_f<double>(arr);
+        result = main_f<double>(arr);
         break;
     }
-    return args;
+    return result;
 }
 
 static PyMethodDef methods[] = {
@@ -100,7 +105,7 @@ static PyModuleDef numpy_extension_module = {
     methods                   // Structure that defines the methods of the module
 };
 
-PyMODINIT_FUNC PyInit_numpy_extension() {
+PyMODINIT_FUNC PyInit_numpyExtension() {
     import_array()
     return PyModule_Create(&numpy_extension_module);
 }

@@ -11,9 +11,13 @@ double cosh_impl(double x) {
     return (1 + pow(e, (-2 * x))) / (2 * pow(e, -x));
 }
 
+double tanh_impl(double x) {
+    return sinh_impl(x) / cosh_impl(x);
+}
+
 PyObject* _CPython_tanh_impl(PyObject*, PyObject* o) {
     double x = PyFloat_AsDouble(o);
-    double tanh_x = sinh_impl(x) / cosh_impl(x);
+    double tanh_x = tanh_impl(x);
     return PyFloat_FromDouble(tanh_x);
 }
 
@@ -23,7 +27,7 @@ PyObject* _CPython_tanh_impl_point(PyObject*, PyObject* o) {
     
     for (int i = 0; i < tot_len; i++) {
         double x = PyFloat_AsDouble(PyList_GetItem(o, i));
-        double tanh_x = sinh_impl(x) / cosh_impl(x);
+        double tanh_x = std::tanh(x);
         PyList_SetItem(ret, i, PyFloat_FromDouble(tanh_x));
     }
 
@@ -51,6 +55,6 @@ static PyModuleDef extension_test_module = {
     methods                   // Structure that defines the methods of the module
 };
 
-PyMODINIT_FUNC PyInit_extension_test() {
+PyMODINIT_FUNC PyInit_cpythonExtension() {
     return PyModule_Create(&extension_test_module);
 }

@@ -10,16 +10,18 @@ using namespace std;
 using half_float::half;
 
 const double e = 2.7182818284590452353602874713527;
-
-double sinh_impl(double x) {
-    return (1 - pow(e, (-2 * x))) / (2 * pow(e, -x));
+template<typename T>
+T sinh_impl(T x) {
+    return (1 - pow((T) e, (-2 * x))) / (2 * pow((T)e, -x));
 }
 
-double cosh_impl(double x) {
-    return (1 + pow(e, (-2 * x))) / (2 * pow(e, -x));
+template<typename T>
+T cosh_impl(T x) {
+    return (1 + pow((T)e, (-2 * x))) / (2 * pow((T)e, -x));
 }
 
-double tanh_impl(double x) {
+template<typename T>
+T tanh_impl(T x) {
     return sinh_impl(x) / cosh_impl(x);
 }
 
@@ -49,8 +51,8 @@ PyObject* main_f(PyArrayObject *arr){
 
     T *result_data = (T *)PyArray_DATA((PyArrayObject *)result);
     for (npy_intp i = 0; i < size; ++i) {
-        // result_data[i] = tanh_impl(data[i]);
-        result_data[i] = std::tanh(data[i]);
+        result_data[i] = tanh_impl(data[i]);
+        // result_data[i] = std::tanh(data[i]);
     }
     
     return result;

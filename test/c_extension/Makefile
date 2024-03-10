@@ -1,4 +1,4 @@
-INC=-I/usr/include/python3.10 -I/home/injea/lijnn/.venv/lib/python3.10/site-packages/numpy/core/include 
+INC=-I/usr/include/python3.10 -I/home/injea/lijnn/.venv/lib/python3.10/site-packages/numpy/core/include -I/usr/local/cuda/include/
 all: ctypes.so cuda.so cpythonExtension.so numpyExtension.so
 
 ctypes.so: ctypes.cpp

@@ -5,7 +5,6 @@
 using namespace std ;
 
 
-
 void tanh_impl(double * h_in, double * h_out, int arr_size){
 	const long long int ARRAY_BYTES = arr_size * sizeof(double);
 	double *d_in, *d_out;

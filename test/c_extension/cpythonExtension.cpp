@@ -25,44 +25,46 @@ PyObject* tanh_impl(PyObject*, PyObject* o) {
     return PyFloat_FromDouble(tanh_x);
 }
 
-PyObject* tanh_impl_point(PyObject*, PyObject* o) {
-    
+PyObject* tanh_impl_point0(PyObject*, PyObject* o) {
     PyObject *input, *output;
     if (!PyArg_ParseTuple(o, "OO", &input, &output)) {
         return NULL;
     }
-    // Py_ssize_t size = PyList_Size(input);
-    // PyObject* ret = PyList_New(size);
+    Py_ssize_t size = PyList_Size(input);
     
-    // for (int i = 0; i < size; i++) {
-    //     double x = PyFloat_AsDouble(PyList_GetItem(input, i));
-    //     double tanh_x = std::tanh(x);
-    //     PyList_SetItem(ret, i, PyFloat_FromDouble(tanh_x));
-    // }
+    for (int i = 0; i < size; i++) {
+        double x = PyFloat_AsDouble(PyList_GetItem(input, i));
+        double tanh_x = std::tanh(x);
+        PyList_Append(output, PyFloat_FromDouble(tanh_x));
+    }
+    Py_INCREF(output);
+    return output;
+}
 
-    // Py_INCREF(ret);
+PyObject* tanh_impl_point1(PyObject*, PyObject* o) {
+    
+    PyObject *input;
+    if (!PyArg_ParseTuple(o, "O", &input)) {
+        return NULL;
+    }
+    Py_ssize_t size = PyList_Size(input);
+    PyObject* output = PyList_New(0);
+    Py_INCREF(output);
+    for (int i = 0; i < size; i++) {
+        double x = PyFloat_AsDouble(PyList_GetItem(input, i));
+        double tanh_x = std::tanh(x);
+         PyList_Append(output, PyFloat_FromDouble(tanh_x));
+    }
 
     return output;
 }
-PyObject* my_function(PyObject* self, PyObject* args) {
-    PyObject* input;
-    if (!PyArg_ParseTuple(args, "O", &input)) {
-        return NULL;
-    }
-    
-    // Process the input object here
-    
-    Py_INCREF(input);
-    return input;
-}
-
 static PyMethodDef methods[] = {
     // The first property is the name exposed to Python, fast_tanh
     // The second is the C++ function with the implementation
     // METH_O means it takes a single PyObject argument
     { "tanh_impl", tanh_impl, METH_O, "asdfasdftestete" },
-    { "tanh_impl_point", tanh_impl_point, METH_VARARGS, "asdfasdftestete" },
-{ "my_function", my_function, METH_VARARGS, "asdfasdftestete" },
+    { "tanh_impl_point0", tanh_impl_point0, METH_VARARGS, "asdfasdftestete" },
+    { "tanh_impl_point1", tanh_impl_point1, METH_VARARGS, "asdfasdftestete" },
     // Terminate the array with an object containing nulls.
     { nullptr, nullptr, 0, nullptr }
 };

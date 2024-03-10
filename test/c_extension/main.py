@@ -15,17 +15,11 @@ lib_cuda = ctypes.cdll.LoadLibrary(os.path.dirname(__file__) + '/cuda.so')
 
 
 seed(0)
-COUNT = int(1000000) # Change this value depending on the speed of your computer
+COUNT = int(50000000) # Change this value depending on the speed of your computer
 data = [(random() - 0.5) * 3 for _ in range(COUNT)]
 data_numpy = np.array(data, dtype=np.float64)
 
 e = 2.7182818284590452353602874713527
-
-output = [1.4]
-a = cpythonExtension.tanh_impl_point(data, output)
-print(id(output), id(cpythonExtension.my_function(output)))
-print(id(data), id(a), a[0], )
-
 
 def sinh(x):
     return (1 - (e ** (-2 * x))) / (2 * (e ** -x))
@@ -47,9 +41,6 @@ def numpyExtension():
     return _numpy_extension(data_numpy)
 
 
-
-
-
 _ctypes_tanh_impl = lib_ctypes.tanh_impl
 _ctypes_tanh_impl.restype = ctypes.c_double
 def ctypesF():
@@ -58,7 +49,7 @@ def ctypesF():
 
 _ctypes_tanh_impl_point = lib_ctypes.tanh_impl_point
 _ctypes_tanh_impl_point.restype = ctypes.POINTER(ctypes.c_double * COUNT)
-def ctypes_point():
+def ctypes_point0():
     ctypes_point_temp = array('d', data)
     ctypes_point_temp = (ctypes.c_double * len(data)).from_buffer(ctypes_point_temp)
 
@@ -66,7 +57,7 @@ def ctypes_point():
     result = _ctypes_tanh_impl_point(ctypes_point_temp, len(data))
     return result.contents, perf_counter() - start
 
-def ctypes_point_numpy():
+def ctypes_point1():
     ctypes_point_numpy_temp = data_numpy.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
     
     start = perf_counter()
@@ -85,17 +76,17 @@ def cuda():
     _cuda_tanh_impl(cuda_cuda, cuda_result_p0, len(data))
     return cuda_result, perf_counter() - start
 
-
-
-
 def cpythonExtensionTanh():
     return [cpythonExtensionTanh.tanh_impl(x) for x in data]
 
-def cpythonExtensionPointTanh():
-    return cpythonExtension.tanh_impl_point(data)
+def cpythonExtensionPointTanh0():
+    output = []
+    return cpythonExtension.tanh_impl_point0(data, output)
 
+def cpythonExtensionPointTanh1():
+    return cpythonExtension.tanh_impl_point1(data)
 
-func = [cuda, numpy, numpyExtension, cpythonExtensionPointTanh, ctypes_point, ctypes_point_numpy]
+func = [cuda, numpy, numpyExtension, cpythonExtensionPointTanh0, cpythonExtensionPointTanh1, ctypes_point0, ctypes_point1]
 functoslow = [cpythonExtensionTanh, ctypesF, python]
 def test(fn):
     start = perf_counter()

@@ -11,12 +11,6 @@ using half_float::half;
 
 const double e = 2.7182818284590452353602874713527;
 
-template <typename T>
-class Variable {
-public:
-    typedef T value_type;
-};
-
 double sinh_impl(double x) {
     return (1 - pow(e, (-2 * x))) / (2 * pow(e, -x));
 }

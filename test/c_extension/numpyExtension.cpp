@@ -3,21 +3,20 @@
 #include <Python.h>
 #include "numpy/arrayobject.h"
 #include <iostream>
-#include "half.hpp"
+#include <cuda_fp16.h>
 #include <string>
 
 using namespace std;
-using half_float::half;
 
 const double e = 2.7182818284590452353602874713527;
 template<typename T>
 T sinh_impl(T x) {
-    return (1 - pow((T) e, (-2 * x))) / (2 * pow((T)e, -x));
+    return (T) ((1 - pow((T) e, (-2 * x))) / (2 * pow((T)e, -x)));
 }
 
 template<typename T>
 T cosh_impl(T x) {
-    return (1 + pow((T)e, (-2 * x))) / (2 * pow((T)e, -x));
+    return (T) ((1 + pow((T)e, (-2 * x))) / (2 * pow((T)e, -x)));
 }
 
 template<typename T>
@@ -51,8 +50,8 @@ PyObject* main_f(PyArrayObject *arr){
 
     T *result_data = (T *)PyArray_DATA((PyArrayObject *)result);
     for (npy_intp i = 0; i < size; ++i) {
-        result_data[i] = tanh_impl(data[i]);
-        // result_data[i] = std::tanh(data[i]);
+        // result_data[i] = tanh_impl(data[i]);
+        result_data[i] = std::tanh(data[i]);
     }
     
     return result;
@@ -71,7 +70,7 @@ PyObject* _numpy_extension(PyObject*, PyObject* args) {
     switch (type)
     {
     case NPY_FLOAT16:
-        result = main_f<half>(arr);
+        result = main_f<__half>(arr);
         break;
     case NPY_FLOAT32:
         result = main_f<float>(arr);

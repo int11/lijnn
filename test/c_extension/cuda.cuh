@@ -4,7 +4,7 @@ const double e = 2.7182818284590452353602874713527;
 
 
 template <typename T>
-__global__ void tanh_impl_Kernel(T d_in, T d_out, int size){
+__global__ void tanh_impl_Kernel(T d_in, T d_out, size_t size){
 	
 	int idx = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -18,4 +18,4 @@ __global__ void tanh_impl_Kernel(T d_in, T d_out, int size){
 }
 
 
-DELLEXPORT void tanh_impl(double *, double *, int);
+DELLEXPORT void tanh_impl(double *, double *, size_t);

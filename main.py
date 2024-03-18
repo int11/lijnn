@@ -1,3 +1,6 @@
-from example import CNN
+import lijnn
 
-CNN.fastrcnn.main_Fast_R_CNN()
+
+a = lijnn.datasets.VOCclassfication()[0]
+print(a)
+print()

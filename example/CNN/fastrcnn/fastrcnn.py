@@ -5,8 +5,6 @@ from lijnn import layers as L
 from lijnn import functions as F
 from lijnn.transforms import *
 from example.CNN import VGG16, rcnn
-import torch
-import torch.nn as nn
 
 class Fast_R_CNN(VGG16):
     def __init__(self, num_classes=21):
@@ -71,7 +69,7 @@ class VOC_fastrcnn(rcnn.VOC_SelectiveSearch):
         self.bbox_transform = bbox_transform
 
     def __getitem__(self, index):
-        img = self._get_index_img(index)
+        img = self.getImg(index)
         index = np.where(self.count[:, 0] == index)
 
         bbox, g = self.count[index][:, 1:], self.g[index]

@@ -6,7 +6,6 @@ from lijnn.transforms import *
 from lijnn.datasets import VOCDetection, VOCclassfication
 from example.CNN import VGG16
 
-
 # Feature extraction model fine tuning
 def AroundContext(img, bbox, pad):
     xp = cuda.get_array_module(img)
@@ -60,7 +59,7 @@ class VOC_SelectiveSearch(VOCclassfication):
     def __getitem__(self, index):
         temp = self.count[index]
         index, bbox, label = temp[0], temp[1:5], temp[5]
-        img = self._get_index_img(index)
+        img = self.getImg(index)
         img = AroundContext(img, bbox, 16) if self.around_context else img[:, bbox[1]:bbox[3], bbox[0]:bbox[2]]
 
         return self.img_transform(img), label
@@ -182,7 +181,7 @@ class VOC_Bbr(VOC_SelectiveSearch):
     def __getitem__(self, index):
         p, g = self.p[index], self.g[index]
         index, p = p[0], p[1:5]
-        img = self._get_index_img(index)
+        img = self.getImg(index)
         img = AroundContext(img, p, 16) if self.around_context else img[:, p[1]:p[3], p[0]:p[2]]
         # xy1xy2
         p, g = trans_coordinate(p), trans_coordinate(g)

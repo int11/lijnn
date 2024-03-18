@@ -8,7 +8,7 @@ from lijnn.utils import get_file, cache_dir
 from lijnn.transforms import *
 import xml.etree.ElementTree as ET
 import cv2 as cv
-
+from PIL import Image
 
 class Dataset:
     def __init__(self, train=True, x_transform=None, t_transform=None):
@@ -222,99 +222,73 @@ class VOCDetection(Dataset):
         "2010": "http://host.robots.ox.ac.uk/pascal/VOC/voc2010/VOCtrainval_03-May-2010.tar",
         "2009": "http://host.robots.ox.ac.uk/pascal/VOC/voc2009/VOCtrainval_11-May-2009.tar",
         "2008": "http://host.robots.ox.ac.uk/pascal/VOC/voc2008/VOCtrainval_14-Jul-2008.tar",
-        "2007": "http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtrainval_06-Nov-2007.tar",
-        "2007test": "http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtest_06-Nov-2007.tar"}
-
-    def __init__(self, train=True, year=2007, img_transform=None):
+        "2007": "http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtrainval_06-Nov-2007.tar"}
+    
+    lables = dict(enumerate(["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow",
+                               "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa",
+                               "train", "tvmonitor"]))
+    
+    def __init__(self, train=True, year=2007):
         assert 2007 <= year <= 2012
-        assert not (not train and year != 2007)
         super().__init__(train, None, None)
-        self.img_transform = img_transform
-        if self.img_transform is None:
-            self.img_transform = lambda x: x
 
         self.year = str(year)
-        url = self.DATASET_YEAR_DICT[self.year + 'test'] if self.train == False and self.year == "2007" else \
-            self.DATASET_YEAR_DICT[self.year]
-
+        url = self.DATASET_YEAR_DICT[str(self.year)]
         filepath = get_file(url)
-        self.revers_label = dict(map(reversed, self.labels().items()))
+        
         self.file = tarfile.open(filepath, 'r')
-        self.image_tarinfo = [i for i in self.file.getmembers() if '.jpg' in i.name]
-        self.xml_tarinfo = [i for i in self.file.getmembers() if '.xml' in i.name]
+        with tarfile.open(filepath, 'r') as tar:
+            tar.extractall(cache_dir)
 
-    def cut(self, index):
-        self.image_tarinfo = self.image_tarinfo[index[0]:index[1]]
-        self.xml_tarinfo = self.xml_tarinfo[index[0]:index[1]]
+        self.dir = os.path.join(cache_dir, "VOCdevkit/VOC2007")
+        self.revers_label = dict(map(reversed, self.lables.items()))
+        filenames = os.listdir(os.path.join(cache_dir, self.dir, "Annotations"))
+        filenames = [os.path.splitext(filename)[0] for filename in filenames]
+        self.nameindex = sorted(filenames)
+        
+    def getAnnotations(self, index):
+        xml = ET.parse(os.path.join(self.dir, "Annotations", self.nameindex[index] + ".xml"))
 
-    def __getitem__(self, index):
-        assert np.isscalar(index)
-        label, bboxes = self._get_index_label_bboxes(index)
-        img = self._get_index_img(index)
-        return self.x_transform(img), label, bboxes
-
-    def _get_index_label_bboxes(self, index):
-        bytes = self.file.extractfile(self.xml_tarinfo[index]).read()
-        annotation = ET.fromstring(bytes)
         bboxes, label = [], []
-        for i in annotation.iter(tag="object"):
+        for i in xml.iter(tag="object"):
             budbox = i.find("bndbox")
             bboxes.append([int(budbox.find(i).text) for i in ['xmin', 'ymin', 'xmax', 'ymax']])
             label.append(self.revers_label[i.find("name").text])
-        return np.array(label), np.array(bboxes)
+        return {"label":np.array(label), "bboxes":np.array(bboxes)}
 
-    def _get_index_img(self, index):
-        bytes = self.file.extractfile(self.image_tarinfo[index]).read()
-        na = np.frombuffer(bytes, dtype=np.uint8)
-        img = cv.imdecode(na, cv.IMREAD_COLOR)
-        img = img.transpose(2, 0, 1)[::-1]
+    def getImg(self, index):
+        imageDir = os.path.join(self.dir, "JPEGImages", self.nameindex[index] + ".jpg")
+        img = np.array(Image.open(imageDir))
+        # height width channel RGB -> channel height width RGB
+        img = img.transpose(2, 0, 1)
         return img
+     
+    def __getitem__(self, index):
+        assert np.isscalar(index)
+        annotations = self.getAnnotations(index)
+        data = {"img":self.getImg(index), **annotations}
+        return data
 
     def __len__(self):
-        return len(self.image_tarinfo)
-
-    def show(self, index):
-        img, label, bboxes = self[index]
-        img = img[::-1].transpose(1, 2, 0)
-        for box in bboxes:
-            cv.rectangle(img, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 1)
-        cv.imshow('show', img)
-
-    @staticmethod
-    def labels():
-        return dict(enumerate(["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow",
-                               "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa",
-                               "train", "tvmonitor"]))
-
+        return len(self.nameindex)
 
 class VOCclassfication(VOCDetection):
-    def __init__(self, train=True, year=2007, img_transform=None):
-        super(VOCclassfication, self).__init__(train, year, img_transform)
-        self.count = np.empty((0, 6), dtype=np.int32)
-        for a, b in enumerate(self.xml_tarinfo):
-            bytes = self.file.extractfile(b).read()
-            annotation = ET.fromstring(bytes)
+    def __init__(self, train=True, year=2007):
+        super(VOCclassfication, self).__init__(train, year)
 
-            for i in annotation.iter(tag="object"):
-                budbox = i.find("bndbox")
-                item = [[a, *[int(budbox.find(i).text) for i in ['xmin', 'ymin', 'xmax', 'ymax']],
-                         self.revers_label[i.find("name").text]]]
-                self.count = np.append(self.count, item, axis=0)
-
-    def cut(self, index):
-        self.count = self.count[index[0]:index[1]]
+        for i in range(super().__len__()):
+            data = super().__getitem__(i)
+            for count, e in enumerate(data["bboxes"]):
+                img = data["img"][:, e[1]:e[3], e[0]:e[2]]
+                img_path = os.path.join(cache_dir, "VOCdevkit/VOC2007/classficationImages", self.nameindex[i] + str(count) + ".png")
+                cv.imwrite(img_path, img[::-1].transpose(1, 2, 0))
 
     def __getitem__(self, index):
         temp = self.count[index]
         index, bbox, label = temp[0], temp[1:5], temp[5]
-        img = self._get_index_img(index)
+        img = self.getImg(index)
         img = img[:, bbox[1]:bbox[3], bbox[0]:bbox[2]]
         return self.img_transform(img), label
-
-    def show(self, index):
-        img, label = self[index]
-        cv.imshow('1', img[::-1].transpose(1, 2, 0))
-        print(self.count[label])
 
     def __len__(self):
         return len(self.count)

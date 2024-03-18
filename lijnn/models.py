@@ -174,6 +174,7 @@ class Model(Layer):
                     acc = accuracy_function(*y, *t) if isinstance(t, tuple) else accuracy_function(y, t)
                 else:
                     acc = 0
+                    
                 self.cleargrads()
                 loss.backward()
                 optimizer.update()

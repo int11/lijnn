@@ -59,30 +59,33 @@ class resize:
 
 class randomResize:
     def __init__(self, Hstart, Hend, Wstart=None, Wend=None):
-        self.a = 0 if Wstart is None else 1
         self.Hstart, self.Hend, self.Wstart, self.Wend = Hstart, Hend, Wstart, Wend
 
     def __call__(self, data):
         H = random.randrange(self.Hstart, self.Hend)
-        W = random.randrange(self.Wstart, self.Wend) if self.a else H
+        W = random.randrange(self.Wstart, self.Wend) if self.Wstart is None else H
         size = (H, W)
         size = pair(size)
         return _lijnn_resize(data, size)
 
 
 class isotropically_resize:
+    '''
+    H, W 중 큰 값을 선택해 S 값으로 변경하고 작은 값은 그에 따라 스케일링
+    '''
     def __init__(self, S):
         self.S = S
 
     def __call__(self, data):
+        H, W = data.shape[1], data.shape[2]
         # data.shape type is tuple
-        argmin = np.argmin(data.shape[1:])
+        argmin = np.argmin([H, W])
 
         if argmin == 1:
-            proportion = data.shape[1] / data.shape[2]
+            proportion = H / W
             size = (int(self.S * proportion), self.S)
         else:
-            proportion = data.shape[2] / data.shape[1]
+            proportion = W / H
             size = (self.S, int(self.S * proportion))
         # proportion = data.shape[argmin == 0] / data.shape[argmin]
         # size = [self.S] * 2
@@ -92,9 +95,6 @@ class isotropically_resize:
 
 
 class random_isotropically_resize:
-    """
-    Scale jittering
-    """
     def __init__(self, start, end):
         self.start = start
         self.end = end

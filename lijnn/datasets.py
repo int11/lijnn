@@ -224,12 +224,15 @@ class VOCDetection(Dataset):
         "2008": "http://host.robots.ox.ac.uk/pascal/VOC/voc2008/VOCtrainval_14-Jul-2008.tar",
         "2007": "http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtrainval_06-Nov-2007.tar"}
     
-    lables = dict(enumerate(["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow",
-                               "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa",
-                               "train", "tvmonitor"]))
+
+    lables = {label: index for index, label in enumerate(
+        ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow",
+         "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa",
+         "train", "tvmonitor"])}
     
     def __init__(self, train=True, year=2007):
         assert 2007 <= year <= 2012
+        
         super().__init__(train, None, None)
 
         self.year = str(year)
@@ -241,8 +244,12 @@ class VOCDetection(Dataset):
             tar.extractall(cache_dir)
 
         self.dir = os.path.join(cache_dir, "VOCdevkit/VOC2007")
-        self.revers_label = dict(map(reversed, self.lables.items()))
-        filenames = os.listdir(os.path.join(cache_dir, self.dir, "Annotations"))
+        self.scan()
+
+    def scan(self, imgdirName="JPEGImages"):
+        self.imgdir = os.path.join(self.dir, imgdirName)
+
+        filenames = os.listdir(self.imgdir)
         filenames = [os.path.splitext(filename)[0] for filename in filenames]
         self.nameindex = sorted(filenames)
         
@@ -253,11 +260,13 @@ class VOCDetection(Dataset):
         for i in xml.iter(tag="object"):
             budbox = i.find("bndbox")
             bboxes.append([int(budbox.find(i).text) for i in ['xmin', 'ymin', 'xmax', 'ymax']])
-            label.append(self.revers_label[i.find("name").text])
+            label.append(self.lables[i.find("name").text])
         return {"label":np.array(label), "bboxes":np.array(bboxes)}
 
     def getImg(self, index):
-        imageDir = os.path.join(self.dir, "JPEGImages", self.nameindex[index] + ".jpg")
+        imageDir = os.path.join(self.imgdir, self.nameindex[index] + ".jpg")
+        if not os.path.exists(imageDir):
+            imageDir = os.path.join(self.imgdir, self.nameindex[index] + ".png")
         img = np.array(Image.open(imageDir))
         # height width channel RGB -> channel height width RGB
         img = img.transpose(2, 0, 1)
@@ -276,19 +285,30 @@ class VOCclassfication(VOCDetection):
     def __init__(self, train=True, year=2007):
         super(VOCclassfication, self).__init__(train, year)
 
-        for i in range(super().__len__()):
-            data = super().__getitem__(i)
-            for count, e in enumerate(data["bboxes"]):
-                img = data["img"][:, e[1]:e[3], e[0]:e[2]]
-                img_path = os.path.join(cache_dir, "VOCdevkit/VOC2007/classficationImages", self.nameindex[i] + str(count) + ".png")
-                cv.imwrite(img_path, img[::-1].transpose(1, 2, 0))
+        imgdirName = "classficationImages"
+        imgdir = os.path.join(self.dir, imgdirName)
+        if not os.path.exists(imgdir):
+            os.makedirs(imgdir, exist_ok=True)
+            label = []
+
+            for i in range(super().__len__()):
+                data = super().__getitem__(i)
+                label.extend(list(data["label"]))
+
+                for e in range(len(data["bboxes"])):
+                    bbox = data["bboxes"][e]
+                    img = data["img"][:, bbox[1]:bbox[3], bbox[0]:bbox[2]]
+                    imgpath = os.path.join(imgdir, self.nameindex[i] + f"{e:02}" + ".png")
+                    cv.imwrite(imgpath, img[::-1].transpose(1, 2, 0))
+            np.savetxt(os.path.join(imgdir,'label.txt'), np.array(label), fmt='%d')
+
+        self.label = np.loadtxt(os.path.join(imgdir,'label.txt'), dtype=np.int32)
+        self.scan(imgdirName)
 
     def __getitem__(self, index):
-        temp = self.count[index]
-        index, bbox, label = temp[0], temp[1:5], temp[5]
         img = self.getImg(index)
-        img = img[:, bbox[1]:bbox[3], bbox[0]:bbox[2]]
-        return self.img_transform(img), label
+        label = self.label[index]
+        return {"img":img, "label":label}
 
     def __len__(self):
         return len(self.count)

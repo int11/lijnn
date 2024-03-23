@@ -37,10 +37,10 @@ class iterator:
         batch_index = self.index[i * batch_size:(i + 1) * batch_size]
         batch = [self.dataset[i] for i in batch_index]
 
-        result = [xp.array([example[i] for example in batch]) for i in range(len(batch[0]))]
-        # result = []
-        # for i in range(len(batch[0])):
-        #     result.append(xp.array([example[i] for example in batch]))
+        result = {}
+        for key in batch[0].keys():
+            for i in batch:
+                result[key] = np.stack([d[key] for d in batch])
 
         self.iteration += 1
         return result

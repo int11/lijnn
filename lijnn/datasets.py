@@ -16,7 +16,7 @@ class Dataset(ABC):
         self.train = train
         self.transform = {}
     
-    def add_transform(self, key, transform):
+    def add_transforms(self, key, transform):
         self.transform[key] = transform
 
     @abstractmethod
@@ -240,7 +240,7 @@ class VOCDetection(Dataset):
     def __init__(self, train=True, year=2007):
         assert 2007 <= year <= 2012
         
-        super().__init__(train, None, None)
+        super().__init__(train)
 
         self.year = str(year)
         url = self.DATASET_YEAR_DICT[str(self.year)]
@@ -279,7 +279,7 @@ class VOCDetection(Dataset):
         img = img.transpose(2, 0, 1)
         return img
      
-    def __getitem__(self, index):
+    def getitem(self, index):
         assert np.isscalar(index)
         annotations = self.getAnnotations(index)
         data = {"img":self.getImg(index), **annotations}
@@ -299,7 +299,7 @@ class VOCclassfication(VOCDetection):
             label = []
 
             for i in range(super().__len__()):
-                data = super().__getitem__(i)
+                data = super().getitem(i)
                 label.extend(list(data["label"]))
 
                 for e in range(len(data["bboxes"])):
@@ -312,13 +312,10 @@ class VOCclassfication(VOCDetection):
         self.label = np.loadtxt(os.path.join(imgdir,'label.txt'), dtype=np.int32)
         self.scan(imgdirName)
 
-    def __getitem__(self, index):
+    def getitem(self, index):
         img = self.getImg(index)
         label = self.label[index]
         return {"img":img, "label":label}
-
-    def __len__(self):
-        return len(self.count)
 
 
 class ImageNet(Dataset):

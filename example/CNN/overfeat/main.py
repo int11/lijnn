@@ -7,7 +7,6 @@ from lijnn.transforms import *
 "OverFeat: Integrated Recognition, Localization and Detection using Convolutional Networks"
 https://arxiv.org/abs/1312.6229
 2013.12.21, Pierre Sermanet, David Eigen, Xiang Zhang, Michael Mathieu, Rob Fergus, Yann LeCun
-
 """
 
 
@@ -137,7 +136,8 @@ class OverFeat_fast(Model):
             # subsampling ratio = 32
         return x
 
-
+# TODO Localization, object detection
+    
 def main_OverFeat(name='default'):
     batch_size = 64
     epoch = 100
@@ -153,4 +153,7 @@ def main_OverFeat(name='default'):
     optimizer = optimizers.Adam(alpha=0.0001).setup(model)
     model.fit(epoch, optimizer, train_loader, test_loader, name=name)
 
-# TODO Localization
+if __name__ == '__main__':
+    main_OverFeat()
+
+

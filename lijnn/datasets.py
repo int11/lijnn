@@ -9,19 +9,26 @@ from lijnn.transforms import *
 import xml.etree.ElementTree as ET
 import cv2 as cv
 from PIL import Image
+from abc import ABC, abstractmethod
 
-class Dataset:
-    def __init__(self, train=True, x_transform=None, t_transform=None):
+class Dataset(ABC):
+    def __init__(self, train=True):
         self.train = train
-        self.x_transform = x_transform
-        self.t_transform = t_transform
-        if self.x_transform is None:
-            self.x_transform = lambda x: x
-        if self.t_transform is None:
-            self.t_transform = lambda x: x
+        self.transform = {}
+    
+    def add_transform(self, key, transform):
+        self.transform[key] = transform
 
+    @abstractmethod
+    def getitem(self, index):
+        pass 
+        
     def __getitem__(self, index):
-        raise NotImplementedError
+        data = self.getitem(index)
+        for key in self.transform.keys():
+            if key in data:
+                data[key] = self.transform[key](data[key])
+        return data
 
     def __len__(self):
         raise NotImplementedError

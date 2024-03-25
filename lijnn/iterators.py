@@ -40,13 +40,10 @@ class iterator:
         result = {}
         for key in batch[0].keys():
             for i in batch:
-                result[key] = np.stack([d[key] for d in batch])
+                result[key] = xp.stack([d[key] for d in batch])
 
         self.iteration += 1
         return result
-
-    def next(self):
-        return self.__next__()
 
     def to_cpu(self):
         self.gpu = False
@@ -54,6 +51,20 @@ class iterator:
     def to_gpu(self):
         self.gpu = True
 
+class linearRegression(iterator):
+    def __next__(self):
+        data = super().__next__()
+        return (data['x']), (data['t'])
+    
+class classification(iterator):
+    def __next__(self):
+        data = super().__next__()
+        return (data['x']), (data['label'])
+
+class objectDetection(iterator):
+    def __next__(self):
+        data = super().__next__()
+        return (data['img'], data['bboxs']), (data['labels'])
 
 class SeqIterator(iterator):
     def __init__(self, dataset, batch_size, gpu=False):

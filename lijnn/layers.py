@@ -98,7 +98,10 @@ class Layer:
         for key, param in dict.items():
             param.data = npz[key]
 
-
+    def removeLayer(self, name):
+        if name in self._params and isinstance(self._params[name], Layer):
+            self._params.remove(name)
+            
 # =============================================================================
 # Linear / Conv2d / Deconv2d
 # =============================================================================

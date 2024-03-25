@@ -29,14 +29,12 @@ class Model(Layer):
         loop(self)
         return dict
 
-    def info(self, shape):
-        """Print Model forward function information
-        
-        Args:
-            shape(tuple): Numpy data shape for generate test data
+    def info(self, *x):
+        """
+        Print Model forward function information
         """
         with using_config('enable_backprop', True):
-            y = self(np.zeros(shape))
+            y = self(*x)
 
         functions = []
         temp_funcs = []
@@ -48,11 +46,8 @@ class Model(Layer):
                 seen_set.add(f)
                 temp_funcs.sort(key=lambda x: x.generation)
 
-        if isinstance(y, tuple):
-            for i in y:
-                add_func(i.creator)
-        else:
-            add_func(y.creator)
+        for i in y:
+            add_func(i.creator)
 
         while temp_funcs:
             f = temp_funcs.pop()

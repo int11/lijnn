@@ -3,6 +3,7 @@ from lijnn import *
 from lijnn.cuda import *
 from lijnn import layers as L
 from lijnn import functions as F
+from function import roi_pooling
 from lijnn.transforms import *
 from example.CNN import VGG16, rcnn
 
@@ -11,10 +12,10 @@ class Fast_R_CNN(VGG16):
         super().__init__(imagenet_pretrained=True)
         self.fc8 = L.Linear(num_classes)
         self.conv8 = L.Conv2d_share_weight(num_classes, kernel_size=1, stride=1, pad=0, target=self.fc8)
-        self._params.remove('conv8')
-        self.Bbr = L.Linear(num_classes * 4)
+        self.removeLayer('conv8')
+        self.Bbr = L.Linear((num_classes + 1) * 4)
 
-    def forward(self, x, ssbboxs):
+    def forward(self, x, bboxs):
         x = F.relu(self.conv1_1(x))
         x = F.relu(self.conv1_2(x))
         x = F.max_pooling(x, 2, 2)
@@ -34,15 +35,16 @@ class Fast_R_CNN(VGG16):
         x = F.relu(self.conv5_3(x))
         # receptive field = 16
         # subsampling_ratio = 16
-        x = F.roi_pooling(x, ssbboxs, 7, 1/16)
-        # x.shape = (N, 512, 7, 7)
-        x = F.flatten(x)
-        x = F.dropout(F.relu(self.fc6(x)))
-        x = F.dropout(F.relu(self.fc7(x)))
+        return x
+        # x = roi_pooling(x, bboxs, 7, 1/16)
+        # # x.shape = (N, 512, 7, 7)
+        # x = F.flatten(x)
+        # x = F.dropout(F.relu(self.fc6(x)))
+        # x = F.dropout(F.relu(self.fc7(x)))
 
-        cls_score = self.fc8(x)
-        bbox_pred = self.Bbr(x)
-        return cls_score, bbox_pred.reshape(len(x), -1, 4)
+        # cls_score = self.fc8(x)
+        # bbox_pred = self.Bbr(x)
+        # return cls_score, bbox_pred.reshape(len(x), -1, 4)
 
 
 class bbox_transpose:
@@ -65,7 +67,8 @@ class VOC_fastrcnn(rcnn.VOC_SelectiveSearch):
     def __init__(self, train=True, year=2007,
                  img_transform=compose([resize(224), toFloat(), z_score_normalize(Fast_R_CNN.mean, 1)]),
                  bbox_transform=bbox_transpose(224)):
-        super(VOC_fastrcnn, self).__init__(train, year, img_transform)
+        super(VOC_fastrcnn, self).__init__(train, year)
+        self.add_transforms('img', img_transform)
         self.bbox_transform = bbox_transform
 
     def __getitem__(self, index):
@@ -77,7 +80,7 @@ class VOC_fastrcnn(rcnn.VOC_SelectiveSearch):
         if self.bbox_transform is not None:
             bbox[:, :4] = self.bbox_transform(img.shape, bbox[:, :4])
             g = self.bbox_transform(img.shape, g)
-        return self.img_transform(img), bbox, self.iou[index].astype(np.float32), g
+        return img, bbox, self.iou[index].astype(np.float32), g
 
     def __len__(self):
         return super(lijnn.datasets.VOCclassfication, self).__len__()
@@ -97,7 +100,7 @@ def getT_from_P_G(p, g):
     return Variable(xp.array([(g_x - p_x) / p_w, (g_y - p_y) / p_h, np.log(g_w / p_w), np.log(g_h / p_h)], dtype=np.float32).T)
 
 
-class Hierarchical_Sampling(lijnn.iterator):
+class Hierarchical_Sampling(lijnn.iterators.objectDetection):
     def __init__(self, dataset=VOC_fastrcnn(), N=2, R=128, positive_sample_per=0.25, shuffle=True, gpu=False):
         super(Hierarchical_Sampling, self).__init__(dataset, N, shuffle, gpu)
         self.r_n = round(R / N)
@@ -180,11 +183,13 @@ def Faccuracy(y, y_bbox, t_label, p, g, u):
 def main_Fast_R_CNN(name='default'):
     epoch = 10
 
-    train_loader = Hierarchical_Sampling()
+    # train_loader = Hierarchical_Sampling()
     model = Fast_R_CNN()
-    optimizer = optimizers.Adam(alpha=0.0001)
-    model.fit(epoch, optimizer, train_loader, loss_function=multi_loss, accuracy_function=Faccuracy,
-              iteration_print=True, name=name)
+
+    model.info(np.zeros((1, 3, 224, 224)), np.zeros((1, 4)))
+    # optimizer = optimizers.Adam(alpha=0.0001)
+    # model.fit(epoch, optimizer, train_loader, loss_function=multi_loss, accuracy_function=Faccuracy,
+    #           iteration_print=True, name=name)
 
 if __name__ == "__main__":
 	main_Fast_R_CNN()

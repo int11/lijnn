@@ -150,7 +150,7 @@ def main_OverFeat(name='default'):
     test_loader = iterators.iterator(testset, 1, shuffle=False)
 
     model = OverFeat_accuracy(20)
-    optimizer = optimizers.Adam(alpha=0.0001).setup(model)
+    optimizer = optimizers.Adam(alpha=0.0001)
     model.fit(epoch, optimizer, train_loader, test_loader, name=name)
 
 if __name__ == '__main__':

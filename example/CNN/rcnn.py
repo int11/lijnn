@@ -19,8 +19,8 @@ def AroundContext(img, bbox, pad):
 
 
 class VOC_SelectiveSearch(VOCclassfication):
-    def __init__(self, train=True, year=2007, img_transform=None, around_context=True):
-        super(VOC_SelectiveSearch, self).__init__(train, year, img_transform)
+    def __init__(self, train=True, year=2007, around_context=True):
+        super(VOC_SelectiveSearch, self).__init__(train, year)
         self.around_context = around_context
         loaded = datasets.load_cache_npz(f'VOC_SelectiveSearch{year}', train=train)
 
@@ -62,7 +62,7 @@ class VOC_SelectiveSearch(VOCclassfication):
         img = self.getImg(index)
         img = AroundContext(img, bbox, 16) if self.around_context else img[:, bbox[1]:bbox[3], bbox[0]:bbox[2]]
 
-        return self.img_transform(img), label
+        return img, label
 
     @staticmethod
     def labels():

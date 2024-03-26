@@ -99,7 +99,7 @@ class Layer:
             param.data = npz[key]
 
     def removeLayer(self, name):
-        if name in self._params and isinstance(self._params[name], Layer):
+        if name in self._params and isinstance(self.__dict__[name], Layer):
             self._params.remove(name)
             
 # =============================================================================

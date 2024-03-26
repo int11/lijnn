@@ -34,8 +34,9 @@ class Model(Layer):
         Print Model forward function information
         """
         with using_config('enable_backprop', True):
-            y = self(*x)
-
+            outputs  = self(*x)
+            if not isinstance(outputs, tuple):
+                outputs = (outputs,)
         functions = []
         temp_funcs = []
         seen_set = set()
@@ -46,7 +47,7 @@ class Model(Layer):
                 seen_set.add(f)
                 temp_funcs.sort(key=lambda x: x.generation)
 
-        for i in y:
+        for i in outputs:
             add_func(i.creator)
 
         while temp_funcs:

@@ -1,3 +1,4 @@
+from example.CNN.fastrcnn import rcnn
 import lijnn.datasets
 from lijnn import *
 from lijnn.cuda import *
@@ -5,46 +6,8 @@ from lijnn import layers as L
 from lijnn import functions as F
 from function import roi_pooling
 from lijnn.transforms import *
-from example.CNN import VGG16, rcnn
+from example.CNN import VGG16
 
-class Fast_R_CNN(VGG16):
-    def __init__(self, num_classes=21):
-        super().__init__(imagenet_pretrained=True)
-        self.fc8 = L.Linear(num_classes)
-        self.conv8 = L.Conv2d_share_weight(num_classes, kernel_size=1, stride=1, pad=0, target=self.fc8)
-        self.removeLayer('conv8')
-        self.Bbr = L.Linear((num_classes + 1) * 4)
-
-    def forward(self, x, bboxs):
-        x = F.relu(self.conv1_1(x))
-        x = F.relu(self.conv1_2(x))
-        x = F.max_pooling(x, 2, 2)
-        x = F.relu(self.conv2_1(x))
-        x = F.relu(self.conv2_2(x))
-        x = F.max_pooling(x, 2, 2)
-        x = F.relu(self.conv3_1(x))
-        x = F.relu(self.conv3_2(x))
-        x = F.relu(self.conv3_3(x))
-        x = F.max_pooling(x, 2, 2)
-        x = F.relu(self.conv4_1(x))
-        x = F.relu(self.conv4_2(x))
-        x = F.relu(self.conv4_3(x))
-        x = F.max_pooling(x, 2, 2)
-        x = F.relu(self.conv5_1(x))
-        x = F.relu(self.conv5_2(x))
-        x = F.relu(self.conv5_3(x))
-        # receptive field = 16
-        # subsampling_ratio = 16
-        return x
-        # x = roi_pooling(x, bboxs, 7, 1/16)
-        # # x.shape = (N, 512, 7, 7)
-        # x = F.flatten(x)
-        # x = F.dropout(F.relu(self.fc6(x)))
-        # x = F.dropout(F.relu(self.fc7(x)))
-
-        # cls_score = self.fc8(x)
-        # bbox_pred = self.Bbr(x)
-        # return cls_score, bbox_pred.reshape(len(x), -1, 4)
 
 
 class bbox_transpose:
@@ -62,28 +25,6 @@ class bbox_transpose:
 
         return bbox
 
-
-class VOC_fastrcnn(rcnn.VOC_SelectiveSearch):
-    def __init__(self, train=True, year=2007,
-                 img_transform=compose([resize(224), toFloat(), z_score_normalize(Fast_R_CNN.mean, 1)]),
-                 bbox_transform=bbox_transpose(224)):
-        super(VOC_fastrcnn, self).__init__(train, year)
-        self.add_transforms('img', img_transform)
-        self.bbox_transform = bbox_transform
-
-    def __getitem__(self, index):
-        img = self.getImg(index)
-        index = np.where(self.count[:, 0] == index)
-
-        bbox, g = self.count[index][:, 1:], self.g[index]
-
-        if self.bbox_transform is not None:
-            bbox[:, :4] = self.bbox_transform(img.shape, bbox[:, :4])
-            g = self.bbox_transform(img.shape, g)
-        return img, bbox, self.iou[index].astype(np.float32), g
-
-    def __len__(self):
-        return super(lijnn.datasets.VOCclassfication, self).__len__()
 
 
 def xy1xy2_to_xywh(xy1xy2):

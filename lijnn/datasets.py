@@ -1,5 +1,7 @@
+import json
 import os
 import gzip
+import shutil
 import tarfile
 import pickle
 import numpy as np
@@ -10,6 +12,7 @@ import xml.etree.ElementTree as ET
 import cv2 as cv
 from PIL import Image
 from abc import ABC, abstractmethod
+import os
 
 class Dataset(ABC):
     def __init__(self, train=True):
@@ -232,7 +235,7 @@ class VOCDetection(Dataset):
         "2007": "http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtrainval_06-Nov-2007.tar"}
     
 
-    lables = {label: index for index, label in enumerate(
+    order = {label: index for index, label in enumerate(
         ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow",
          "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa",
          "train", "tvmonitor"])}
@@ -246,28 +249,50 @@ class VOCDetection(Dataset):
         url = self.DATASET_YEAR_DICT[str(self.year)]
         filepath = get_file(url)
         
-        self.file = tarfile.open(filepath, 'r')
         with tarfile.open(filepath, 'r') as tar:
             tar.extractall(cache_dir)
+        
+        
+        self.dir = os.path.join(cache_dir, f'VOC/{year}')
+        temp_dir = os.path.join(cache_dir, f'VOCdevkit/VOC{year}')
+        # file refactoring
+        if not os.path.exists(self.dir):
+            os.makedirs(self.dir, exist_ok=True)
+            
+            # xml to json
+            xml_dir = os.path.join(temp_dir, 'Annotations')
+            json_dir = os.path.join(self.dir, 'Annotations', 'original')
+            filenames = os.listdir(xml_dir)
+            os.makedirs(json_dir, exist_ok=True)
+            for i in sorted(filenames):
+                full_path = os.path.join(xml_dir, i)
+                xml = ET.parse(full_path)
+                dict_data = xml_to_dict(xml.getroot())
+                with open(os.path.join(json_dir, f'{os.path.splitext(i)[0]}.json'), 'w') as f:
+                    json.dump(dict_data, f, indent=4)
 
-        self.dir = os.path.join(cache_dir, 'VOCdevkit/VOC2007')
+
+            shutil.copytree(os.path.join(temp_dir, 'JPEGImages'), os.path.join(self.dir, 'images', 'original'), dirs_exist_ok=True)
+
         self.scan()
 
-    def scan(self, imgdirName='JPEGImages'):
-        self.imgdir = os.path.join(self.dir, imgdirName)
+    def scan(self, imgdirName='original', annotationsdirName='original'):
+        self.imgdir = os.path.join(self.dir, 'images', imgdirName)
+        self.annotationsdir = os.path.join(self.dir, 'Annotations', annotationsdirName)
 
         filenames = os.listdir(self.imgdir)
         filenames = [os.path.splitext(filename)[0] for filename in filenames]
         self.nameindex = sorted(filenames)
         
     def getAnnotations(self, index):
-        xml = ET.parse(os.path.join(self.dir, 'Annotations', self.nameindex[index] + '.xml'))
+        with open(os.path.join(self.annotationsdir, self.nameindex[index] + '.json'), 'r') as f:
+            jsondata = json.load(f)['annotation']
 
         bboxes, label = [], []
-        for i in xml.iter(tag='object'):
-            budbox = i.find('bndbox')
-            bboxes.append([int(budbox.find(i).text) for i in ['xmin', 'ymin', 'xmax', 'ymax']])
-            label.append(self.lables[i.find('name').text])
+        for i in jsondata['object'] if isinstance(jsondata['object'], list) else [jsondata['object']]:
+            budbox = i['bndbox']
+            bboxes.append([budbox['xmin'], budbox['ymin'], budbox['xmax'], budbox['ymax']])
+            label.append(self.order[i['name']])
         return {'labels':np.array(label), 'bboxs':np.array(bboxes)}
 
     def getImg(self, index):
@@ -402,3 +427,31 @@ def save_cache_npz(kwargs, filename, train=False):
         raise
     print(" Done")
     return filepath
+
+def xml_to_dict(t):
+    d = {t.tag: {} if t.attrib else None}
+    children = list(t)
+    if children:
+        dd = {}
+        for dc in map(xml_to_dict, children):
+            for k, v in dc.items():
+                if k not in dd:
+                    dd[k] = v
+                else:
+                    if not isinstance(dd[k], list):
+                        dd[k] = [dd[k]]
+                    dd[k].append(v)
+        d = {t.tag: dd}
+    if t.attrib:
+        d[t.tag].update(('@' + k, v) for k, v in t.attrib.items())
+    if t.text:
+        text = t.text.strip()
+        if text.isdigit():
+            text = int(text)
+            
+        if children or t.attrib:
+            if text:
+                d[t.tag]['#text'] = text
+        else:
+            d[t.tag] = text
+    return d

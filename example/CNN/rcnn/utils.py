@@ -1,5 +1,12 @@
+from lijnn import cuda
+import cv2 as cv
 
 def SelectiveSearch(img, xywh=False):
+    """
+    Args:
+        xywh (bool): if true return xywh format, else return xmin, ymin, xmax, ymax format
+    """
+    
     xp = cuda.get_array_module(img)
     img = cuda.as_numpy(img)
 

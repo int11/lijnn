@@ -255,22 +255,20 @@ class VOCDetection(Dataset):
         
         self.dir = os.path.join(cache_dir, f'VOC/{year}')
         temp_dir = os.path.join(cache_dir, f'VOCdevkit/VOC{year}')
+        xml_dir = os.path.join(temp_dir, 'Annotations')
+        json_dir = os.path.join(self.dir, 'Annotations', 'original')
         # file refactoring
-        if not os.path.exists(self.dir):
-            os.makedirs(self.dir, exist_ok=True)
+        if not os.path.exists( json_dir):
+            os.makedirs(json_dir, exist_ok=True)
             
             # xml to json
-            xml_dir = os.path.join(temp_dir, 'Annotations')
-            json_dir = os.path.join(self.dir, 'Annotations', 'original')
             filenames = os.listdir(xml_dir)
-            os.makedirs(json_dir, exist_ok=True)
             for i in sorted(filenames):
                 full_path = os.path.join(xml_dir, i)
                 xml = ET.parse(full_path)
                 dict_data = xml_to_dict(xml.getroot())
                 with open(os.path.join(json_dir, f'{os.path.splitext(i)[0]}.json'), 'w') as f:
-                    json.dump(dict_data, f, indent=4)
-
+                    json.dump(dict_data['annotation'], f, indent=4)
 
             shutil.copytree(os.path.join(temp_dir, 'JPEGImages'), os.path.join(self.dir, 'images', 'original'), dirs_exist_ok=True)
 
@@ -286,14 +284,17 @@ class VOCDetection(Dataset):
         
     def getAnnotations(self, index):
         with open(os.path.join(self.annotationsdir, self.nameindex[index] + '.json'), 'r') as f:
-            jsondata = json.load(f)['annotation']
+            jsondata = json.load(f)
 
-        bboxes, label = [], []
-        for i in jsondata['object'] if isinstance(jsondata['object'], list) else [jsondata['object']]:
+        # for iteration
+        jsondata['object'] = jsondata['object'] if isinstance(jsondata['object'], list) else [jsondata['object']]
+
+        annotations = {'labels': [], 'bboxs': []}
+        for i in jsondata['object']:
             budbox = i['bndbox']
-            bboxes.append([budbox['xmin'], budbox['ymin'], budbox['xmax'], budbox['ymax']])
-            label.append(self.order[i['name']])
-        return {'labels':np.array(label), 'bboxs':np.array(bboxes)}
+            annotations['bboxs'].append([budbox['xmin'], budbox['ymin'], budbox['xmax'], budbox['ymax']])
+            annotations['labels'].append(self.order[i['name']])
+        return annotations
 
     def getImg(self, index):
         imageDir = os.path.join(self.imgdir, self.nameindex[index] + '.jpg')
@@ -307,8 +308,8 @@ class VOCDetection(Dataset):
     def getitem(self, index):
         assert np.isscalar(index)
         annotations = self.getAnnotations(index)
-        data = {'img':self.getImg(index), 'labels':annotations['labels'], 'bboxs':annotations['bboxs']}
-        return data
+        annotations['img'] = self.getImg(index)
+        return annotations
 
     def __len__(self):
         return len(self.nameindex)

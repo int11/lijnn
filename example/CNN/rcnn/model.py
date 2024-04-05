@@ -1,3 +1,8 @@
+from example.CNN.vgg import VGG16
+import lijnn.layers as L
+import lijnn.functions as F
+
+
 class Fast_R_CNN(VGG16):
     def __init__(self, num_classes=21):
         super().__init__(imagenet_pretrained=True)

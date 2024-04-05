@@ -7,7 +7,7 @@ from lijnn import functions as F
 from function import roi_pooling
 from lijnn.transforms import *
 from example.CNN import VGG16
-
+from dataset import VOCSelectiveSearch
 
 
 class bbox_transpose:
@@ -42,7 +42,7 @@ def getT_from_P_G(p, g):
 
 
 class Hierarchical_Sampling(lijnn.iterators.objectDetection):
-    def __init__(self, dataset=VOC_fastrcnn(), N=2, R=128, positive_sample_per=0.25, shuffle=True, gpu=False):
+    def __init__(self, dataset=VOCSelectiveSearch(), N=2, R=128, positive_sample_per=0.25, shuffle=True, gpu=False):
         super(Hierarchical_Sampling, self).__init__(dataset, N, shuffle, gpu)
         self.r_n = round(R / N)
         self.positive_sample_per = positive_sample_per

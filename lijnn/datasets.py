@@ -14,6 +14,11 @@ from PIL import Image
 from abc import ABC, abstractmethod
 import os
 
+'''
+Variable that using Dataset algorithm is must be using cpu memory like np.array or python.list.
+GPU memories must using in compute.
+The logic of CPU data going up to GPU memory is processed by the iterator class.
+'''
 class Dataset(ABC):
     def __init__(self, train=True):
         self.train = train
@@ -27,9 +32,11 @@ class Dataset(ABC):
         pass 
         
     def __getitem__(self, index):
+        assert np.isscalar(index)
         data = self.getitem(index)
-        for key in self.transform.keys():
-            if key in data:
+        for key in data.keys():
+            data[key] = np.array(data[key])
+            if key in self.transform:
                 data[key] = self.transform[key](data[key])
         return data
 
@@ -38,8 +45,8 @@ class Dataset(ABC):
 
 
 class Spiral(Dataset):
-    def __init__(self, train=True, x_transform=None, t_transform=None):
-        super().__init__(train, x_transform, t_transform)
+    def __init__(self, train=True):
+        super().__init__(train)
         seed = 1984 if self.train else 2020
         np.random.seed(seed=seed)
 
@@ -61,9 +68,8 @@ class Spiral(Dataset):
         indices = np.random.permutation(num_data * num_class)
         self.data, self.labels = x[indices], t[indices]
 
-    def __getitem__(self, index):
-        assert np.isscalar(index)
-        return self.x_transform(self.data[index]), self.t_transform(self.labels[index])
+    def getitem(self, index):
+        return self.data[index], self.labels[index]
 
     def __len__(self):
         return len(self.data)
@@ -75,8 +81,8 @@ class MNIST(Dataset):
     std = [78.56748998]
     """
 
-    def __init__(self, train=True, x_transform=None, t_transform=None):
-        super().__init__(train, x_transform, t_transform)
+    def __init__(self, train=True):
+        super().__init__(train)
         url = 'http://yann.lecun.com/exdb/mnist/'
         train_files = {'target': 'train-images-idx3-ubyte.gz',
                        'label': 'train-labels-idx1-ubyte.gz'}
@@ -94,9 +100,8 @@ class MNIST(Dataset):
         with gzip.open(label_path, 'rb') as f:
             self.labels = np.frombuffer(f.read(), np.uint8, offset=8)
 
-    def __getitem__(self, index):
-        assert np.isscalar(index)
-        return self.x_transform(self.data[index]), self.t_transform(self.labels[index])
+    def getitem(self, index):
+        return self.data[index], self.labels[index]
 
     def __len__(self):
         return len(self.data)
@@ -122,8 +127,8 @@ class CIFAR10(Dataset):
     std = [62.99321928, 62.08870764, 66.70489964]
     """
 
-    def __init__(self, train=True, x_transform=None, t_transform=None):
-        super().__init__(train, x_transform, t_transform)
+    def __init__(self, train=True):
+        super().__init__(train)
 
         url = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
         loaded = load_cache_npz(url, self.train)
@@ -150,9 +155,8 @@ class CIFAR10(Dataset):
         self.data = self.data.reshape(-1, 3, 32, 32)
         save_cache_npz({'data': self.data, 'label': self.labels}, url, self.train)
 
-    def __getitem__(self, index):
-        assert np.isscalar(index)
-        return self.x_transform(self.data[index]), self.t_transform(self.labels[index])
+    def getitem(self, index):
+        return self.data[index], self.labels[index]
 
     def __len__(self):
         return len(self.data)
@@ -180,7 +184,7 @@ class CIFAR100(CIFAR10):
     std = [68.1702429,  65.39180804, 70.41837019]
     """
 
-    def __init__(self, train=True, x_transform=None, t_transform=None, label_type='fine'):
+    def __init__(self, train=True, label_type='fine'):
         assert label_type in ['fine', 'coarse']
         self.label_type = label_type
         super().__init__(train, x_transform, t_transform)
@@ -206,9 +210,8 @@ class CIFAR100(CIFAR10):
         self.data = self.data.reshape(-1, 3, 32, 32)
         save_cache_npz({'data': self.data, 'label': self.labels}, url, self.train)
 
-    def __getitem__(self, index):
-        assert np.isscalar(index)
-        return self.x_transform(self.data[index]), self.t_transform(self.labels[index])
+    def getitem(self, index):
+        return self.data[index], self.labels[index]
 
     def __len__(self):
         return len(self.data)

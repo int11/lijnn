@@ -27,24 +27,27 @@ class iterator:
         return self
 
     def __next__(self):
-        xp = cuda.cupy if self.gpu else np
-
         if self.iteration >= self.max_iter:
             self.reset()
             raise StopIteration
 
-        i, batch_size = self.iteration, self.batch_size
-        batch_index = self.index[i * batch_size:(i + 1) * batch_size]
+        batch_index = self.index[self.iteration * self.batch_size:(self.iteration + 1) * self.batch_size]
+        
+        result = self.next(batch_index)
+        
+        self.iteration += 1
+        return result
+    
+    def next(self, batch_index):
+        xp = cuda.cupy if self.gpu else np
+
         batch = [self.dataset[i] for i in batch_index]
 
         result = {}
         for key in batch[0].keys():
-            for i in batch:
-                result[key] = xp.stack([d[key] for d in batch])
-
-        self.iteration += 1
+            result[key] = xp.stack([d[key] for d in batch])
         return result
-
+    
     def to_cpu(self):
         self.gpu = False
 
@@ -52,18 +55,18 @@ class iterator:
         self.gpu = True
 
 class linearRegression(iterator):
-    def __next__(self):
-        data = super().__next__()
+    def next(self, *args):
+        data = super().next(*args)
         return (data['x']), (data['t'])
     
 class classification(iterator):
-    def __next__(self):
-        data = super().__next__()
+    def next(self, *args):
+        data = super().next(*args)
         return (data['x']), (data['label'])
 
 class objectDetection(iterator):
-    def __next__(self):
-        data = super().__next__()
+    def next(self, *args):
+        data = super().next(*args)
         return (data['img'], data['bboxs']), (data['labels'])
 
 class SeqIterator(iterator):
@@ -71,7 +74,7 @@ class SeqIterator(iterator):
         super().__init__(dataset=dataset, batch_size=batch_size, shuffle=False,
                          gpu=gpu)
 
-    def __next__(self):
+    def next(self):
         if self.iteration >= self.max_iter:
             self.reset()
             raise StopIteration

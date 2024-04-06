@@ -1,4 +1,4 @@
-from example.CNN.fastrcnn import rcnn
+
 import lijnn.datasets
 from lijnn import *
 from lijnn.cuda import *
@@ -40,6 +40,25 @@ def getT_from_P_G(p, g):
     g_x, g_y, g_w, g_h = xy1xy2_to_xywh(g)
     return Variable(xp.array([(g_x - p_x) / p_w, (g_y - p_y) / p_h, np.log(g_w / p_w), np.log(g_h / p_h)], dtype=np.float32).T)
 
+class Hierarchical_Sampling1(lijnn.iterators.objectDetection):
+    def __init__(self, dataset=VOCSelectiveSearch(), N=2, R=128, positive_sample_per=0.25, shuffle=True, gpu=False):
+        super(Hierarchical_Sampling1, self).__init__(dataset=dataset, batch_size=N, shuffle=shuffle, gpu=gpu)
+        self.r_n = round(R / N)
+        self.positive_sample_per = positive_sample_per
+
+    def next(self, batch_index):
+        xp = cuda.cupy if self.gpu else np
+
+        batchs = [self.dataset[i] for i in batch_index]
+        for i, batch in enumerate(batchs):
+            img, labels, bboxs, ious = batch['img'], batch['labels'], batch['bboxs'], batch['iou']
+            POSindex = np.where(ious >= 0.6)[0]
+            NEGindex = np.where(~(ious >= 0.6))[0]
+            print()
+
+if __name__ == "__main__":
+ 	for i in Hierarchical_Sampling1():
+         print(i)
 
 class Hierarchical_Sampling(lijnn.iterators.objectDetection):
     def __init__(self, dataset=VOCSelectiveSearch(), N=2, R=128, positive_sample_per=0.25, shuffle=True, gpu=False):
@@ -132,5 +151,5 @@ def main_Fast_R_CNN(name='default'):
     # model.fit(epoch, optimizer, train_loader, loss_function=multi_loss, accuracy_function=Faccuracy,
     #           iteration_print=True, name=name)
 
-if __name__ == "__main__":
-	main_Fast_R_CNN()
+# if __name__ == "__main__":
+# 	main_Fast_R_CNN()

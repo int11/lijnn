@@ -43,14 +43,16 @@ class VOCSelectiveSearch(VOCDetection):
         with open(os.path.join(self.annotationsdir, self.nameindex[index] + '.json'), 'r') as f:
             jsondata = json.load(f)
 
+        annotations['iou'] = [1] * len(annotations['labels'])
         for i in jsondata['SelectiveSearch']:
             budbox = i['bndbox']
             annotations['bboxs'].append([budbox['xmin'], budbox['ymin'], budbox['xmax'], budbox['ymax']])
             annotations['labels'].append(self.order[i['label']])
+            annotations['iou'].append(i['iou'])
             
         return annotations
 
 
 if __name__ == '__main__':
     train_loader = VOCSelectiveSearch()
-    print(train_loader[0])
+    print(train_loader[1])

@@ -24,7 +24,7 @@ class Dataset(ABC):
         self.train = train
         self.transform = {}
     
-    def add_transforms(self, key, transform):
+    def set_transforms(self, key, transform):
         self.transform[key] = transform
 
     @abstractmethod
@@ -309,7 +309,6 @@ class VOCDetection(Dataset):
         return img
      
     def getitem(self, index):
-        assert np.isscalar(index)
         annotations = self.getAnnotations(index)
         annotations['img'] = self.getImg(index)
         return annotations

@@ -1,4 +1,6 @@
 import json
+from lijnn.transforms import *
+from model import Fast_R_CNN
 from utils import SelectiveSearch
 import numpy as np
 from lijnn.datasets import VOCclassfication, VOCDetection
@@ -31,14 +33,14 @@ class VOCSelectiveSearch(VOCDetection):
                     iou = iouCandidate[iouIndex]
                     label =  orderReverse[labels[iouIndex]] if iou > 0.5 else 'background'
 
-                    temp = {"label": label, "iou": int(iou), "bndbox": {"xmin": int(xmin), "ymin": int(ymin), "xmax": int(xmax), "ymax": int(ymax)}} 
+                    temp = {"label": label, "iou": float(iou), "bndbox": {"xmin": int(xmin), "ymin": int(ymin), "xmax": int(xmax), "ymax": int(ymax)}} 
                     jsondata[annotationsdirName].append(temp)
 
                 with open(os.path.join(annotationsdir, self.nameindex[i] + '.json'), 'w') as f:
                     json.dump(jsondata, f, indent=4)
         self.scan(annotationsdirName="SelectiveSearch")
-
-    def getAnnotations(self, index):
+        
+    def getAnnotations1(self, index):
         annotations = super().getAnnotations(index)
         with open(os.path.join(self.annotationsdir, self.nameindex[index] + '.json'), 'r') as f:
             jsondata = json.load(f)
@@ -52,6 +54,10 @@ class VOCSelectiveSearch(VOCDetection):
             
         return annotations
 
+    def getitem(self, index):
+        annotations = self.getAnnotations1(index)
+        annotations['img'] = self.getImg(index)
+        return annotations
 
 if __name__ == '__main__':
     train_loader = VOCSelectiveSearch()

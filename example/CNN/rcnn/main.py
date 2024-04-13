@@ -8,7 +8,7 @@ from function import roi_pooling
 from lijnn.transforms import *
 from example.CNN import VGG16
 from dataset import VOCSelectiveSearch
-
+from model import Fast_R_CNN
 
 class bbox_transpose:
     def __init__(self, img_outputsize):
@@ -26,7 +26,6 @@ class bbox_transpose:
         return bbox
 
 
-
 def xy1xy2_to_xywh(xy1xy2):
     xp = cuda.get_array_module(xy1xy2)
     xmin, ymin, xmax, ymax = xp.split(xy1xy2, 4, axis=1)
@@ -41,10 +40,16 @@ def getT_from_P_G(p, g):
     return Variable(xp.array([(g_x - p_x) / p_w, (g_y - p_y) / p_h, np.log(g_w / p_w), np.log(g_h / p_h)], dtype=np.float32).T)
 
 class Hierarchical_Sampling1(lijnn.iterators.objectDetection):
+    '''
+
+    '''
     def __init__(self, dataset=VOCSelectiveSearch(), N=2, R=128, positive_sample_per=0.25, shuffle=True, gpu=False):
         super(Hierarchical_Sampling1, self).__init__(dataset=dataset, batch_size=N, shuffle=shuffle, gpu=gpu)
         self.r_n = round(R / N)
         self.positive_sample_per = positive_sample_per
+        self.positive_img_num = int(self.r_n * self.positive_sample_per)
+        self.dataset.set_transforms('img', compose([resize(224), toFloat(), z_score_normalize(Fast_R_CNN.mean, 1)]))
+        
 
     def next(self, batch_index):
         xp = cuda.cupy if self.gpu else np
@@ -52,9 +57,16 @@ class Hierarchical_Sampling1(lijnn.iterators.objectDetection):
         batchs = [self.dataset[i] for i in batch_index]
         for i, batch in enumerate(batchs):
             img, labels, bboxs, ious = batch['img'], batch['labels'], batch['bboxs'], batch['iou']
-            POSindex = np.where(ious >= 0.6)[0]
-            NEGindex = np.where(~(ious >= 0.6))[0]
-            print()
+            POSindex = np.where(ious >= 0.5)[0]
+            NEGindex = np.where(~(ious >= 0.5))[0]
+            if self.shuffle:
+                POSindex = POSindex[np.random.permutation(len(POSindex))]
+                NEGindex = NEGindex[np.random.permutation(len(NEGindex))]
+                
+            POSindex = POSindex[:self.positive_img_num]
+            NEGindex = NEGindex[:self.r_n - len(POSindex)]
+            index = np.concatenate((POSindex, NEGindex))
+
 
 if __name__ == "__main__":
  	for i in Hierarchical_Sampling1():

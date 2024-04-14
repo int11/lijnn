@@ -39,12 +39,13 @@ def getT_from_P_G(p, g):
     g_x, g_y, g_w, g_h = xy1xy2_to_xywh(g)
     return Variable(xp.array([(g_x - p_x) / p_w, (g_y - p_y) / p_h, np.log(g_w / p_w), np.log(g_h / p_h)], dtype=np.float32).T)
 
-class Hierarchical_Sampling1(lijnn.iterators.objectDetection):
+class Hierarchical_Sampling(lijnn.iterators.objectDetection):
     '''
-
+    sampling total R samples from N images. it means get R/N samples from each image.
+    positive sample that iou >= 0.5 is 25% from total sample , negative sample is iou < 0.5
     '''
     def __init__(self, dataset=VOCSelectiveSearch(), N=2, R=128, positive_sample_per=0.25, shuffle=True, gpu=False):
-        super(Hierarchical_Sampling1, self).__init__(dataset=dataset, batch_size=N, shuffle=shuffle, gpu=gpu)
+        super(Hierarchical_Sampling, self).__init__(dataset=dataset, batch_size=N, shuffle=shuffle, gpu=gpu)
         self.r_n = round(R / N)
         self.positive_sample_per = positive_sample_per
         self.positive_img_num = int(self.r_n * self.positive_sample_per)
@@ -55,10 +56,11 @@ class Hierarchical_Sampling1(lijnn.iterators.objectDetection):
         xp = cuda.cupy if self.gpu else np
 
         batchs = [self.dataset[i] for i in batch_index]
-        for i, batch in enumerate(batchs):
-            img, labels, bboxs, ious = batch['img'], batch['labels'], batch['bboxs'], batch['iou']
-            POSindex = np.where(ious >= 0.5)[0]
-            NEGindex = np.where(~(ious >= 0.5))[0]
+        img, labels, bboxs, ious = [], [], [], []
+
+        for batch in batchs:
+            POSindex = np.where(batch['ious'] >= 0.5)[0]
+            NEGindex = np.where(~(batch['ious'] >= 0.5))[0]
             if self.shuffle:
                 POSindex = POSindex[np.random.permutation(len(POSindex))]
                 NEGindex = NEGindex[np.random.permutation(len(NEGindex))]
@@ -66,59 +68,18 @@ class Hierarchical_Sampling1(lijnn.iterators.objectDetection):
             POSindex = POSindex[:self.positive_img_num]
             NEGindex = NEGindex[:self.r_n - len(POSindex)]
             index = np.concatenate((POSindex, NEGindex))
+            
+            img.append(batch['img'])
+            labels.append(batch['labels'][index])
+            bboxs.append(batch['bboxs'][index])
+            ious.append(batch['ious'][index])
+
+        return (xp.array(xp.stack(img)), xp.array(xp.stack(bboxs))), (xp.array(xp.stack(labels)), xp.array(xp.stack(ious)))
 
 
 if __name__ == "__main__":
- 	for i in Hierarchical_Sampling1():
+ 	for i in Hierarchical_Sampling():
          print(i)
-
-class Hierarchical_Sampling(lijnn.iterators.objectDetection):
-    def __init__(self, dataset=VOCSelectiveSearch(), N=2, R=128, positive_sample_per=0.25, shuffle=True, gpu=False):
-        super(Hierarchical_Sampling, self).__init__(dataset, N, shuffle, gpu)
-        self.r_n = round(R / N)
-        self.positive_sample_per = positive_sample_per
-
-    def __next__(self):
-        xp = cuda.cupy if self.gpu else np
-
-        if self.iteration >= self.max_iter:
-            self.reset()
-            raise StopIteration
-
-        i, batch_size = self.iteration, self.batch_size
-        batch_index = self.index[i * batch_size:(i + 1) * batch_size]
-        batch = [self.dataset[i] for i in batch_index]
-        img_batch, ssbboxs = [], []
-        label, p_batch, g_batch, u = [], [], [], []
-        for i, (img, count, iou, g) in enumerate(batch):
-            positive_img_num = int(self.r_n * self.positive_sample_per)
-
-            POSindex = np.where(iou >= 0.6)[0]
-            NEGindex = np.where(~(iou >= 0.6))[0]
-            if self.shuffle:
-                POSindex = POSindex[np.random.permutation(len(POSindex))]
-                NEGindex = NEGindex[np.random.permutation(len(NEGindex))]
-            POSindex = POSindex[:positive_img_num]
-            NEGindex = NEGindex[:self.r_n - positive_img_num]
-
-            index = np.concatenate((POSindex, NEGindex))
-
-            p, g = count[index][:, :4], g[index]
-
-            img_batch.append(img)
-            ssbboxs.append(np.pad(p, ((0, 0), (1, 0)), mode='constant', constant_values=i))
-
-            label.append(count[index][:, 4])
-            p_batch.append(p)
-            g_batch.append(g)
-            u.append(np.ones_like(POSindex))
-            u.append(np.zeros_like(NEGindex))
-
-        self.iteration += 1
-        return (xp.array(img_batch), xp.array(np.concatenate(ssbboxs))), \
-               (xp.array(np.concatenate(label)), xp.array(np.concatenate(p_batch)), xp.array(np.concatenate(g_batch)),
-                xp.array(np.concatenate(u)))
-
 
 def multi_loss(y, y_bbox, t_label, p, g, u):
     xp = cuda.get_array_module(y)

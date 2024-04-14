@@ -1,4 +1,5 @@
 import json
+import lijnn
 from lijnn.transforms import *
 from model import Fast_R_CNN
 from utils import SelectiveSearch
@@ -45,12 +46,12 @@ class VOCSelectiveSearch(VOCDetection):
         with open(os.path.join(self.annotationsdir, self.nameindex[index] + '.json'), 'r') as f:
             jsondata = json.load(f)
 
-        annotations['iou'] = [1] * len(annotations['labels'])
+        annotations['ious'] = [1] * len(annotations['labels'])
         for i in jsondata['SelectiveSearch']:
             budbox = i['bndbox']
             annotations['bboxs'].append([budbox['xmin'], budbox['ymin'], budbox['xmax'], budbox['ymax']])
             annotations['labels'].append(self.order[i['label']])
-            annotations['iou'].append(i['iou'])
+            annotations['ious'].append(i['iou'])
             
         return annotations
 
@@ -60,5 +61,7 @@ class VOCSelectiveSearch(VOCDetection):
         return annotations
 
 if __name__ == '__main__':
-    train_loader = VOCSelectiveSearch()
-    print(train_loader[1])
+    dataset = VOCSelectiveSearch()
+    for i in [2425, 2966, 4020, 4699]:
+        print(dataset.nameindex[i])
+

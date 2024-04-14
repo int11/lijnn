@@ -41,11 +41,12 @@ class iterator:
     def next(self, batch_index):
         xp = cuda.cupy if self.gpu else np
 
-        batch = [self.dataset[i] for i in batch_index]
+        batchs = [self.dataset[i] for i in batch_index]
 
         result = {}
-        for key in batch[0].keys():
-            result[key] = xp.stack([d[key] for d in batch])
+        for key in batchs[0].keys():
+            result[key] = xp.stack([batch[key] for batch in batchs])
+            
         return result
     
     def to_cpu(self):

@@ -39,7 +39,7 @@ class VOCSelectiveSearch(VOCDetection):
 
                 with open(os.path.join(annotationsdir, self.nameindex[i] + '.json'), 'w') as f:
                     json.dump(jsondata, f, indent=4)
-        self.scan(annotationsdirName="SelectiveSearch")
+        self.init(annotationsdirName="SelectiveSearch")
         
     def getAnnotations1(self, index):
         annotations = super().getAnnotations(index)

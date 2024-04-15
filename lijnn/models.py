@@ -139,7 +139,7 @@ class Model(Layer):
             self.load_weights(weight_dir)
         except FileNotFoundError:
             epoch = 0
-            print(f"\n{self.__class__.__name__} Model weight load Failed\n")
+            print(f"\n{self.__class__.__name__} Model weight file not found\n")
 
         start_epoch = int(epoch) if ti else int(epoch) + 1
         return start_epoch, ti

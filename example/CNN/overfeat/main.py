@@ -142,7 +142,7 @@ def main_OverFeat(name='default'):
     batch_size = 64
     epoch = 100
     trainset = datasets.VOCclassfication(train=True)
-    trainset.add_transforms("img", compose([isotropically_resize(256), centerCrop(256), randomCrop(221), randomFlip(), toFloat()]))
+    trainset.set_transforms("img", compose([isotropically_resize(256), centerCrop(256), randomCrop(221), randomFlip(), toFloat()]))
 
     testset = datasets.VOCclassfication(train=False)
 

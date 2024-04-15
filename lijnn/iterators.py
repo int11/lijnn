@@ -45,30 +45,17 @@ class iterator:
 
         result = {}
         for key in batchs[0].keys():
-            result[key] = xp.stack([batch[key] for batch in batchs])
-            
-        return result
+            result[key] = xp.stack([xp.array(batch[key]) for batch in batchs])
+        
+        x = tuple(result[key] for key in self.dataset.x_key_name)
+        t = tuple(result[key] for key in self.dataset.t_key_name)
+        return x, t
     
     def to_cpu(self):
         self.gpu = False
 
     def to_gpu(self):
         self.gpu = True
-
-class linearRegression(iterator):
-    def next(self, *args):
-        data = super().next(*args)
-        return (data['x']), (data['t'])
-    
-class classification(iterator):
-    def next(self, *args):
-        data = super().next(*args)
-        return (data['x']), (data['label'])
-
-class objectDetection(iterator):
-    def next(self, *args):
-        data = super().next(*args)
-        return (data['img'], data['bboxs']), (data['labels'])
 
 class SeqIterator(iterator):
     def __init__(self, dataset, batch_size, gpu=False):

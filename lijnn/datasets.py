@@ -23,7 +23,14 @@ class Dataset(ABC):
     def __init__(self, train=True):
         self.train = train
         self.transform = {}
+        self.x_key_name = []
+        self.t_key_name = []
     
+    def set_xtkey_Name(self, x : list, t : list):
+        assert isinstance(x, list) or isinstance(t, list)
+        self.x_key_name = x
+        self.t_key_name = t
+
     def set_transforms(self, key, transform):
         self.transform[key] = transform
 
@@ -43,8 +50,22 @@ class Dataset(ABC):
     def __len__(self):
         raise NotImplementedError
 
+class LinearRegression_dataset(Dataset):
+    def __init__(self, *args):
+        super().__init__(args)
+        self.set_xtkey_Name(['x'], ['t'])
+    
+class Classification_dataset(Dataset):
+    def __init__(self, *args):
+        super().__init__(args)
+        self.set_xtkey_Name(['img'], ['labels'])
 
-class Spiral(Dataset):
+class ObjectDetection_dataset(Dataset):
+    def __init__(self, *args):
+        super().__init__(args)
+        self.set_xtkey_Name(['img', 'bboxs'], ['labels'])
+
+class Spiral(LinearRegression_dataset):
     def __init__(self, train=True):
         super().__init__(train)
         seed = 1984 if self.train else 2020
@@ -75,7 +96,7 @@ class Spiral(Dataset):
         return len(self.data)
 
 
-class MNIST(Dataset):
+class MNIST(Classification_dataset):
     """
     mean = [33.31842145],
     std = [78.56748998]
@@ -121,7 +142,7 @@ class MNIST(Dataset):
         return {0: '0', 1: '1', 2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: '8', 9: '9'}
 
 
-class CIFAR10(Dataset):
+class CIFAR10(Classification_dataset):
     """
     mean = [125.30691805, 122.95039414, 113.86538318],
     std = [62.99321928, 62.08870764, 66.70489964]
@@ -187,7 +208,7 @@ class CIFAR100(CIFAR10):
     def __init__(self, train=True, label_type='fine'):
         assert label_type in ['fine', 'coarse']
         self.label_type = label_type
-        super().__init__(train, x_transform, t_transform)
+        super().__init__(train)
 
         url = 'https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz'
         loaded = load_cache_npz(url, self.train)
@@ -228,7 +249,7 @@ class CIFAR100(CIFAR10):
         return fine_labels if label_type == 'fine' else coarse_labels
 
 
-class VOCDetection(Dataset):
+class VOCDetection(ObjectDetection_dataset):
     DATASET_YEAR_DICT = {
         "2012": "http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar",
         "2011": "http://host.robots.ox.ac.uk/pascal/VOC/voc2011/VOCtrainval_25-May-2011.tar",
@@ -275,9 +296,9 @@ class VOCDetection(Dataset):
 
             shutil.copytree(os.path.join(temp_dir, 'JPEGImages'), os.path.join(self.dir, 'images', 'original'), dirs_exist_ok=True)
 
-        self.scan()
+        self.init()
 
-    def scan(self, imgdirName='original', annotationsdirName='original'):
+    def init(self, imgdirName='original', annotationsdirName='original'):
         self.imgdir = os.path.join(self.dir, 'images', imgdirName)
         self.annotationsdir = os.path.join(self.dir, 'Annotations', annotationsdirName)
 
@@ -316,12 +337,14 @@ class VOCDetection(Dataset):
     def __len__(self):
         return len(self.nameindex)
 
-class VOCclassfication(VOCDetection):
+class VOCclassfication(Classification_dataset, VOCDetection):
     def __init__(self, train=True, year=2007):
         super(VOCclassfication, self).__init__(train, year)
 
-        imgdirName = 'classficationImages'
-        imgdir = os.path.join(self.dir, imgdirName)
+        dirName = 'classficationImages'
+        imgdir = os.path.join(os.path.dirname(self.imgdir), dirName)
+        annotationsdir = os.path.join(os.path.dirname(self.annotationsdir), dirName)
+
         if not os.path.exists(imgdir):
             os.makedirs(imgdir, exist_ok=True)
             label = []
@@ -335,15 +358,17 @@ class VOCclassfication(VOCDetection):
                     img = data['img'][:, bbox[1]:bbox[3], bbox[0]:bbox[2]]
                     imgpath = os.path.join(imgdir, self.nameindex[i] + f"{e:02}" + '.png')
                     cv.imwrite(imgpath, img[::-1].transpose(1, 2, 0))
-            np.savetxt(os.path.join(imgdir,'labels.txt'), np.array(label), fmt='%d')
+                    
+            os.makedirs(annotationsdir, exist_ok=True)
+            np.savetxt(os.path.join(annotationsdir,'labels.txt'), np.array(label), fmt='%d')
 
-        self.label = np.loadtxt(os.path.join(imgdir,'labels.txt'), dtype=np.int32)
-        self.scan(imgdirName)
+        self.label = np.loadtxt(os.path.join(annotationsdir,'labels.txt'), dtype=np.int32)
+        self.init(dirName, dirName)
 
     def getitem(self, index):
         img = self.getImg(index)
         label = self.label[index]
-        return {'x':img, 'labels':label}
+        return {'img':img, 'labels':label}
 
 
 class ImageNet(Dataset):

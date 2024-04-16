@@ -39,7 +39,7 @@ def getT_from_P_G(p, g):
     g_x, g_y, g_w, g_h = xy1xy2_to_xywh(g)
     return Variable(xp.array([(g_x - p_x) / p_w, (g_y - p_y) / p_h, np.log(g_w / p_w), np.log(g_h / p_h)], dtype=np.float32).T)
 
-class Hierarchical_Sampling(lijnn.iterators.objectDetection):
+class Hierarchical_Sampling(lijnn.iterators.iterator):
     '''
     sampling total R samples from N images. it means get R/N samples from each image.
     positive sample that iou >= 0.5 is 25% from total sample , negative sample is iou < 0.5
@@ -78,7 +78,9 @@ class Hierarchical_Sampling(lijnn.iterators.objectDetection):
 
 
 if __name__ == "__main__":
- 	for i in Hierarchical_Sampling():
+    dataset = VOCSelectiveSearch()
+    itear = Hierarchical_Sampling(dataset=dataset)
+    for i in itear:
          print(i)
 
 def multi_loss(y, y_bbox, t_label, p, g, u):

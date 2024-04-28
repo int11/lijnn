@@ -164,8 +164,8 @@ class Model(Layer):
             st = time.time()
             for x, t in train_loader:
                 # forward, backward, update
-                y = self(*x) if isinstance(x, tuple) else self(x)
-                loss = loss_function(*y, *t) if isinstance(t, tuple) else loss_function(y, t)
+                y = (self(*x),)
+                loss = loss_function(*y, *t)
                 if accuracy_function:
                     acc = accuracy_function(*y, *t) if isinstance(t, tuple) else accuracy_function(y, t)
                 else:

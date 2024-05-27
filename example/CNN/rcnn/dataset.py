@@ -41,7 +41,7 @@ class VOCSelectiveSearch(VOCDetection):
                     json.dump(jsondata, f, indent=4)
         self.init(annotationsdirName="SelectiveSearch")
         
-    def getAnnotations1(self, index):
+    def getSelectiveSearchAnnotations(self, index):
         annotations = super().getAnnotations(index)
         with open(os.path.join(self.annotationsdir, self.nameindex[index] + '.json'), 'r') as f:
             jsondata = json.load(f)
@@ -56,7 +56,7 @@ class VOCSelectiveSearch(VOCDetection):
         return annotations
 
     def getitem(self, index):
-        annotations = self.getAnnotations1(index)
+        annotations = self.getSelectiveSearchAnnotations(index)
         annotations['img'] = self.getImg(index)
         return annotations
 

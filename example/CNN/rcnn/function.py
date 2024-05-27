@@ -3,7 +3,6 @@ from lijnn import cuda
 from lijnn.core import Function
 from lijnn.utils import pair
 
-
 class ROIPooling2D(Function):
     def __init__(self, output_size, spatial_scale):
         self.output_size = output_size
@@ -11,7 +10,7 @@ class ROIPooling2D(Function):
 
     def forward(self, x, bboxs):
         xp = cuda.get_array_module(x)
-        assert bboxs.shape[-1] == 5, "bboxs input "
+        assert bboxs.shape[-1] == 4, "bboxs input must be (N, 4{ymin, xmin, ymax, xmax})"
         
         bboxs = bboxs.copy()
 
@@ -22,21 +21,21 @@ class ROIPooling2D(Function):
         y = xp.zeros((N, C, OH, OW), dtype=x.dtype)
         self.argmax_data = xp.zeros(y.shape, xp.int32)
 
-        bboxs[:, [1, 2]] = xp.floor(bboxs[:, [1, 2]] * self.spatial_scale)
-        bboxs[:, [3, 4]] = xp.ceil(bboxs[:, [3, 4]] * self.spatial_scale)
+        bboxs[:, [0, 1]] = xp.floor(bboxs[:, [0, 1]] * self.spatial_scale)
+        bboxs[:, [2, 3]] = xp.ceil(bboxs[:, [2, 3]] * self.spatial_scale)
 
 
         #roi width, roi height, stridew, strideh, 
-        a = xp.array([bboxs[:,3] - bboxs[:, 1], bboxs[:, 4] - bboxs[:, 2],  (bboxs[:, 3] - bboxs[:, 1])/OW, (bboxs[:,4] - bboxs[:, 2])/OH]).T
+        a = xp.array([bboxs[:,2] - bboxs[:, 0], bboxs[:, 3] - bboxs[:, 1],  (bboxs[:, 2] - bboxs[:, 0])/OW, (bboxs[:,3] - bboxs[:, 1])/OH]).T
         L_sliceH = xp.tile(xp.arange(OH)[:, None], (N, 1, 2))
         #             xp.floor(_outh        * strideh)) + ymin
-        L_sliceH[:, :, 0] = (xp.floor(L_sliceH[:, :, 0].T * a[:, 3]) + bboxs[:, 2]).T
-        L_sliceH[:, :, 1] = (xp.ceil((L_sliceH[:, :, 1].T + 1) * a[:, 3]) + bboxs[:, 2]).T
+        L_sliceH[:, :, 0] = (xp.floor(L_sliceH[:, :, 0].T * a[:, 3]) + bboxs[:, 1]).T
+        L_sliceH[:, :, 1] = (xp.ceil((L_sliceH[:, :, 1].T + 1) * a[:, 3]) + bboxs[:, 1]).T
 
         L_sliceW = xp.tile(xp.arange(OW)[:, None], (N, 1, 2))
 
-        L_sliceW[:, :, 0] = (xp.floor(L_sliceW[:, :, 0].T * a[:, 2]) + bboxs[:, 1]).T
-        L_sliceW[:, :, 1] = (xp.ceil((L_sliceW[:, :, 1].T + 1) * a[:, 2]) + bboxs[:, 1]).T 
+        L_sliceW[:, :, 0] = (xp.floor(L_sliceW[:, :, 0].T * a[:, 2]) + bboxs[:, 0]).T
+        L_sliceW[:, :, 1] = (xp.ceil((L_sliceW[:, :, 1].T + 1) * a[:, 2]) + bboxs[:, 0]).T 
 
         
         for n in range(N):
@@ -95,3 +94,7 @@ class ROIPooling2DGrad(Function):
 
 def roi_pooling(x, rois, output_size, spatial_scale=1):
     return ROIPooling2D(output_size, spatial_scale)(x, rois)
+
+if __name__ == "__main__":
+    a = np.random.randn(2, 3, 5, 5).astype(np.float32)
+    b = roi_pooling(a, np.array([[0, 0, 4, 4], [0, 0, 4, 4]]), 2, 1)

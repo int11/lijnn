@@ -4,6 +4,7 @@ gpu_enable = True
 
 try:
     import cupy as cp
+    import cupyx as cpx
     cupy = cp
 except ImportError:
     gpu_enable = False

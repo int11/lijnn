@@ -1,4 +1,3 @@
-
 import lijnn.datasets
 from lijnn import *
 from lijnn.cuda import *
@@ -76,13 +75,6 @@ class Hierarchical_Sampling(lijnn.iterators.iterator):
 
         return (xp.array(xp.stack(img)), xp.array(xp.stack(bboxs))), (xp.array(xp.stack(labels)), xp.array(xp.stack(ious)))
 
-
-if __name__ == "__main__":
-    dataset = VOCSelectiveSearch()
-    itear = Hierarchical_Sampling(dataset=dataset)
-    for i in itear:
-         print(i)
-
 def multi_loss(y, y_bbox, t_label, p, g, u):
     xp = cuda.get_array_module(y)
     loss_cls = F.softmax_cross_entropy(y, t_label)
@@ -118,13 +110,13 @@ def Faccuracy(y, y_bbox, t_label, p, g, u):
 def main_Fast_R_CNN(name='default'):
     epoch = 10
 
-    # train_loader = Hierarchical_Sampling()
+    train_loader = Hierarchical_Sampling()
     model = Fast_R_CNN()
 
-    model.info(np.zeros((1, 3, 224, 224)), np.zeros((1, 4)))
-    # optimizer = optimizers.Adam(alpha=0.0001)
-    # model.fit(epoch, optimizer, train_loader, loss_function=multi_loss, accuracy_function=Faccuracy,
-    #           iteration_print=True, name=name)
+    model.info(np.zeros((1, 3, 224, 224)), np.array([[0, 0, 100, 100]]))
+    optimizer = optimizers.Adam(alpha=0.0001)
+    model.fit(epoch, optimizer, train_loader, loss_function=multi_loss, accuracy_function=Faccuracy,
+              iteration_print=True, name=name)
 
-# if __name__ == "__main__":
-# 	main_Fast_R_CNN()
+if __name__ == "__main__":
+	main_Fast_R_CNN()

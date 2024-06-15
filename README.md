@@ -1,5 +1,5 @@
 # lijnn
-lijnn is deep learning framework project with Triton who develop OpenAI.
+lijnn is deep learning framework project
 
 At the beginning, the project was created to personally research the deep learning framework.
 In now, want to many student who study artification intelligent can easily understand low-level deep Learning function through this deep learning framework compare to other complex deep learning framework.

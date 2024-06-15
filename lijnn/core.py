@@ -246,7 +246,7 @@ class Function:
             gys (`lijnn.Variable`): Input type must be lijnn.Variable
 
         Returns:
-            `tuple(lijnn.Variable)`: Output type must be tuple(lijnn.Variable)
+            `lijnn.Variable`: Output type must be lijnn.Variable
         """
         raise NotImplementedError()
 

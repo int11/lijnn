@@ -109,7 +109,7 @@ class Model(Layer):
         weight_dir = os.path.join(model_dir, f'{name}_{epoch}_{t}_epoch.npz' if t else f'{name}_{epoch}_epoch.npz')
         print(f'model weight save : {weight_dir}')
         self.save_weights(weight_dir)
-        print('Done')
+        print('model weight save Done')
 
     def load_weights_epoch(self, epoch=None, ti=0, name='default', classname=None):
         model_dir = os.path.join(utils.cache_dir, classname) if classname else os.path.join(utils.cache_dir,
@@ -206,8 +206,8 @@ class Model(Layer):
             if test_loader:
                 with no_grad(), test_mode():
                     for x, t in test_loader:
-                        y = self(x)
-                        loss = loss_function(y, t)
+                        y = (self(*x),)
+                        loss = loss_function(*y, *t)
                         acc = accuracy_function(y, t).data if accuracy_function else 0
                         sum_loss += loss.data
                         sum_acc += acc

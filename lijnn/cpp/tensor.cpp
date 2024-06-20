@@ -71,7 +71,7 @@ private:
 
 
 int main() {
-    tsdvector t({1, 2, 3});
+    tensor t({1, 2, 3});
     cout << t << endl;
     return 0;
 }

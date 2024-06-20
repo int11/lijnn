@@ -2,7 +2,7 @@ from lijnn import *
 from lijnn import layers as L
 from lijnn import functions as F
 from lijnn.transforms import *
-
+from functions import *
 """
 "OverFeat: Integrated Recognition, Localization and Detection using Convolutional Networks"
 https://arxiv.org/abs/1312.6229
@@ -44,7 +44,7 @@ class OverFeat_accuracy(Model):
         x = F.relu(self.conv5(x))
 
         x = F.relu(self.conv6(x))
-
+        # subsampling ratio = 12
         if Config.train:
             x = F.max_pooling(x, kernel_size=3, stride=3)
             # receptive field = 77
@@ -54,8 +54,7 @@ class OverFeat_accuracy(Model):
             x = F.dropout(F.relu(self.fc8(x)))
             x = self.fc9(x)
         else:
-            # subsampling ratio = 12
-            x = F.find_pooling(x, 3)
+            x = find_pooling(x, 3)
             # receptive field = 77
             # subsampling ratio = 36
             x = F.relu(self.conv7(x))

@@ -1,6 +1,6 @@
 import numpy as np
 import time
-from lijnn.utils import pair, get_conv_outsize
+from lijnn.utils import pair, get_conv_outsize, Timer
 
 
 def a(img, kernel_size, stride, pad):
@@ -73,24 +73,9 @@ def im2col_stride_K(img, kernel_size, stride, pad):
     return col
 
 
-def check_speed(x, function):
-    t = time.time()
-    col = function(x, (5,5), 1, 0)
-    print(time.time() - t)
-    return col
-
-
 np.random.seed(0)
-x = np.random.randint(0, 10, (200, 300, 10, 10))
+x = np.random.randint(0, 10, (20, 300, 20, 20))
 
-
-check_speed(x, im2col_for_O)
-check_speed(x, im2col_for_K)
-check_speed(x, im2col_stride_O)
-check_speed(x, im2col_stride_K)
-
-# col1 = check_speed(x, im2col_for_O)
-# col2 = check_speed(x, im2col_for_K)
-# col3 = check_speed(x, im2col_stride_O)
-# col4 = check_speed(x, im2col_stride_K)
-# print(np.array_equal(col1, col2), np.array_equal(col2, col3), np.array_equal(col3, col4))
+for i in [im2col_for_O, im2col_for_K, im2col_stride_O, im2col_stride_K]:
+    with Timer() as t:
+        col = i(x, (5,5), 1, 0)

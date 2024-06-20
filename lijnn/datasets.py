@@ -282,7 +282,7 @@ class VOCDetection(ObjectDetection_dataset):
         xml_dir = os.path.join(temp_dir, 'Annotations')
         json_dir = os.path.join(self.dir, 'Annotations', 'original')
         # file refactoring
-        if not os.path.exists( json_dir):
+        if not os.path.exists(json_dir):
             os.makedirs(json_dir, exist_ok=True)
             
             # xml to json

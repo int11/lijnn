@@ -13,7 +13,7 @@ def a(img, kernel_size, stride, pad):
     return N, C, H, W, KH, KW, SH, SW, PH, PW, OH, OW
 
 
-def im2col_for_O(img, kernel_size, stride, pad):
+def im2col_for_O(img, kernel_size, stride, pad, to_matrix=False):
     N, C, H, W, KH, KW, SH, SW, PH, PW, OH, OW = a(img, kernel_size, stride, pad)
 
     img = np.pad(img, ((0, 0), (0, 0), (PH, PH + SH - 1), (PW, PW + SW - 1)), mode='constant', constant_values=(0,))
@@ -24,12 +24,13 @@ def im2col_for_O(img, kernel_size, stride, pad):
             w_start = i * SW
             col[:, :, j, i, :, :] = img[:, :, h_start:h_start + KH, w_start:w_start + KW]
 
-    col = col.transpose((0, 2, 3, 1, 4, 5)).reshape((N * OH * OW, -1))
+    if to_matrix:
+        col = col.transpose((0, 2, 3, 1, 4, 5)).reshape((N * OH * OW, -1))
 
     return col
 
 
-def im2col_for_K(img, kernel_size, stride, pad):
+def im2col_for_K(img, kernel_size, stride, pad, to_matrix=False):
     N, C, H, W, KH, KW, SH, SW, PH, PW, OH, OW = a(img, kernel_size, stride, pad)
 
     img = np.pad(img, ((0, 0), (0, 0), (PH, PH + SH - 1), (PW, PW + SW - 1)), mode='constant', constant_values=(0,))
@@ -40,12 +41,13 @@ def im2col_for_K(img, kernel_size, stride, pad):
             i_lim = i + SW * OW
             col[:, :, j, i, :, :] = img[:, :, j:j_lim:SH, i:i_lim:SW]
 
-    col = col.transpose((0, 4, 5, 1, 2, 3)).reshape((N * OH * OW, -1))
+    if to_matrix:
+        col = col.transpose((0, 4, 5, 1, 2, 3)).reshape((N * OH * OW, -1))
 
     return col
 
 
-def im2col_stride_O(img, kernel_size, stride, pad):
+def im2col_stride_O(img, kernel_size, stride, pad, to_matrix=False):
     N, C, H, W, KH, KW, SH, SW, PH, PW, OH, OW = a(img, kernel_size, stride, pad)
 
     img = np.pad(img, ((0, 0), (0, 0), (PH, PH + SH - 1), (PW, PW + SW - 1)), mode='constant', constant_values=(0,))
@@ -53,13 +55,14 @@ def im2col_stride_O(img, kernel_size, stride, pad):
     strides = img.strides
     col = np.lib.stride_tricks.as_strided(img, (N, C, OH, OW, KH, KW), (
         strides[0], strides[1], strides[2] * SH, strides[3] * SW, strides[2], strides[3]))
-
-    col = col.transpose((0, 2, 3, 1, 4, 5)).reshape((N * OH * OW, -1))
+    
+    if to_matrix:
+        col = col.transpose((0, 2, 3, 1, 4, 5)).reshape((N * OH * OW, -1))
 
     return col
 
 
-def im2col_stride_K(img, kernel_size, stride, pad):
+def im2col_stride_K(img, kernel_size, stride, pad, to_matrix=False):
     N, C, H, W, KH, KW, SH, SW, PH, PW, OH, OW = a(img, kernel_size, stride, pad)
 
     img = np.pad(img, ((0, 0), (0, 0), (PH, PH + SH - 1), (PW, PW + SW - 1)), mode='constant', constant_values=(0,))
@@ -67,15 +70,16 @@ def im2col_stride_K(img, kernel_size, stride, pad):
     strides = img.strides
     col = np.lib.stride_tricks.as_strided(img, (N, C, KH, KW, OH, OW), (
         strides[0], strides[1], strides[2], strides[3], strides[2] * SH, strides[3] * SW))
-
-    col = col.transpose((0, 4, 5, 1, 2, 3)).reshape((N * OH * OW, -1))
+    
+    if to_matrix:
+        col = col.transpose((0, 4, 5, 1, 2, 3)).reshape((N * OH * OW, -1))
 
     return col
 
+if __name__ == '__main__':
+    np.random.seed(0)
+    x = np.random.randint(0, 10, (20, 300, 20, 20))
 
-np.random.seed(0)
-x = np.random.randint(0, 10, (20, 300, 20, 20))
-
-for i in [im2col_for_O, im2col_for_K, im2col_stride_O, im2col_stride_K]:
-    with Timer() as t:
-        col = i(x, (5,5), 1, 0)
+    for i in [im2col_for_O, im2col_for_K, im2col_stride_O, im2col_stride_K]:
+        with Timer() as t:
+            col = i(x, (5,5), 1, 0)

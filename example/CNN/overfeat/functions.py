@@ -6,21 +6,23 @@ from lijnn.utils import pair, get_conv_outsize
 class FinePooling(Function):
     def __init__(self, kernel_size, to_batch):
         self.kernel_size = kernel_size
+        self.stride = kernel_size
         self.to_batch = to_batch
 
     def forward(self, x):
         N, C, H, W = x.shape
         KH, KW = pair(self.kernel_size)
-        SH, SW = pair(self.kernel_size)
+        SH, SW = pair(self.stride)
         OH = get_conv_outsize(H, KH, SH, 0)
         OW = get_conv_outsize(W, KW, SW, 0)
 
         xp = cuda.get_array_module(x)
 
         strides = x.strides
-        col = xp.lib.stride_tricks.as_strided(x, (3, 3, N, C, KH, KW, OH, OW),
-                                              (strides[2], strides[3], strides[0], strides[1], strides[2], strides[3],
-                                               strides[2] * SH, strides[3] * SW))
+        col = xp.lib.stride_tricks.as_strided(x, (3, 3, N, C, OH, OW, KH, KW),
+                                              (strides[2], strides[3], strides[0], strides[1],
+                                               strides[2] * SH, strides[3] * SW,
+                                               strides[2], strides[3]))
         col = col.reshape(3, 3, N, C, KH * KW, OH, OW)
         self.indexes = col.argmax(axis=4)
         y = col.max(axis=4)

@@ -2,9 +2,9 @@ import lijnn
 import numpy as np
 from lijnn.utils import *
 import lijnn.functions_conv as F
-from test1.im2col_speed.main import im2col_array1
+from lijnn_test.im2col_speed.main import *
 
-class Conv2d1(lijnn.Function):
+class Conv2d_O(lijnn.Function):
     def __init__(self, stride=1, pad=0):
         super().__init__()
         self.stride = pair(stride)
@@ -30,7 +30,7 @@ class Conv2d1(lijnn.Function):
         xp = cuda.get_array_module(x)
 
         KH, KW = W.shape[2:]
-        col = im2col_array1(x, (KH, KW), self.stride, self.pad, to_matrix=False)
+        col = im2col_stride_O(x, (KH, KW), self.stride, self.pad, to_matrix=False)
 
         y = xp.tensordot(col, W, ((1, 4, 5), (1, 2, 3)))
         if b is not None:
@@ -40,16 +40,11 @@ class Conv2d1(lijnn.Function):
 
 
 
-def conv2d1(x, W, b=None, stride=1, pad=0):
-    return Conv2d1(stride, pad)(x, W, b)
+def conv2d_O(x, W, b=None, stride=1, pad=0):
+    return Conv2d_O(stride, pad)(x, W, b)
 
 
-class Conv2d2(lijnn.Function):
-    def __init__(self, stride=1, pad=0):
-        super().__init__()
-        self.stride = pair(stride)
-        self.pad = pair(pad)
-
+class Conv2d_K(Conv2d_O):
     def forward(self, x, W, b):
         """simple
 
@@ -70,7 +65,7 @@ class Conv2d2(lijnn.Function):
         xp = cuda.get_array_module(x)
 
         KH, KW = W.shape[2:]
-        col = im2col_array2(x, (KH, KW), self.stride, self.pad, to_matrix=False)
+        col = im2col_stride_K(x, (KH, KW), self.stride, self.pad, to_matrix=False)
 
 
         y = xp.tensordot(col, W, ((1, 2, 3), (1, 2, 3)))
@@ -81,20 +76,20 @@ class Conv2d2(lijnn.Function):
 
 
 
-def conv2d2(x, W, b=None, stride=1, pad=0):
-    return Conv2d2(stride, pad)(x, W, b)
+def conv2d_K(x, W, b=None, stride=1, pad=0):
+    return Conv2d_K(stride, pad)(x, W, b)
 
-n, c, h, w = 1, 100, 15, 15
-oc, kh, kw = 50, 10, 10
-
-a = Variable(np.random.randn(n, c, h, w).astype(np.float32))
-b = Variable(np.random.randn(oc, c, kh, kw).astype(np.float32))
-
-with Timer() as t:
-  y = conv2d1(a, b)
+n, c, h, w = 50, 100, 100, 100
+oc, kernel_size, = 100, 3
 
 a = Variable(np.random.randn(n, c, h, w).astype(np.float32))
-b = Variable(np.random.randn(oc, c, kh, kw).astype(np.float32))
+b = Variable(np.random.randn(oc, c, kernel_size, kernel_size).astype(np.float32))
 
-with Timer() as t:
-  y = conv2d2(a, b)
+
+function = [conv2d_K, conv2d_O]
+
+
+timer = Timer()
+
+for f in function:
+    time_stack = timer.function_speed_check(10, f, a, b, stride=1, pad=0)

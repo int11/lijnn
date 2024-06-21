@@ -36,7 +36,8 @@ class Conv2d(Function):
         KH, KW = W.shape[2:]
         col = im2col_array(x, (KH, KW), self.stride, self.pad, to_matrix=False)
 
-        y = xp.tensordot(col, W, ((1, 2, 3), (1, 2, 3)))
+
+        y = xp.tensordot(col, W, ((1, 4, 5), (1, 2, 3)))
         if b is not None:
             y += b
         y = xp.rollaxis(y, 3, 1)
@@ -82,8 +83,9 @@ class Deconv2d(Function):
             out_h, out_w = pair(self.outsize)
         img_shape = (N, OC, out_h, out_w)
 
-        gcol = xp.tensordot(Weight, gy, (0, 1))
-        gcol = xp.rollaxis(gcol, 3)
+        gcol = xp.tensordot(gy, Weight, (1, 0))
+        # N OH OW C KH KW -> N C OH OW KH KW
+        gcol = xp.rollaxis(gcol, 3, 1)
         gx = col2im_array(gcol, img_shape, (KH, KW), self.stride, self.pad,
                           to_matrix=False)
         # b, k, h, w
@@ -124,7 +126,7 @@ class Conv2DGradW(Function):
 
         col = im2col_array(x, self.kernel_size, self.stride, self.pad,
                            to_matrix=False)
-        gW = xp.tensordot(gy, col, ((0, 2, 3), (0, 4, 5)))
+        gW = xp.tensordot(gy, col, ((0, 2, 3), (0, 2, 3)))
         return gW
 
     def backward(self, gys):
@@ -164,16 +166,16 @@ class MaxPooling(Function):
         col = im2col_array(x, self.kernel_size, self.stride, self.pad,
                            to_matrix=False)
 
-        N, C, KH, KW, OH, OW = col.shape
-        col = col.reshape(N, C, KH * KW, OH, OW)
-        self.indexes = col.argmax(axis=2)
-        y = col.max(axis=2)
+        N, C, OH, OW, KH, KW = col.shape
+        col = col.reshape(N, C, OH, OW, KH * KW)
+        self.indexes = col.argmax(axis=4)
+        y = col.max(axis=4)
         return y
 
     def backward(self, gy):
         return MaxPoolingGrad(self)(gy)
 
-
+#TODO
 class MaxPoolingGrad(Function):
     def __init__(self, mpool2d):
         self.mpool2d = mpool2d
@@ -209,7 +211,7 @@ class MaxPoolingGrad(Function):
         f = MaxPoolingWithIndexes(self.mpool2d)
         return f(ggx)
 
-
+#TODO
 class MaxPoolingWithIndexes(Function):
     def __init__(self, mpool2d):
         self.kernel_size = mpool2d.kernel_size
@@ -233,7 +235,7 @@ class MaxPoolingWithIndexes(Function):
 def max_pooling(x, kernel_size, stride=1, pad=0):
     return MaxPooling(kernel_size, stride, pad)(x)
 
-
+#TODO
 class AveragePooling(Function):
     def __init__(self, kernel_size, stride=1, pad=0):
         super().__init__()
@@ -246,7 +248,7 @@ class AveragePooling(Function):
         self.input_shape = x.shape
         col = im2col_array(x, self.kernel_size, self.stride, self.pad,
                            to_matrix=False)
-        y = col.mean(axis=(2, 3))
+        y = col.mean(axis=(4,5))
         return y
 
     def backward(self, gy):
@@ -358,16 +360,16 @@ def im2col_array(img, kernel_size, stride, pad, to_matrix=False):
     img = xp.pad(img, ((0, 0), (0, 0), (PH, PH + SH - 1), (PW, PW + SW - 1)), mode='constant', constant_values=(0,))
 
     strides = img.strides
-    col = xp.lib.stride_tricks.as_strided(img, (N, C, KH, KW, OH, OW), (
-        strides[0], strides[1], strides[2], strides[3], strides[2] * SH, strides[3] * SW))
+
+    col = xp.lib.stride_tricks.as_strided(img, (N, C, OH, OW, KH, KW), (
+        strides[0], strides[1], strides[2] * SH, strides[3] * SW, strides[2], strides[3]))
 
     if to_matrix:
-        col = col.transpose((0, 4, 5, 1, 2, 3)).reshape((N * OH * OW, -1))
+        col = col.transpose((0, 2, 3, 1, 4, 5)).reshape((N * OH * OW, -1))
 
     return col
 
-
-def col2im_array(col, img_shape, kernel_size, stride, pad, to_matrix=True):
+def col2im_array(g_col, img_shape, kernel_size, stride, pad, to_matrix=True):
     N, C, H, W = img_shape
     KH, KW = pair(kernel_size)
     SH, SW = pair(stride)
@@ -376,20 +378,22 @@ def col2im_array(col, img_shape, kernel_size, stride, pad, to_matrix=True):
     OW = get_conv_outsize(W, KW, SW, PW)
 
     if to_matrix:
-        col = col.reshape(N, OH, OW, C, KH, KW).transpose(0, 3, 4, 5, 1, 2)
+        g_col = g_col.reshape(N, OH, OW, C, KH, KW).transpose(0, 3, 1, 2, 4, 5)
 
-    xp = cuda.get_array_module(col)
+    xp = cuda.get_array_module(g_col)
     if xp != np:
-        img = _col2im_gpu(col, SH, SW, PH, PW, H, W)
+        img = _col2im_gpu(g_col, SH, SW, PH, PW, H, W)
         return img
     else:
         img = np.zeros((N, C, H + 2 * PH + SH - 1, W + 2 * PW + SW - 1),
-                       dtype=col.dtype)
-        for j in range(KH):
-            j_lim = j + SH * OH
-            for i in range(KW):
-                i_lim = i + SW * OW
-                img[:, :, j:j_lim:SH, i:i_lim:SW] += col[:, :, j, i, :, :]
+                       dtype=g_col.dtype)
+        for j in range(OH):
+            j_lim = j + SH * KH
+            for i in range(OW):
+                i_lim = i + SW * KW
+                img[:, :, j:j_lim:SH, i:i_lim:SW] += g_col[:, :, j, i, :, :]
+
+    
         return img[:, :, PH:H + PH, PW:W + PW]
 
 

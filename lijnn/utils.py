@@ -116,27 +116,6 @@ def plot_dot_graph(output, verbose=True, to_file='graph.png'):
     # =============================================================================
 
 
-def sum_to(x, shape):
-    """Sum elements along axes to output an array of a given shape.
-
-    Args:
-        x (ndarray): Input array.
-        shape:
-
-    Returns:
-        ndarray: Output array of the shape.
-    """
-    ndim = len(shape)
-    lead = x.ndim - ndim
-    lead_axis = tuple(range(lead))
-
-    axis = tuple([i + lead for i, sx in enumerate(shape) if sx == 1])
-    y = x.sum(lead_axis + axis, keepdims=True)
-    if lead > 0:
-        y = y.squeeze(lead_axis)
-    return y
-
-
 def reshape_sum_backward(gy, x_shape, axis, keepdims):
     """Reshape gradient appropriately for lijnn.functions.sum's backward.
 
@@ -290,6 +269,18 @@ def numerical_grad(f, x, *args, **kwargs):
         x[idx] = tmp_val
         it.iternext()
     return grad
+
+
+def as_variable(obj):
+    if isinstance(obj, Variable):
+        return obj
+    return Variable(obj)
+
+
+def as_array(x, array_module=np, dtype=None):
+    if np.isscalar(x):
+        return array_module.array(x, dtype=dtype) if dtype else array_module.array(x)
+    return x
 
 
 def array_equal(a, b):
@@ -463,12 +454,30 @@ class Timer:
         self.func_name: str = func_name
         self.time_start: float = 0.0
 
-    def __enter__(self):
+    def start(self):
         sys.stdout.flush()
         self.time_start = time.perf_counter()
+
+    def end(self):
+        time_end = time.perf_counter()
+        interval = time_end - self.time_start
+        return interval
+    
+    def __enter__(self):
+        self.start()
         return self
 
     def __exit__(self, *args):
-        time_end = time.perf_counter()
-        interval = time_end - self.time_start
-        print(f'{self.func_name}: {interval} sec')
+        print(f'{self.func_name}: {self.end()} sec')
+
+    def function_speed_check(self, iterint, func, *args ,**kwargs):
+        func(*args)
+
+        time_stack = np.zeros(iterint)
+        for i in range(iterint):
+            self.start()
+            func(*args, **kwargs)
+            interval = self.end()
+            time_stack[i] = interval
+        print(f'{func.__name__}: {np.average(time_stack)}')
+        return time_stack

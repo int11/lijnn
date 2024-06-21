@@ -4,15 +4,15 @@ from lijnn.core import Function
 from lijnn.core import using_config
 from lijnn.core import no_grad
 from lijnn.core import test_mode
-from lijnn.core import as_array
-from lijnn.core import as_variable
 from lijnn.core import setup_variable
 from lijnn.core import Config
 from lijnn.layers import Layer
 from lijnn.models import Model
 from lijnn.datasets import Dataset
 from lijnn.iterators import iterator
-from lijnn.iterators import SeqIterator
+from lijnn.iterators import SeqIterat
+from lijnn.utils import as_array
+from lijnn.utils import as_variable
 
 from lijnn import datasets
 from lijnn import iterators

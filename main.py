@@ -1,15 +1,13 @@
 import lijnn
 import numpy as np
-arr = np.arange(36)
+from lijnn.utils import *
+import lijnn.functions_conv as F
 
-# 배열의 형태를 (3,3,3)으로 변경
-arr = arr.reshape((3,3,4))
 
-print(arr)
-H, W = arr.shape[1], arr.shape[2]
+img = np.zeros((1,1,4,4))
+np.add.at(img, [[0],[0],[0],[0]], 1)
+print(img)
+a = Variable(np.random.randn(1,1,4,4).astype(np.float32))
 
-argmin = np.argmin([H, W])
-
-a = lijnn.datasets.VOCclassfication()[0]
-print(a)
-print()
+b = F.im2col(a, 2, to_matrix=False)
+b.backward()

@@ -2,13 +2,12 @@ import weakref
 import numpy as np
 import contextlib
 import lijnn
-
-
+from lijnn import as_array, as_variable
 # =============================================================================
 # Config
 # =============================================================================
 class Config:
-    enable_backprop = True
+    enable_backprop = True 
     train = True
 
 
@@ -124,7 +123,7 @@ class Variable:
                     if x.creator is not None:
                         add_func(x.creator)
 
-            if not retain_grad:
+            if retain_grad == False:
                 for y in f.outputs:
                     y().grad = None  # y is weakref
 
@@ -175,19 +174,6 @@ class Variable:
 
 class Parameter(Variable):
     pass
-
-
-def as_variable(obj):
-    if isinstance(obj, Variable):
-        return obj
-    return Variable(obj)
-
-
-def as_array(x, array_module=np, dtype=None):
-    if np.isscalar(x):
-        return array_module.array(x, dtype=dtype) if dtype else array_module.array(x)
-    return x
-
 
 def fix_dtype(x0, x1):
     """

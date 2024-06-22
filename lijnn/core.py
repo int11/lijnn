@@ -170,11 +170,16 @@ class Variable:
     def to_cpu(self):
         if self.data is not None:
             self.data = lijnn.cuda.as_numpy(self.data)
+        
+        if self.grad is not None:
+            self.grad = lijnn.cuda.as_numpy(self.grad)
 
     def to_gpu(self):
         if self.data is not None:
             self.data = lijnn.cuda.as_cupy(self.data)
 
+        if self.grad is not None:
+            self.grad = lijnn.cuda.as_cupy(self.grad)
 
 class Parameter(Variable):
     pass

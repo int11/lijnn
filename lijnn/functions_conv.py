@@ -381,15 +381,13 @@ def col2im_array(g_col, img_shape, kernel_size, stride, pad, to_matrix=True):
         img = _col2im_gpu(g_col, SH, SW, PH, PW, H, W)
         return img
     else:
-        img = np.zeros((N, C, H + 2 * PH + SH - 1, W + 2 * PW + SW - 1),
-                       dtype=g_col.dtype)
+        img = np.zeros((N, C, H + 2 * PH , W + 2 * PW), dtype=g_col.dtype)
         for j in range(OH):
-            j_lim = j + SH * KH
+            j_lim = j * SH + KH
             for i in range(OW):
-                i_lim = i + SW * KW
-                img[:, :, j:j_lim:SH, i:i_lim:SW] += g_col[:, :, j, i, :, :]
+                i_lim = i *  SW + KW
+                img[:, :, j * SH:j_lim, i * SW:i_lim] += g_col[:, :, j, i, :, :]
 
-    
         return img[:, :, PH:H + PH, PW:W + PW]
 
 
@@ -398,6 +396,7 @@ def _col2im_gpu(col, sy, sx, ph, pw, h, w):
     This code is ported from Chainer:
     https://github.com/chainer/chainer/blob/v6.4.0/chainer/utils/conv.py
     """
+    col = col.transpose(0, 1, 4, 5, 2, 3)
     n, c, kh, kw, out_h, out_w = col.shape
     dx, dy = 1, 1
     img = cuda.cupy.empty((n, c, h, w), dtype=col.dtype)

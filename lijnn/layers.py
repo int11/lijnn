@@ -171,7 +171,7 @@ class Conv2d(Layer):
     def _init_W(self, xp=np):
         C, OC = self.in_channels, self.out_channels
         KH, KW = pair(self.kernel_size)
-        scale = self.weight_init(C * KH * KW, OC * KH * KW)
+        scale = self.weight_init(C * KH * KW, OC * KH * KW, self.dtype)
         self.W.data = xp.random.randn(OC, C, KH, KW).astype(self.dtype) * scale
 
     def forward(self, x):

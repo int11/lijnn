@@ -1,6 +1,7 @@
 from lijnn import *
-from lijnn.functions import *
+import lijnn
 from lijnn_test.functions.unit_test import f_unit_test
+import numpy as np
 
 def test():
     input_data_shape = (1,1,4,4)
@@ -38,9 +39,10 @@ def test():
                 [2, 4, 4, 2],
                 [2, 4, 4, 2],
                 [1, 2, 2, 1]]]])
-    f_unit_test(input_data, output, backward, im2col, 2, to_matrix=False)
+    f_unit_test(input_data, output, backward, lijnn.functions.im2col, 2, to_matrix=False)
 
 
-
+def test_torch():
+    f_unit_test_withTorch((input_data_shape, w_shape, b_shape), F.conv2d, lijnn.functions.im2col, **kargs)
 if __name__ == '__main__':
     test()

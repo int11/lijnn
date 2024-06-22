@@ -1,5 +1,5 @@
 import lijnn
-from lijnn_test.functions.main_backward import test_function_backward
+from lijnn_test.functions.unit_test import f_unit_test
 import numpy as np
 
 def test():
@@ -14,7 +14,7 @@ def test():
          [0, 1, 1, 1],
          [0, 1, 1, 1]]]])
     
-    test_function_backward(input_data, output, backward, lijnn.functions.max_pooling, 2)
+    f_unit_test(input_data, output, backward, lijnn.functions.max_pooling, 2)
 
 
 if __name__ == "__main__":

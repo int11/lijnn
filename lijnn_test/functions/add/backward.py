@@ -1,11 +1,11 @@
 from lijnn import *
 from lijnn.core import add
-from lijnn_test.functions.main_backward import test_function_backward
+from lijnn_test.functions.unit_test import f_unit_test
 
 def test():
     input_data = (3,3)
     backward = (1,1)
-    test_function_backward(input_data, 6, backward, add)
+    f_unit_test(input_data, 6, backward, add)
 
 
 

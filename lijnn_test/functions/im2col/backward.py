@@ -1,6 +1,6 @@
 from lijnn import *
 from lijnn.functions import *
-from lijnn_test.functions.main_backward import test_function_backward
+from lijnn_test.functions.unit_test import f_unit_test
 
 def test():
     input_data_shape = (1,1,4,4)
@@ -38,7 +38,7 @@ def test():
                 [2, 4, 4, 2],
                 [2, 4, 4, 2],
                 [1, 2, 2, 1]]]])
-    test_function_backward(input_data, output, backward, im2col, 2, to_matrix=False)
+    f_unit_test(input_data, output, backward, im2col, 2, to_matrix=False)
 
 
 

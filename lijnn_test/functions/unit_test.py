@@ -6,7 +6,7 @@ from lijnn import Variable
 import lijnn
 import copy 
 
-def test_function_backward(*args, **kwargs):
+def f_unit_test(*args, **kwargs):
     def check_backpropagation(gpu, input_data, output, grad, f , *args, **kwargs):
         input_data = copy.deepcopy(input_data)
         if isinstance(input_data, tuple) == False:
@@ -53,6 +53,21 @@ def test_function_backward(*args, **kwargs):
     b = check_backpropagation(True, *args, **kwargs)
     if a and b:
         print("Test passed")
+
+def f_unit_test_withTorch(input_data_shape, torch_f, f, *args, **kwargs):
+    import torch
+
+    input_data = np.random.random(input_data_shape).astype(np.float32)
+    
+    input_tensor = torch.tensor(input_data, requires_grad=True)
+    
+    output = torch_f(input_tensor, *args, **kwargs)
+
+    output.backward(torch.ones_like(output))
+    output = output.detach().numpy()
+    backward = input_tensor.grad.numpy()
+    
+    f_unit_test(input_data, output, backward, f, *args, **kwargs)
 
 def execute_test_function_in_folder(folder_path, function_name):
     # 폴더 내의 모든 .py 파일 찾기

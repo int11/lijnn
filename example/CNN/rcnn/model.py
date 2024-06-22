@@ -1,7 +1,7 @@
 from example.CNN.vgg import VGG16
 import lijnn.layers as L
 import lijnn.functions as F
-from function import roi_pooling
+from example.CNN.rcnn.functions import roi_pooling2d
 import numpy as np
 class Fast_R_CNN(VGG16):
     def __init__(self, num_classes=21):
@@ -41,7 +41,7 @@ class Fast_R_CNN(VGG16):
         # receptive field = 16
         # subsampling_ratio = 16
         
-        x = roi_pooling(x, bboxs, 7, 1/16)
+        x = roi_pooling2d(x, bboxs, 7, 1/16)
         # x.shape = (N, 512, 7, 7)
         x = F.flatten(x)
         x = F.dropout(F.relu(self.fc6(x)))

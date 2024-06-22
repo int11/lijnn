@@ -3,7 +3,7 @@ from lijnn import *
 from lijnn.cuda import *
 from lijnn import layers as L
 from lijnn import functions as F
-from function import roi_pooling
+from example.CNN.rcnn.functions import roi_pooling2d
 from lijnn.transforms import *
 from example.CNN import VGG16
 from dataset import VOCSelectiveSearch

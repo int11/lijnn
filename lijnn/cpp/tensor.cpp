@@ -14,29 +14,16 @@ enum class DataType {
 };
 
 template <typename T>
-class data_ptr {
+class tensor_base {
 public:
-    data_ptr() : size_(0), capacity(1), data_(new T[capacity]) {}
+    tensor_base(int size = 0) : size_(size),  data(new T[capacity]) {}
 
-    ~data_ptr() {
-        delete[] data_;
-    }
-
-    void push_back(const T& value) {
-        if (size_ == capacity) {
-            capacity *= 2;
-            T* newData = new T[capacity];
-            for (int i = 0; i < size_; ++i) {
-                newData[i] = data_[i];
-            }
-            delete[] data_;
-            data_ = newData;
-        }
-        data_[size_++] = value;
+    ~tensor_base() {
+        delete[] data;
     }
 
     T& operator[](int index) {
-        return data_[index];
+        return data[index];
     }
 
     int size() const {
@@ -45,15 +32,26 @@ public:
 
 private:
     int size_;
-    int capacity;
-    T* data_;
+    T* data;
 };
 
 class tensor{
 public:
-    tensor(std::initializer_list<int> list, const DataType data_type_) : data_type(data_type_) {
-        
-
+    tensor(int size, DataType data_type_) : data_type(data_type_) {
+        switch (data_type) {
+            case DataType::int:
+                values = new tensor_base<int>();
+                break;
+            case DataType::__half:
+                values = new tensor_base<__half>();
+                break;
+            case DataType::float:
+                values = new tensor_base<float>();
+                break;
+            case DataType::double:
+                values = new tensor_base<double>();
+                break;
+        }
     }
 
     friend std::ostream& operator<<(std::ostream& os, const tensor& t) {
@@ -71,7 +69,7 @@ private:
 
 
 int main() {
-    tensor t({1, 2, 3});
+    tensor t(5, 'int');
     cout << t << endl;
     return 0;
 }

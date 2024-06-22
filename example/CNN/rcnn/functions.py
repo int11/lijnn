@@ -26,17 +26,14 @@ class ROIPooling2D(Function):
         bboxs[:, [2, 3]] = xp.ceil(bboxs[:, [2, 3]] * self.spatial_scale)
 
 
-        #roi width, roi height, stridew, strideh, 
-        a = xp.array([bboxs[:,2] - bboxs[:, 0], bboxs[:, 3] - bboxs[:, 1],  (bboxs[:, 2] - bboxs[:, 0])/OW, (bboxs[:,3] - bboxs[:, 1])/OH]).T
-        L_sliceH = xp.tile(xp.arange(OH)[:, None], (N, 1, 2))
-        #             xp.floor(_outh        * strideh)) + ymin
-        L_sliceH[:, :, 0] = (xp.floor(L_sliceH[:, :, 0].T * a[:, 3]) + bboxs[:, 1]).T
-        L_sliceH[:, :, 1] = (xp.ceil((L_sliceH[:, :, 1].T + 1) * a[:, 3]) + bboxs[:, 1]).T
+        for n in range(N):
+            ymin, xmin, ymax, xmax = bboxs[n, 0], bboxs[n, 1], bboxs[n, 2], bboxs[n, 3]
+            bboxs_width, bboxs_height, stridew, strideh = ymax - ymin, xmax - xmin,  (ymax - ymin)/OW, (xmax - xmin)/OH
 
-        L_sliceW = xp.tile(xp.arange(OW)[:, None], (N, 1, 2))
+            for x in np.arange(0, bboxs_width, stridew):
 
-        L_sliceW[:, :, 0] = (xp.floor(L_sliceW[:, :, 0].T * a[:, 2]) + bboxs[:, 0]).T
-        L_sliceW[:, :, 1] = (xp.ceil((L_sliceW[:, :, 1].T + 1) * a[:, 2]) + bboxs[:, 0]).T 
+                for y in np.arange(0, bboxs_height, strideh):
+                    
 
         
         for n in range(N):
@@ -93,11 +90,11 @@ class ROIPooling2DGrad(Function):
         raise NotImplementedError
 
 
-def roi_pooling(x, rois, output_size, spatial_scale=1):
+def roi_pooling2d(x, rois, output_size, spatial_scale=1):
     return ROIPooling2D(output_size, spatial_scale)(x, rois)
 
 if __name__ == "__main__":
     a = Variable(np.random.randn(1, 1, 5, 5).astype(np.float32))
-    b = roi_pooling(a, np.array([[0, 0, 4, 4], [1, 1, 5, 5]]), 2, 1)
+    b = roi_pooling2d(a, np.array([[0, 0, 4, 4], [1, 1, 5, 5]]), 2, 1)
     b.backward()
     print(a.grad)

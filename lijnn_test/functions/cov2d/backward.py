@@ -15,7 +15,7 @@ def test():
          [0, 1, 1, 1],
          [0, 1, 1, 1]]]])
     
-    f_unit_test(input_data, output, backward, lijnn.functions.average_pooling, 2)
+    f_unit_test(input_data, output, backward, lijnn.functions.conv2d, 2)
 
 def test_torch():
     import torch.nn.functional as F

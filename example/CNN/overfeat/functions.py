@@ -67,11 +67,11 @@ class FinePoolingGrad(Function):
 
         for FH in range(3):
             for FW in range(3):
-                for j in range(KH):
-                    j_lim = j + SH * OH
-                    for i in range(KW):
-                        i_lim = i + SW * OW
-                        img[:, :, j + FH:j_lim:SH, i + FW:i_lim:SW] += gcol[FH, FW, :, :, j, i, :, :]
+                for j in range(OH):
+                    j_lim = j + SH * KH
+                    for i in range(OW):
+                        i_lim = i + SW * KW
+                        img[:, :, j * SH + FH:j_lim:SH, i * SW + FW:i_lim:SW] += gcol[FH, FW, :, :, j, i, :, :]
         return img[:, :, PH:H + PH, PW:W + PW]
 
 

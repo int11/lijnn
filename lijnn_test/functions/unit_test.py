@@ -55,7 +55,7 @@ def f_unit_test(*args, **kwargs):
     a = check_backpropagation(False, *args, **kwargs)
     b = check_backpropagation(True, *args, **kwargs)
     if a and b:
-        print("Test passed")
+        print("Test pass")
 
 def f_unit_test_withTorch(input_data_shape, torch_f, lijnn_f, *args, **kwargs):
     import torch

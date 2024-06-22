@@ -271,18 +271,6 @@ def numerical_grad(f, x, *args, **kwargs):
     return grad
 
 
-def as_variable(obj):
-    if isinstance(obj, Variable):
-        return obj
-    return Variable(obj)
-
-
-def as_array(x, array_module=np, dtype=None):
-    if np.isscalar(x):
-        return array_module.array(x, dtype=dtype) if dtype else array_module.array(x)
-    return x
-
-
 def array_equal(a, b):
     """True if two arrays have the same shape and elements, False otherwise.
 

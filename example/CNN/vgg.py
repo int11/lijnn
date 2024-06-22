@@ -179,12 +179,12 @@ A,B 두 모델 모두 4개의 이미지를 평가합니다.
 
 def _imagenet_pretrainmodel_test():
     url = 'https://github.com/oreilly-japan/deep-learning-from-scratch-3/raw/images/zebra.jpg'
-    img_path = lijnn.utils.get_file(url)
+    img_path = utils.get_file(url)
     img = cv.imread(img_path)
     model = VGG16(imagenet_pretrained=True)
     result = model.predict_imagenet(img.transpose(2, 0, 1)[::-1])
     predict_id = np.argmax(result)
-    labels = lijnn.datasets.ImageNet.labels()
+    labels = datasets.ImageNet.labels()
     print(labels[predict_id])
 
 
@@ -237,9 +237,9 @@ def _dense_evaluation_test():
 
     model = VGG16_print(imagenet_pretrained=True)
 
-    labels = lijnn.datasets.ImageNet.labels()
+    labels = datasets.ImageNet.labels()
     url = 'https://github.com/oreilly-japan/deep-learning-from-scratch-3/raw/images/zebra.jpg'
-    img_path = lijnn.utils.get_file(url)
+    img_path = utils.get_file(url)
     data = cv.imread(img_path)
 
     datali = [preprocess(data, size=(224, 224)), preprocess(data, size=(255, 255)),

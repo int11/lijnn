@@ -1,4 +1,5 @@
 import numpy as np
+from lijnn import Variable
 from lijnn import cuda
 from lijnn.core import Function
 from lijnn.utils import pair
@@ -81,7 +82,7 @@ class ROIPooling2DGrad(Function):
         if xp == np:
             np.add.at(gx, a, gy_f[np.arange(len(gy_f))])
         else:
-            cpx.scatter_add(gx, a.ravel(), gy_f[np.arange(len(gy_f))])
+            cuda.cpx.scatter_add(gx, a.ravel(), gy_f[np.arange(len(gy_f))])
 
         gx = gx.reshape(self.input_shape)
 
@@ -96,5 +97,7 @@ def roi_pooling(x, rois, output_size, spatial_scale=1):
     return ROIPooling2D(output_size, spatial_scale)(x, rois)
 
 if __name__ == "__main__":
-    a = np.random.randn(2, 3, 5, 5).astype(np.float32)
-    b = roi_pooling(a, np.array([[0, 0, 4, 4], [0, 0, 4, 4]]), 2, 1)
+    a = Variable(np.random.randn(1, 1, 5, 5).astype(np.float32))
+    b = roi_pooling(a, np.array([[0, 0, 4, 4], [1, 1, 5, 5]]), 2, 1)
+    b.backward()
+    print(a.grad)

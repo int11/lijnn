@@ -2,7 +2,7 @@ from example.CNN.vgg import VGG16
 import lijnn.layers as L
 import lijnn.functions as F
 from function import roi_pooling
-
+import numpy as np
 class Fast_R_CNN(VGG16):
     def __init__(self, num_classes=21):
         super().__init__(imagenet_pretrained=True)
@@ -12,6 +12,15 @@ class Fast_R_CNN(VGG16):
         self.Bbr = L.Linear((num_classes + 1) * 4)
 
     def forward(self, x, bboxs):
+        """
+        Args:
+            x: (N, C, H, W)
+            bboxs: (N, 4{ymin, xmin, ymax, xmax})
+
+        Return:
+            cls_score: (N, num_classes)
+            bbox_pred: (N, num_classes, 4)
+        """
         x = F.relu(self.conv1_1(x))
         x = F.relu(self.conv1_2(x))
         x = F.max_pooling(x, 2, 2)
@@ -41,3 +50,14 @@ class Fast_R_CNN(VGG16):
         cls_score = self.fc8(x)
         bbox_pred = self.Bbr(x)
         return cls_score, bbox_pred.reshape(len(x), -1, 4)
+
+
+if __name__ == "__main__":
+    model = Fast_R_CNN()
+    x_shape = (10, 3, 224, 224)
+    x = np.arange(np.prod(x_shape)).reshape(x_shape).astype(np.float32)
+    bboxs = F.randn(10, 4)
+    cls_score, bbox_pred = model(x, bboxs)
+    print(cls_score.shape)
+    print(bbox_pred.shape)
+    print(model)

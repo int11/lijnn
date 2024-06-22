@@ -5,8 +5,8 @@ import numpy as np
 from lijnn import Variable
 import lijnn
 import copy 
+
 def test_function_backward(*args, **kwargs):
-    
     def check_backpropagation(gpu, input_data, output, grad, f , *args, **kwargs):
         input_data = copy.deepcopy(input_data)
         if isinstance(input_data, tuple) == False:

@@ -175,7 +175,6 @@ class MaxPooling(Function):
     def backward(self, gy):
         return MaxPoolingGrad(self)(gy)
 
-#TODO
 class MaxPoolingGrad(Function):
     def __init__(self, mpool2d):
         self.mpool2d = mpool2d
@@ -200,8 +199,6 @@ class MaxPoolingGrad(Function):
 
         gcol[indexes] = gy.ravel()
         gcol = gcol.reshape(N, C, OH, OW, KH, KW)
-        gcol = xp.swapaxes(gcol, 2, 4)
-        gcol = xp.swapaxes(gcol, 3, 5)
 
         gx = col2im_array(gcol, (N, C, H, W), self.kernel_size, self.stride,
                           self.pad, to_matrix=False)
@@ -235,7 +232,6 @@ class MaxPoolingWithIndexes(Function):
 def max_pooling(x, kernel_size, stride=1, pad=0):
     return MaxPooling(kernel_size, stride, pad)(x)
 
-#TODO
 class AveragePooling(Function):
     def __init__(self, kernel_size, stride=1, pad=0):
         super().__init__()
@@ -257,7 +253,7 @@ class AveragePooling(Function):
         KW, KH = pair(self.kernel_size)
         gy /= (KW * KH)
         gcol = broadcast_to(gy.reshape(-1), (KH, KW, N * C * OH * OW))
-        gcol = gcol.reshape(KH, KW, N, C, OH, OW).transpose(2, 3, 0, 1, 4, 5)
+        gcol = gcol.reshape(KH, KW, N, C, OH, OW).transpose(2, 3, 4, 5, 0, 1)
         gx = col2im(gcol, self.input_shape, self.kernel_size, self.stride,
                     self.pad, to_matrix=False)
         return gx

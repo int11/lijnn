@@ -11,7 +11,7 @@ class ROIPooling2D(Function):
 
     def forward(self, x, bboxs):
         xp = cuda.get_array_module(x)
-        assert bboxs.shape[-1] == 4, "bboxs input must be (N, 4{ymin, xmin, ymax, xmax})"
+        assert bboxs.shape[-1] == 4, "bboxs input must be (N, bboxs_N, 4{ymin, xmin, ymax, xmax})"
         
         bboxs = bboxs.copy()
 

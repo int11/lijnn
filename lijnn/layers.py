@@ -123,7 +123,7 @@ class Linear(Layer):
 
     def _init_W(self, xp=np):
         I, O = self.in_size, self.out_size
-        scale = self.weight_init(I, O)
+        scale = self.weight_init(I, O, self.dtype)
         self.W.data = xp.random.randn(I, O).astype(self.dtype) * scale
 
     def forward(self, x):

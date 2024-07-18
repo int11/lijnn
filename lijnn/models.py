@@ -55,7 +55,7 @@ class Model(Layer):
             functions.append(f)
 
             for x in f.inputs:
-                if x.creator is not None:
+                if x.creator != None:
                     add_func(x.creator)
 
         # generate text

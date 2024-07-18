@@ -68,10 +68,10 @@ class Hierarchical_Sampling(lijnn.iterators.iterator):
             NEGindex = NEGindex[:self.r_n - len(POSindex)]
             index = np.concatenate((POSindex, NEGindex))
             
-            img.append(batch['img'])
-            labels.append(batch['labels'][index])
-            bboxs.append(batch['bboxs'][index])
-            ious.append(batch['ious'][index])
+            img.append(xp.array(batch['img']))
+            labels.append(xp.array(batch['labels'][index]))
+            bboxs.append(xp.array(batch['bboxs'][index]))
+            ious.append(xp.array(batch['ious'][index]))
 
         return (xp.array(xp.stack(img)), xp.array(xp.stack(bboxs))), (xp.array(xp.stack(labels)), xp.array(xp.stack(ious)))
 
